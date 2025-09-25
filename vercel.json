@@ -1,0 +1,34 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/realtime/stream",
+      "dest": "/api/realtime/stream",
+      "headers": {
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "Content-Type": "text/event-stream"
+      }
+    }
+  ],
+  "functions": {
+    "app/api/**/*.ts": {
+      "maxDuration": 300
+    },
+    "app/api/realtime/stream.ts": {
+      "maxDuration": 900
+    }
+  },
+  "env": {
+    "MONGODB_URI": "@mongodb_uri",
+    "JWT_SECRET": "@jwt_secret",
+    "NEXTAUTH_SECRET": "@nextauth_secret",
+    "PWA_CACHE_NAME": "shoots-bhop-cache"
+  }
+}
