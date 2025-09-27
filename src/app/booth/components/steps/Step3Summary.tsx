@@ -60,8 +60,6 @@ export function Step3Summary({
   const [equipment, setEquipment] = useState<Equipment | null>(null);
 
   useEffect(() => {
-    console.log('🔍 Step3Summary - businessPlan.equipmentId:', businessPlan.equipmentId);
-    console.log('🔍 Step3Summary - businessPlan.fixedCosts.equipment:', businessPlan.fixedCosts.equipment);
     if (businessPlan.equipmentId) {
       fetchEquipmentData();
     }

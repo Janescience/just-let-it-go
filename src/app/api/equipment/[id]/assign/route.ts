@@ -6,7 +6,7 @@ import Booth from '@/lib/models/Booth';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('auth-token')?.value;
@@ -42,9 +42,9 @@ export async function POST(
     }
 
     await connectDB();
-
+    const { id } = await params;
     const equipment = await Equipment.findOne({
-      _id: params.id,
+      _id: id,
       brandId: payload.user.brandId
     });
 
@@ -94,7 +94,7 @@ export async function POST(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('auth-token')?.value;
@@ -121,9 +121,9 @@ export async function DELETE(
     }
 
     await connectDB();
-
+    const { id } = await params;
     const equipment = await Equipment.findOne({
-      _id: params.id,
+      _id: id,
       brandId: payload.user.brandId
     });
 

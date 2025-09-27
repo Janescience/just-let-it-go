@@ -5,7 +5,7 @@ import Ingredient from '@/lib/models/Ingredient';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('auth-token')?.value;
@@ -49,9 +49,9 @@ export async function PUT(
     }
 
     await connectDB();
-
+    const { id } = await params;
     const ingredient = await Ingredient.findOne({
-      _id: params.id,
+      _id: id,
       brandId: payload.user.brandId
     });
 
@@ -67,7 +67,7 @@ export async function PUT(
       const existingIngredient = await Ingredient.findOne({
         name: name.trim(),
         brandId: payload.user.brandId,
-        _id: { $ne: params.id }
+        _id: { $ne: id }
       });
 
       if (existingIngredient) {
@@ -100,7 +100,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('auth-token')?.value;
@@ -127,9 +127,9 @@ export async function DELETE(
     }
 
     await connectDB();
-
+    const { id } = await params;
     const ingredient = await Ingredient.findOne({
-      _id: params.id,
+      _id: id,
       brandId: payload.user.brandId
     });
 
@@ -143,7 +143,7 @@ export async function DELETE(
     // TODO: Check if ingredient is being used in any menu items
     // For now, we'll allow deletion but should add this check in the future
 
-    await Ingredient.findByIdAndDelete(params.id);
+    await Ingredient.findByIdAndDelete(id);
 
     return NextResponse.json({
       message: 'ลบวัตถุดิบเรียบร้อยแล้ว'

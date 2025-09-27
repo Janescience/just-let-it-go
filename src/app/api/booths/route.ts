@@ -100,25 +100,8 @@ export async function POST(request: NextRequest) {
       businessPlan
     } = body;
 
-    console.log('📋 API received businessPlan:', businessPlan);
-    console.log('📊 BusinessPlan keys:', businessPlan ? Object.keys(businessPlan) : 'null');
-
-    // Debug validation data
-    console.log('🔍 Validation check:', {
-      name: !!name,
-      location: !!location,
-      startDate: !!startDate,
-      endDate: !!endDate,
-      rentCost: rentCost !== undefined,
-      'openingHours.start': !!openingHours?.start,
-      'openingHours.end': !!openingHours?.end,
-      'staff.username': !!staff?.username,
-      'staff.password': !!staff?.password
-    });
-
     if (!name || !location || !startDate || !endDate || rentCost === undefined ||
         !openingHours?.start || !openingHours?.end || !staff?.username || !staff?.password) {
-      console.log('❌ Validation failed - missing required fields');
       return NextResponse.json(
         { message: 'ข้อมูลไม่ครบถ้วน' },
         { status: 400 }
@@ -154,16 +137,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create staff user first
-    console.log('Creating staff user with data:', {
-      username: staff.username.trim().toLowerCase(),
-      password: staff.password,
-      name: name.trim() + ' Staff',
-      role: 'staff',
-      brandId: payload.user.brandId,
-      isActive: true
-    });
-
     const staffUser = new User({
       username: staff.username.trim().toLowerCase(), // Convert to lowercase for consistency
       password: staff.password, // Let User model handle password hashing
@@ -173,12 +146,9 @@ export async function POST(request: NextRequest) {
       isActive: true
     });
 
-    console.log('Staff user object created, now saving...');
     try {
       await staffUser.save();
-      console.log('Staff user saved successfully with ID:', staffUser._id);
     } catch (userSaveError) {
-      console.error('Error saving staff user:', userSaveError);
       throw userSaveError;
     }
 
@@ -209,18 +179,11 @@ export async function POST(request: NextRequest) {
       isActive: true
     });
 
-    console.log('🏪 Booth object before save:', {
-      businessPlan: booth.businessPlan,
-      hasBusinessPlan: !!booth.businessPlan
-    });
-
     // Update staff user with booth ID
     staffUser.boothId = booth._id;
     await staffUser.save();
 
     await booth.save();
-
-    console.log('✅ Booth saved. BusinessPlan in saved booth:', booth.businessPlan ? 'exists' : 'null');
 
     // Create accounting transactions for booth setup costs
     try {
@@ -319,7 +282,6 @@ export async function POST(request: NextRequest) {
             );
 
             await equipment.save();
-            console.log(`✅ Equipment ${equipment.name} usage recorded for booth ${booth.name}`);
           }
         } catch (equipmentError) {
           console.error('Error recording equipment usage:', equipmentError);
@@ -330,7 +292,6 @@ export async function POST(request: NextRequest) {
       // Save all accounting transactions
       if (accountingTransactions.length > 0) {
         await Promise.all(accountingTransactions.map(t => t.save()));
-        console.log(`✅ Created ${accountingTransactions.length} accounting transactions for booth setup`);
       }
 
     } catch (accountingError) {
