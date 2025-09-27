@@ -5,7 +5,7 @@ import AccountingTransaction from '@/lib/models/AccountingTransaction';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('auth-token')?.value;
@@ -19,9 +19,9 @@ export async function GET(
     }
 
     await connectDB();
-
+    const { id } = await params;
     const transaction = await AccountingTransaction.findOne({
-      _id: params.id,
+      _id: id,
       brandId: decoded.user.brandId
     }).populate('boothId', 'name');
 
@@ -45,7 +45,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('auth-token')?.value;
@@ -61,10 +61,10 @@ export async function PUT(
     const data = await request.json();
 
     await connectDB();
-
+    const { id } = await params;
     const transaction = await AccountingTransaction.findOneAndUpdate(
       {
-        _id: params.id,
+        _id: id,
         brandId: decoded.user.brandId
       },
       {
