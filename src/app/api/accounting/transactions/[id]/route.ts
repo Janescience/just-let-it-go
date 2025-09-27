@@ -99,7 +99,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('auth-token')?.value;
@@ -113,9 +113,9 @@ export async function DELETE(
     }
 
     await connectDB();
-
+    const { id } = await params;
     const transaction = await AccountingTransaction.findOneAndDelete({
-      _id: params.id,
+      _id: id,
       brandId: decoded.user.brandId
     });
 
