@@ -5,7 +5,7 @@ import Equipment from '@/lib/models/Equipment';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('auth-token')?.value;
@@ -25,9 +25,9 @@ export async function GET(
     }
 
     await connectDB();
-
+    const { id } = await params;
     const equipment = await Equipment.findOne({
-      _id: params.id,
+      _id: id,
       brandId: payload.user.brandId
     });
 
@@ -52,7 +52,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('auth-token')?.value;
@@ -92,9 +92,9 @@ export async function PUT(
     } = data;
 
     await connectDB();
-
+    const { id } = await params;
     const equipment = await Equipment.findOne({
-      _id: params.id,
+      _id: id,
       brandId: payload.user.brandId
     });
 
@@ -148,7 +148,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('auth-token')?.value;
@@ -175,9 +175,9 @@ export async function DELETE(
     }
 
     await connectDB();
-
+    const { id } = await params;
     const equipment = await Equipment.findOne({
-      _id: params.id,
+      _id: id,
       brandId: payload.user.brandId
     });
 
@@ -196,7 +196,7 @@ export async function DELETE(
       );
     }
 
-    await Equipment.findByIdAndDelete(params.id);
+    await Equipment.findByIdAndDelete(id);
 
     return NextResponse.json({
       message: 'ลบอุปกรณ์สำเร็จ'
