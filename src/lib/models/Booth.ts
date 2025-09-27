@@ -113,6 +113,8 @@ const BoothSchema = new Schema<IBooth>({
     fixedCosts: {
       rent: Number,
       staff: Number,
+      equipment: Number,
+      additionalExpenses: Number,
       total: Number,
     },
     breakEven: {
@@ -125,6 +127,7 @@ const BoothSchema = new Schema<IBooth>({
       quantity: Number,
       unit: String,
       cost: Number,
+      costPerUnit: Number,
     }],
     totalCapital: Number,
     targetProfit: {

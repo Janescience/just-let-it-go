@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, Target, Calendar, Package, BarChart3, DollarSign } from 'lucide-react';
+import { TrendingUp, Target, Calendar, Package, BarChart3, DollarSign, Eye } from 'lucide-react';
 import { Booth } from '@/types';
 
 interface BoothSalesTabProps {
@@ -12,6 +12,64 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
   const [statsData, setStatsData] = useState<any>(null);
   const [dailySalesData, setDailySalesData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ingredientViewMode, setIngredientViewMode] = useState<'total' | 'daily'>('total');
+  const [selectedDate, setSelectedDate] = useState<string>('');
+
+  // Get date range for this booth
+  const getBoothDateRange = () => {
+    const startDate = new Date(booth.startDate);
+    const endDate = new Date(booth.endDate);
+    const currentDate = new Date();
+    const effectiveEndDate = currentDate < endDate ? currentDate : endDate;
+
+    return {
+      min: startDate.toISOString().split('T')[0],
+      max: effectiveEndDate.toISOString().split('T')[0]
+    };
+  };
+
+  // Initialize selected date to latest available date
+  useEffect(() => {
+    if (!selectedDate) {
+      const { max } = getBoothDateRange();
+      setSelectedDate(max);
+    }
+  }, []);
+
+  // Calculate daily ingredient usage for a specific date
+  const calculateDailyIngredientUsage = (date: string) => {
+    const dayData = dailySalesData.find(d => d.date === date);
+    if (!dayData || !booth.businessPlan?.ingredients) {
+      return [];
+    }
+
+    // Use orders as number of units sold (assuming each order is one unit)
+    // This should ideally come from actual menu item quantities sold
+    const unitsSoldThatDay = dayData.orders;
+    const breakEvenUnits = booth.businessPlan?.breakEven?.unitsNeeded || 1;
+
+    return booth.businessPlan.ingredients.map((ingredient: any) => ({
+      ...ingredient,
+      usedQuantity: Math.round((ingredient.quantity * unitsSoldThatDay) / breakEvenUnits),
+      usedValue: (ingredient.cost * unitsSoldThatDay) / breakEvenUnits
+    }));
+  };
+
+  // Calculate total ingredient usage (existing logic)
+  const calculateTotalIngredientUsage = () => {
+    if (!statsData?.menuStats || !booth.businessPlan?.ingredients) {
+      return [];
+    }
+
+    const totalSoldUnits = statsData.menuStats.reduce((sum: number, item: any) => sum + item.quantity, 0);
+    const breakEvenUnits = booth.businessPlan?.breakEven?.unitsNeeded || 1;
+
+    return booth.businessPlan.ingredients.map((ingredient: any) => ({
+      ...ingredient,
+      usedQuantity: Math.round((ingredient.quantity * totalSoldUnits) / breakEvenUnits),
+      usedValue: (ingredient.cost * totalSoldUnits) / breakEvenUnits
+    }));
+  };
 
   useEffect(() => {
     if (preloadedStats && preloadedSales) {
@@ -76,6 +134,12 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
       const daySales = salesByDate[dateStr] || [];
 
       const dayTotal = daySales.reduce((sum: number, sale: any) => sum + sale.totalAmount, 0);
+      const cashTotal = daySales
+        .filter((sale: any) => sale.paymentMethod === 'cash')
+        .reduce((sum: number, sale: any) => sum + sale.totalAmount, 0);
+      const transferTotal = daySales
+        .filter((sale: any) => sale.paymentMethod === 'transfer')
+        .reduce((sum: number, sale: any) => sum + sale.totalAmount, 0);
       const orderCount = daySales.length;
 
       dailyData.push({
@@ -86,6 +150,8 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
           year: 'numeric'
         }),
         total: dayTotal,
+        cash: cashTotal,
+        transfer: transferTotal,
         orders: orderCount
       });
     }
@@ -148,7 +214,34 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
           <TrendingUp className="w-5 h-5 text-gray-500" />
           <h4 className="text-lg font-light text-gray-800 tracking-wide">สรุปยอดขาย</h4>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="border border-gray-200 rounded-lg bg-gray-50 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <div className="text-sm font-light text-gray-600">ดำเนินการมา</div>
+            </div>
+            <div className="space-y-3">
+              <div className="text-lg font-light text-gray-800">
+                {(() => {
+                  const startDate = new Date(booth.startDate);
+                  const endDate = new Date(booth.endDate);
+                  const currentDate = new Date();
+
+                  // Calculate days passed since start date
+                  const daysPassed = Math.floor((currentDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+                  // Calculate total days in booth period
+                  const totalDays = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+                  // Don't exceed total days if current date is past end date
+                  const effectiveDaysPassed = Math.min(daysPassed, totalDays);
+
+                  return `${effectiveDaysPassed}/${totalDays}`;
+                })()} วัน
+              </div>
+            </div>
+          </div>
+
           <div className="border border-gray-200 rounded-lg bg-gray-50 p-4">
             <div className="flex items-center gap-2 mb-3">
               <BarChart3 className="w-4 h-4 text-gray-500" />
@@ -232,9 +325,52 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
       {/* Ingredients Usage Table */}
       <div className="border border-gray-200 rounded-lg bg-white">
         <div className="p-4 border-b border-gray-200 bg-gray-50">
-          <div className="flex items-center gap-3">
-            <Package className="w-5 h-5 text-gray-500" />
-            <h4 className="text-lg font-light text-gray-800 tracking-wide">การใช้วัตถุดิบ</h4>
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <Package className="w-5 h-5 text-gray-500" />
+              <h4 className="text-lg font-light text-gray-800 tracking-wide">การใช้วัตถุดิบ</h4>
+            </div>
+
+            {/* View Mode Toggle */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg p-1">
+                <button
+                  onClick={() => setIngredientViewMode('total')}
+                  className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                    ingredientViewMode === 'total'
+                      ? 'bg-blue-500 text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  ยอดรวม
+                </button>
+                <button
+                  onClick={() => setIngredientViewMode('daily')}
+                  className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                    ingredientViewMode === 'daily'
+                      ? 'bg-blue-500 text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  รายวัน
+                </button>
+              </div>
+
+              {/* Date Picker - Only show when in daily mode */}
+              {ingredientViewMode === 'daily' && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-gray-500" />
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    min={getBoothDateRange().min}
+                    max={getBoothDateRange().max}
+                    className="px-3 py-1 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </div>
         <div className="max-h-96 overflow-y-auto">
@@ -247,41 +383,49 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
               </tr>
             </thead>
             <tbody>
-              {booth.businessPlan?.ingredients && booth.businessPlan.ingredients.length > 0 ? (
-                booth.businessPlan.ingredients.map((ingredient: any, index: number) => {
-                  const totalSoldUnits = statsData?.menuStats?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0;
-                  const usedQuantity = Math.round((ingredient.quantity * totalSoldUnits) / (booth.businessPlan?.breakEven?.unitsNeeded || 1));
-                  const usedValue = (ingredient.cost * totalSoldUnits) / (booth.businessPlan?.breakEven?.unitsNeeded || 1);
+              {(() => {
+                const ingredientsData = ingredientViewMode === 'total'
+                  ? calculateTotalIngredientUsage()
+                  : calculateDailyIngredientUsage(selectedDate);
 
-                  return (
+                return ingredientsData.length > 0 ? (
+                  ingredientsData.map((ingredient: any, index: number) => (
                     <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
                       <td className="p-3 text-gray-800 font-light">{ingredient.name}</td>
                       <td className="p-3 text-center text-gray-800 font-light">
-                        {usedQuantity} {ingredient.unit}
+                        {ingredient.usedQuantity} {ingredient.unit}
                       </td>
                       <td className="p-3 text-right text-gray-800 font-light">
-                        ฿{usedValue.toLocaleString()}
+                        ฿{ingredient.usedValue.toLocaleString()}
                       </td>
                     </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={3} className="p-8 text-center text-gray-500 font-light text-sm">
-                    ไม่มีข้อมูลวัตถุดิบ
-                  </td>
-                </tr>
-              )}
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={3} className="p-8 text-center text-gray-500 font-light text-sm">
+                      {ingredientViewMode === 'daily'
+                        ? 'ไม่มีข้อมูลการขายในวันที่เลือก'
+                        : 'ไม่มีข้อมูลวัตถุดิบ'
+                      }
+                    </td>
+                  </tr>
+                );
+              })()}
             </tbody>
             <tfoot>
               <tr className="border-t border-gray-800 bg-gray-800 text-white">
-                <td className="p-3 font-light" colSpan={2}>รวมมูลค่าวัตถุดิบที่ใช้:</td>
+                <td className="p-3 font-light" colSpan={2}>
+                  รวมมูลค่าวัตถุดิบที่ใช้{ingredientViewMode === 'daily' ? ' (วันนี้)' : ' (รวมทั้งหมด)'}:
+                </td>
                 <td className="p-3 text-right font-light text-sm">
-                  ฿{booth.businessPlan?.ingredients?.reduce((sum: number, ingredient: any) => {
-                    const totalSoldUnits = statsData?.menuStats?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0;
-                    const usedValue = (ingredient.cost * totalSoldUnits) / (booth.businessPlan?.breakEven?.unitsNeeded || 1);
-                    return sum + usedValue;
-                  }, 0).toLocaleString() || '0'}
+                  ฿{(() => {
+                    const ingredientsData = ingredientViewMode === 'total'
+                      ? calculateTotalIngredientUsage()
+                      : calculateDailyIngredientUsage(selectedDate);
+
+                    const totalValue = ingredientsData.reduce((sum: number, ingredient: any) => sum + ingredient.usedValue, 0);
+                    return totalValue.toLocaleString();
+                  })()}
                 </td>
               </tr>
             </tfoot>
@@ -357,7 +501,9 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
             <thead className="bg-gray-800 text-white sticky top-0">
               <tr>
                 <th className="text-left p-3 font-light">วันที่</th>
-                <th className="text-right p-3 font-light">ยอดขาย</th>
+                <th className="text-right p-3 font-light">เงินสด</th>
+                <th className="text-right p-3 font-light">เงินโอน</th>
+                <th className="text-right p-3 font-light">รวม</th>
                 <th className="text-right p-3 font-light">ออเดอร์</th>
               </tr>
             </thead>
@@ -366,6 +512,12 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
                 dailySalesData.map((day, index) => (
                   <tr key={day.date} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
                     <td className="p-3 text-gray-800 font-light">{day.displayDate}</td>
+                    <td className="p-3 text-right text-green-600 font-light">
+                      ฿{day.cash?.toLocaleString() || '0'}
+                    </td>
+                    <td className="p-3 text-right text-blue-600 font-light">
+                      ฿{day.transfer?.toLocaleString() || '0'}
+                    </td>
                     <td className="p-3 text-right text-gray-800 font-light">
                       ฿{day.total.toLocaleString()}
                     </td>
@@ -376,7 +528,7 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
                 ))
               ) : (
                 <tr>
-                  <td colSpan={3} className="p-8 text-center text-gray-500 font-light text-sm">
+                  <td colSpan={5} className="p-8 text-center text-gray-500 font-light text-sm">
                     ไม่มีข้อมูลการขาย
                   </td>
                 </tr>

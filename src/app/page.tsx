@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, DollarSign, Package, Download, Store, ShoppingCart, Users, Clock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/Button';
+import OnboardingGuide from '@/components/ui/OnboardingGuide';
 
 interface SalesData {
   totalSales: number;
@@ -36,17 +36,57 @@ interface DashboardStats {
   lowStockItems: number;
 }
 
+interface OnboardingStatus {
+  completionStatus: {
+    hasIngredients: boolean;
+    hasMenuItems: boolean;
+    hasEquipment: boolean;
+    hasBooths: boolean;
+  };
+  allCompleted: boolean;
+}
+
 export default function HomePage() {
   const { user } = useAuth();
   const [salesData, setSalesData] = useState<SalesData | null>(null);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
-      fetchDashboardData();
+      fetchData();
     }
   }, [user]);
+
+  const fetchData = async () => {
+    try {
+      console.log('Fetching onboarding status...');
+      // First check onboarding status
+      const onboardingResponse = await fetch('/api/onboarding/status');
+      console.log('Onboarding response status:', onboardingResponse.status);
+
+      if (onboardingResponse.ok) {
+        const onboardingData = await onboardingResponse.json();
+        console.log('Onboarding data:', onboardingData);
+        setOnboardingStatus(onboardingData);
+
+        // Only fetch dashboard data if onboarding is complete
+        if (onboardingData.allCompleted) {
+          console.log('Onboarding completed, fetching dashboard data');
+          await fetchDashboardData();
+        } else {
+          console.log('Onboarding not completed, showing guide');
+        }
+      } else {
+        console.error('Failed to fetch onboarding status:', await onboardingResponse.text());
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -72,8 +112,6 @@ export default function HomePage() {
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -109,18 +147,45 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Header title="แดชบอร์ด" />
+      <div className="min-h-screen bg-white">
+        <div className="border-b border-gray-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl sm:text-2xl font-thin text-black tracking-wider">กำลังโหลด...</h1>
+                <p className="text-sm font-light text-gray-500 mt-1">โปรดรอสักครู่</p>
+              </div>
+            </div>
+          </div>
+        </div>
         <div className="p-4 tablet:p-6">
-          <div className="text-center py-8">กำลังโหลด...</div>
+          <div className="text-center py-8">กำลังโหลดข้อมูล...</div>
         </div>
       </div>
     );
   }
 
+  // Show onboarding guide if setup is not complete
+  if (onboardingStatus && !onboardingStatus.allCompleted) {
+    console.log('Showing onboarding guide with status:', onboardingStatus.completionStatus);
+    return <OnboardingGuide completionStatus={onboardingStatus.completionStatus} />;
+  }
+
+  console.log('Showing dashboard, onboarding status:', onboardingStatus);
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header title="แดชบอร์ด" />
+    <div className="min-h-screen bg-white">
+      {/* Header */}
+      <div className="border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-thin text-black tracking-wider">แดชบอร์ด</h1>
+              <p className="text-sm font-light text-gray-500 mt-1">ภาพรวมข้อมูลและสถิติ</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="p-4 tablet:p-6 pb-20">
         {/* Welcome Section */}

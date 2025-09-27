@@ -22,14 +22,13 @@ export function Step2MenuSelection({
 }: Step2MenuSelectionProps) {
   return (
     <div className="space-y-4">
-      <h3 className="text-lg">เลือกเมนูและจัดการสต็อกเริ่มต้น</h3>
+      <h3 className="text-lg">เลือกเมนูและสัดส่วนการขาย</h3>
 
       {businessPlan.selectedMenuItems.length === 0 ? (
-        <div className="flex items-center justify-center h-96">
+        <div className="flex ">
           <div className="text-center text-gray-400">
-            <div className="text-6xl mb-4">🍽️</div>
-            <p className="text-xl mb-4">เลือกเมนูเพื่อเริ่มต้น</p>
-            <div className="grid grid-cols-2 gap-4 max-w-2xl">
+            
+            <div className="">
               {availableMenuItems.map((menuItem) => (
                 <div
                   key={menuItem._id}
@@ -51,7 +50,7 @@ export function Step2MenuSelection({
               <div className="border border-gray-200 p-3">
                 <div className="flex items-center gap-2 mb-3">
                   <Utensils className="w-4 h-4 text-gray-600" />
-                  <label className="text-lg text-gray-700">เพิ่มเมนูเพิ่มเติม</label>
+                  <label className="text-lg text-gray-700">เมนูอื่นๆ</label>
                 </div>
                 <div className="space-y-2">
                   {availableMenuItems
@@ -105,30 +104,27 @@ export function Step2MenuSelection({
 
                   return (
                     <div key={menuItem._id} className="border border-gray-200 p-3 ">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div>
-                            <div className="text-xl font-medium text-gray-800">{menuItem.name}</div>
-                            <div className="flex items-center gap-4">
-                              <div className="font-medium">฿{menuItem.price}</div>
-                              <div className="text-gray-600">
-                                ต้นทุน: ฿{menuItem.ingredients?.reduce((cost, ing) => {
-                                  const ingredient = typeof ing.ingredientId === 'object' ? ing.ingredientId :
-                                    availableIngredients.find(avail => avail._id === ing.ingredientId);
-                                  return cost + (ingredient ? ingredient.costPerUnit * ing.quantity : 0);
-                                }, 0).toFixed(2) || '0.00'}
-                              </div>
-                              <div className="text-gray-600">
-                                กำไรต่อจาน: ฿{(menuItem.price - (menuItem.ingredients?.reduce((cost, ing) => {
-                                  const ingredient = typeof ing.ingredientId === 'object' ? ing.ingredientId :
-                                    availableIngredients.find(avail => avail._id === ing.ingredientId);
-                                  return cost + (ingredient ? ingredient.costPerUnit * ing.quantity : 0);
-                                }, 0) || 0)).toFixed(2)}
-                              </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 ">
+                        <div className="grid grid-cols-2">
+                            <div className="text-xl  text-gray-800">{menuItem.name}</div>
+                            <div className="font-medium">฿{menuItem.price}</div>
+                            <div className="font-light text-sm text-gray-600">
+                              ต้นทุน: ฿{menuItem.ingredients?.reduce((cost, ing) => {
+                                const ingredient = typeof ing.ingredientId === 'object' ? ing.ingredientId :
+                                  availableIngredients.find(avail => avail._id === ing.ingredientId);
+                                return cost + (ingredient ? ingredient.costPerUnit * ing.quantity : 0);
+                              }, 0).toFixed(2) || '0.00'}
                             </div>
-                          </div>
+                            <div className="font-light text-sm text-gray-600">
+                              กำไร: ฿{(menuItem.price - (menuItem.ingredients?.reduce((cost, ing) => {
+                                const ingredient = typeof ing.ingredientId === 'object' ? ing.ingredientId :
+                                  availableIngredients.find(avail => avail._id === ing.ingredientId);
+                                return cost + (ingredient ? ingredient.costPerUnit * ing.quantity : 0);
+                              }, 0) || 0)).toFixed(2)}
+                            </div>
+                            
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex justify-end items-center gap-4">
                           <div className="flex items-center gap-2">
                             <input
                               type="number"

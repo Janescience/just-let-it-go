@@ -43,98 +43,104 @@ export function TransactionList({
 
   if (transactions.length === 0) {
     return (
-      <div className="bg-white border border-gray-200 p-6">
-        <h2 className="text-xl font-bold text-black mb-4">รายการบัญชี</h2>
-        <div className="text-center py-12">
-          <p className="text-gray-500">ไม่มีรายการบัญชีในช่วงวันที่ที่เลือก</p>
+      <div className="">
+        <h2 className="text-lg font-thin text-black tracking-wide mb-6">รายการบัญชี</h2>
+        <div className="text-center py-16">
+          <p className="text-sm font-light text-gray-400">ไม่มีรายการบัญชีในช่วงวันที่ที่เลือก</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white border border-gray-200">
-      <div className="p-6 border-b border-gray-200">
-        <h2 className="text-xl font-bold text-black">รายการบัญชี ({transactions.length} รายการ)</h2>
+    <div className="">
+      <div className="mb-8">
+        <h2 className="text-lg font-thin text-black tracking-wide">รายการบัญชี</h2>
+        <div className="text-sm font-light text-gray-400 mt-1">{transactions.length} รายการ</div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="text-left px-6 py-3 text-sm font-medium text-gray-700">วันที่</th>
-              <th className="text-left px-6 py-3 text-sm font-medium text-gray-700">ประเภท</th>
-              <th className="text-left px-6 py-3 text-sm font-medium text-gray-700">หมวดหมู่</th>
-              <th className="text-left px-6 py-3 text-sm font-medium text-gray-700">รายละเอียด</th>
-              <th className="text-right px-6 py-3 text-sm font-medium text-gray-700">จำนวนเงิน</th>
-              <th className="text-center px-6 py-3 text-sm font-medium text-gray-700">จัดการ</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {transactions.map((transaction) => (
-              <tr key={transaction._id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 text-sm text-gray-900">
-                  {formatDate(transaction.date)}
-                </td>
-                <td className="px-6 py-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    {transaction.type === 'income' ? (
-                      <>
-                        <TrendingUp className="w-4 h-4 text-green-600" />
-                        <span className="text-green-700 font-medium">รายรับ</span>
-                      </>
-                    ) : (
-                      <>
-                        <TrendingDown className="w-4 h-4 text-red-600" />
-                        <span className="text-red-700 font-medium">รายจ่าย</span>
-                      </>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-900">
-                  {getCategoryName(transaction.type, transaction.category)}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-900">
-                  <div>
-                    <p>{transaction.description}</p>
-                    {transaction.boothId && typeof transaction.boothId === 'object' && 'name' in transaction.boothId && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        หน้าร้าน: {transaction.boothId.name}
-                      </p>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-sm text-right">
-                  <span className={`font-medium ${
-                    transaction.type === 'income' ? 'text-green-700' : 'text-red-700'
-                  }`}>
+      <div className="space-y-4 sm:space-y-6">
+        {transactions.map((transaction) => (
+          <div key={transaction._id} className="border-b border-gray-100 pb-4 sm:pb-6 last:border-b-0">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+              <div className="flex-1">
+                {/* Mobile: Amount and actions row */}
+                <div className="flex sm:hidden items-center justify-between mb-3">
+                  <div className="font-light text-black text-lg">
                     {transaction.type === 'income' ? '+' : '-'}{formatAmount(transaction.amount)}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-center">
-                  <div className="flex items-center justify-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
                       onClick={() => onEdit(transaction)}
-                      className="text-gray-600 hover:text-blue-600"
+                      className="p-2 text-gray-300 hover:text-gray-600 transition-colors duration-200"
                     >
                       <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
+                    </button>
+                    <button
                       onClick={() => onDelete(transaction._id)}
-                      className="text-gray-600 hover:text-red-600"
+                      className="p-2 text-gray-300 hover:text-red-400 transition-colors duration-200"
                     >
                       <Trash2 className="w-4 h-4" />
-                    </Button>
+                    </button>
                   </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
+
+                {/* Transaction info */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-3">
+                  <div className="flex items-center gap-2">
+                    {transaction.type === 'income' ? (
+                      <TrendingUp className="w-4 h-4 text-gray-400" />
+                    ) : (
+                      <TrendingDown className="w-4 h-4 text-gray-400" />
+                    )}
+                    <span className="text-sm font-light text-gray-600">
+                      {transaction.type === 'income' ? 'รายรับ' : 'รายจ่าย'}
+                    </span>
+                  </div>
+                  <span className="text-xs font-light text-gray-400">
+                    {getCategoryName(transaction.type, transaction.category)}
+                  </span>
+                  <span className="text-xs font-light text-gray-400">
+                    {formatDate(transaction.date)}
+                  </span>
+                </div>
+
+                <div className="font-light text-black tracking-wide mb-2">
+                  {transaction.description}
+                </div>
+
+                {transaction.boothId && typeof transaction.boothId === 'object' && 'name' in transaction.boothId && (
+                  <div className="text-xs font-light text-gray-400">
+                    หน้าร้าน: {transaction.boothId.name}
+                  </div>
+                )}
+              </div>
+
+              {/* Desktop: Amount and actions */}
+              <div className="hidden sm:flex items-center gap-4">
+                <div className="text-right">
+                  <div className="font-light text-black">
+                    {transaction.type === 'income' ? '+' : '-'}{formatAmount(transaction.amount)}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => onEdit(transaction)}
+                    className="p-2 text-gray-300 hover:text-gray-600 transition-colors duration-200"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => onDelete(transaction._id)}
+                    className="p-2 text-gray-300 hover:text-red-400 transition-colors duration-200"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

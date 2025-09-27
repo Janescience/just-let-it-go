@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MenuItem, EquipmentSet, EquipmentTemplate } from '@/types';
+import { MenuItem, Equipment } from '@/types';
 import { Store, Users, Clock, MapPin, DollarSign, Package, User, Key } from 'lucide-react';
 
 interface BusinessPlan {
@@ -16,11 +16,13 @@ interface BusinessPlan {
   employees: { name: string; salary: string; position: string; }[];
   selectedMenuItems: MenuItem[];
   menuItemProportions: { [menuItemId: string]: number };
-  equipmentSetId?: string;
+  equipmentId?: string;
+  additionalExpenses: { description: string; amount: number; }[];
   fixedCosts: {
     rent: number;
     staff: number;
     equipment: number;
+    additionalExpenses: number;
     total: number;
   };
   breakEven: {
@@ -48,44 +50,31 @@ interface BusinessPlan {
 
 interface Step3SummaryProps {
   businessPlan: BusinessPlan;
-  getRequiredIngredients: () => any[];
   calculateIngredientsNeeded: (unitsNeeded: number) => any[];
 }
 
 export function Step3Summary({
   businessPlan,
-  getRequiredIngredients,
   calculateIngredientsNeeded
 }: Step3SummaryProps) {
-  const [equipmentSet, setEquipmentSet] = useState<EquipmentSet | null>(null);
-  const [equipmentTemplate, setEquipmentTemplate] = useState<EquipmentTemplate | null>(null);
+  const [equipment, setEquipment] = useState<Equipment | null>(null);
 
   useEffect(() => {
-    console.log('🔍 Step3Summary - businessPlan.equipmentSetId:', businessPlan.equipmentSetId);
+    console.log('🔍 Step3Summary - businessPlan.equipmentId:', businessPlan.equipmentId);
     console.log('🔍 Step3Summary - businessPlan.fixedCosts.equipment:', businessPlan.fixedCosts.equipment);
-    if (businessPlan.equipmentSetId) {
+    if (businessPlan.equipmentId) {
       fetchEquipmentData();
     }
-  }, [businessPlan.equipmentSetId]);
+  }, [businessPlan.equipmentId]);
 
   const fetchEquipmentData = async () => {
     try {
-      // Fetch equipment set
-      const setResponse = await fetch(`/api/equipment/sets/${businessPlan.equipmentSetId}`, {
+      const response = await fetch(`/api/equipment/${businessPlan.equipmentId}`, {
         credentials: 'include'
       });
-      if (setResponse.ok) {
-        const setData = await setResponse.json();
-        setEquipmentSet(setData.equipmentSet);
-
-        // Fetch template
-        const templateResponse = await fetch(`/api/equipment/templates/${setData.equipmentSet.templateId}`, {
-          credentials: 'include'
-        });
-        if (templateResponse.ok) {
-          const templateData = await templateResponse.json();
-          setEquipmentTemplate(templateData.template);
-        }
+      if (response.ok) {
+        const data = await response.json();
+        setEquipment(data.equipment);
       }
     } catch (error) {
       console.error('Error fetching equipment data:', error);
@@ -96,12 +85,12 @@ export function Step3Summary({
       <h3 className="text-lg">สรุปแผนธุรกิจบูธ</h3>
 
       {/* Step 1 Summary: Basic Information */}
-      <div className="border border-gray-200 p-3">
+      <div className="border border-gray-200 p-1 md:p-3">
         <div className="flex items-center gap-2 mb-3">
           <Store className="w-4 h-4 text-gray-600" />
           <label className="text-lg text-gray-700">ข้อมูลพื้นฐาน</label>
         </div>
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="space-y-3">
             <div className="flex justify-between">
               <span>ชื่อบูธ:</span>
@@ -119,10 +108,23 @@ export function Step3Summary({
               <span>เวลาทำการ:</span>
               <span className="text-gray-700">{businessPlan.openingStart} - {businessPlan.openingEnd}</span>
             </div>
-            {equipmentSet && equipmentTemplate && (
+            {equipment && (
               <div className="flex justify-between">
                 <span>อุปกรณ์:</span>
-                <span className="text-gray-700">{equipmentSet.setName} (฿{(equipmentTemplate.dailyCost * businessPlan.numberOfDays).toFixed(2)})</span>
+                <span className="text-gray-700">{equipment.name} (฿{(equipment.dailyCost * businessPlan.numberOfDays).toFixed(2)})</span>
+              </div>
+            )}
+            {businessPlan.additionalExpenses && businessPlan.additionalExpenses.length > 0 && (
+              <div>
+                <span className="font-medium">ค่าใช้จ่ายเพิ่มเติม:</span>
+                <div className="mt-1 space-y-1 text-sm">
+                  {businessPlan.additionalExpenses.map((expense, index) => (
+                    <div key={index} className="flex justify-between text-gray-600">
+                      <span>- {expense.description}</span>
+                      <span>฿{expense.amount.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -168,7 +170,7 @@ export function Step3Summary({
           <Package className="w-4 h-4 text-gray-600" />
           <label className="text-lg text-gray-700">เมนูและวัตถุดิบเริ่มต้น</label>
         </div>
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <div className="mb-2">เมนูที่ขาย ({businessPlan.selectedMenuItems.length} รายการ):</div>
             <div className="max-h-32 overflow-y-auto space-y-2">
@@ -214,7 +216,7 @@ export function Step3Summary({
           <DollarSign className="w-4 h-4 text-gray-600" />
           <label className="text-lg text-gray-700">สรุปรวม</label>
         </div>
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
             <div className="space-y-2">
               <div className="flex justify-between">
@@ -234,6 +236,12 @@ export function Step3Summary({
                   <div className="flex justify-between">
                     <span>- ค่าอุปกรณ์ ({businessPlan.numberOfDays} วัน):</span>
                     <span>฿{businessPlan.fixedCosts.equipment.toLocaleString()}</span>
+                  </div>
+                )}
+                {businessPlan.fixedCosts.additionalExpenses > 0 && (
+                  <div className="flex justify-between">
+                    <span>- ค่าใช้จ่ายเพิ่มเติม:</span>
+                    <span>฿{businessPlan.fixedCosts.additionalExpenses.toLocaleString()}</span>
                   </div>
                 )}
               </div>
@@ -276,15 +284,15 @@ export function Step3Summary({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-center py-2">เปอร์เซ็นต์กำไร</th>
-                <th className="text-right py-2">ต้นทุนคงที่</th>
-                <th className="text-right py-2">ต้นทุนผันแปร</th>
-                <th className="text-right py-2">เงินทุนรวม</th>
-                <th className="text-right py-2">กำไรที่ได้</th>
-                <th className="text-right py-2">ขายได้</th>
-                <th className="text-center py-2">ขายทั้งหมด (จาน)</th>
-                <th className="text-center py-2">วันล่ะ (จาน)</th>
-                <th className="text-right py-2">ขายได้วันล่ะ</th>
+                <th className="text-center py-2 px-2 whitespace-nowrap">เปอร์เซ็นต์กำไร</th>
+                <th className="text-right py-2 px-2 whitespace-nowrap">ต้นทุนคงที่</th>
+                <th className="text-right py-2 px-2 whitespace-nowrap">ต้นทุนผันแปร</th>
+                <th className="text-right py-2 px-2 whitespace-nowrap">เงินทุนรวม</th>
+                <th className="text-right py-2 px-2 whitespace-nowrap">กำไรที่ได้</th>
+                <th className="text-right py-2 px-2 whitespace-nowrap">ขายได้</th>
+                <th className="text-center py-2 px-2 whitespace-nowrap">ขายทั้งหมด (จาน)</th>
+                <th className="text-center py-2 px-2 whitespace-nowrap">วันล่ะ (จาน)</th>
+                <th className="text-right py-2 px-2 whitespace-nowrap">ขายได้วันล่ะ</th>
               </tr>
             </thead>
             <tbody>

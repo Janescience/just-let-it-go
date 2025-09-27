@@ -44,47 +44,43 @@ export function CategoryBreakdown({
 
     if (sortedCategories.length === 0) {
       return (
-        <div className="text-center py-8">
-          <p className="text-gray-500">
+        <div className="text-center py-12">
+          <p className="text-sm font-light text-gray-400">
             ไม่มี{type === 'income' ? 'รายรับ' : 'รายจ่าย'}ในช่วงวันที่ที่เลือก
           </p>
         </div>
       );
     }
 
-    const colors = type === 'income'
-      ? ['bg-green-500', 'bg-green-400', 'bg-green-300', 'bg-green-200', 'bg-green-100']
-      : ['bg-red-500', 'bg-red-400', 'bg-red-300', 'bg-red-200', 'bg-red-100'];
+    const colors = ['bg-gray-600', 'bg-gray-500', 'bg-gray-400', 'bg-gray-300', 'bg-gray-200'];
 
     return (
-      <div className="space-y-3">
+      <div className="space-y-6">
         {sortedCategories.map(([category, amount], index) => {
           const percentage = calculatePercentage(amount, total);
           const colorClass = colors[index % colors.length];
 
           return (
-            <div key={category} className="flex items-center justify-between">
-              <div className="flex items-center gap-3 flex-1">
-                <div className={`w-4 h-4 rounded ${colorClass}`}></div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
+            <div key={category} className="border-b border-gray-100 pb-4 last:border-b-0">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 ${colorClass}`}></div>
+                  <p className="text-sm font-light text-gray-600">
                     {categoryNames[category] || category}
                   </p>
-                  <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                    <div
-                      className={`h-2 rounded-full ${colorClass}`}
-                      style={{ width: `${percentage}%` }}
-                    ></div>
-                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-light text-black">
+                    {formatAmount(amount)}
+                  </p>
+                  <p className="text-xs font-light text-gray-400">{percentage}%</p>
                 </div>
               </div>
-              <div className="text-right ml-3">
-                <p className={`text-sm font-medium ${
-                  type === 'income' ? 'text-green-700' : 'text-red-700'
-                }`}>
-                  {formatAmount(amount)}
-                </p>
-                <p className="text-xs text-gray-500">{percentage}%</p>
+              <div className="w-full bg-gray-100 h-1">
+                <div
+                  className={`h-1 ${colorClass}`}
+                  style={{ width: `${percentage}%` }}
+                ></div>
               </div>
             </div>
           );
@@ -94,21 +90,21 @@ export function CategoryBreakdown({
   };
 
   return (
-    <div className="bg-white border border-gray-200">
-      <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center gap-2 mb-4">
-          <PieChart className="w-5 h-5 text-gray-700" />
-          <h2 className="text-xl font-bold text-black">แบ่งตามหมวดหมู่</h2>
+    <div className="">
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-6">
+          <PieChart className="w-4 h-4 text-gray-400" />
+          <h2 className="text-lg font-thin text-black tracking-wide">แบ่งตามหมวดหมู่</h2>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-gray-200">
+        <div className="flex gap-8 border-b border-gray-100">
           <button
             onClick={() => setActiveTab('expense')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            className={`pb-3 text-sm font-light transition-colors ${
               activeTab === 'expense'
-                ? 'border-red-500 text-red-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                ? 'text-black border-b border-black'
+                : 'text-gray-400 hover:text-gray-600'
             }`}
           >
             <div className="flex items-center gap-2">
@@ -118,10 +114,10 @@ export function CategoryBreakdown({
           </button>
           <button
             onClick={() => setActiveTab('income')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            className={`pb-3 text-sm font-light transition-colors ${
               activeTab === 'income'
-                ? 'border-green-500 text-green-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                ? 'text-black border-b border-black'
+                : 'text-gray-400 hover:text-gray-600'
             }`}
           >
             <div className="flex items-center gap-2">
@@ -132,7 +128,7 @@ export function CategoryBreakdown({
         </div>
       </div>
 
-      <div className="p-6">
+      <div className="pt-6">
         {activeTab === 'expense' ? (
           renderCategoryList(expenseByCategory, expenseCategories, totalExpense, 'expense')
         ) : (

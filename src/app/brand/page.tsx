@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Upload, Building2, CreditCard, Phone, IdCard, Smartphone, QrCode, X, Image as ImageIcon } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { Header } from '@/components/layout/Header';
 import { Button, Input, Card, CardHeader, CardTitle, CardContent } from '@/components/ui';
 import { Brand } from '@/types';
 
@@ -120,7 +119,17 @@ export default function BrandPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Header title="จัดการแบรนด์" />
+        {/* Header */}
+      <div className="border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-thin text-black tracking-wider">จัดการแบรนด์</h1>
+              <p className="text-sm font-light text-gray-500 mt-1">ตั้งค่าข้อมูลแบรนด์และการชำระเงิน</p>
+            </div>
+          </div>
+        </div>
+      </div>
         <div className="flex items-center justify-center h-64">
           <div className="text-gray-500">กำลังโหลด...</div>
         </div>
@@ -130,10 +139,33 @@ export default function BrandPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header title="จัดการแบรนด์" />
+      {/* Header */}
+      <div className="border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-thin text-black tracking-wider">จัดการแบรนด์</h1>
+              <p className="text-sm font-light text-gray-500 mt-1">ตั้งค่าข้อมูลแบรนด์และการชำระเงิน</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+     
 
       <div className="p-6  mx-auto space-y-6">
-        <form onSubmit={handleSubmit} className="grid grid-cols-3 gap-5">
+         {/* Submit Button */}
+          <div className="flex justify-end">
+            <Button
+              type="submit"
+              loading={saving}
+              disabled={!formData.name.trim()}
+              size="lg"
+            >
+              บันทึกข้อมูล
+            </Button>
+          </div>
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {/* Basic Information */}
           <Card >
             <CardHeader>
@@ -274,17 +306,7 @@ export default function BrandPage() {
             </CardContent>
           </Card>
 
-          {/* Submit Button */}
-          <div className="flex justify-end">
-            <Button
-              type="submit"
-              loading={saving}
-              disabled={!formData.name.trim()}
-              size="lg"
-            >
-              บันทึกข้อมูล
-            </Button>
-          </div>
+          
         </form>
       </div>
     </div>

@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Edit, Trash2, Calculator, ChefHat, Search, X, Upload, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, Calculator, ChefHat, Search, X, Upload, Image as ImageIcon, Copy } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Header } from '@/components/layout/Header';
 import { MenuItem, Ingredient } from '@/types';
 import { Button, Input, Select, Modal } from '@/components/ui';
+import { MenuLoading } from './components/MenuLoading';
 
 interface MenuItemWithCost extends MenuItem {
   totalCost: number;
@@ -21,6 +22,7 @@ export default function MenuPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedMenuItem, setSelectedMenuItem] = useState<MenuItemWithCost | null>(null);
+  const [copyingMenuItem, setCopyingMenuItem] = useState<MenuItemWithCost | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -76,122 +78,169 @@ export default function MenuPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Header title="จัดการเมนู" />
-        <div className="p-4 tablet:p-6">
-          <div className="text-center py-8">กำลังโหลด...</div>
-        </div>
-      </div>
-    );
+    return <MenuLoading />;
   }
 
   return (
-    <div className="min-h-screen mb-5 bg-white">
-      <Header title="จัดการเมนู" />
-      <div className="p-6 tablet:p-8 pb-20 max-w-7xl mx-auto">
-        {/* Header Actions */}
-        <div className="flex flex-row items-center justify-between gap-4 mb-8">
+    <div className="min-h-screen bg-white">
+      {/* Header */}
+      <div className="border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-thin text-black tracking-wider">เมนู</h1>
+              <p className="text-sm font-light text-gray-500 mt-1">จัดการเมนูและต้นทุน</p>
+            </div>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="px-6 py-2 border border-gray-200 text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide"
+            >
+              เพิ่มเมนู
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        {/* Search */}
+        <div className="mb-12">
           <Input
-            label="ค้นหาเมนู"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 min-w-0"
+            placeholder="ค้นหาเมนู..."
+            className="max-w-md border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black"
           />
-          <Button onClick={() => setShowAddModal(true)} variant="primary" className="ml-4 whitespace-nowrap">
-            <Plus className="w-5 h-5" />
-            เมนูใหม่
-          </Button>
         </div>
 
-        {/* Menu Items Grid */}
         {filteredMenuItems.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <ChefHat className="w-12 h-12 text-gray-300" />
+          <div className="text-center py-24">
+            <div className="w-16 h-16 border border-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
+              <ChefHat className="w-6 h-6 text-gray-300" />
             </div>
-            <h3 className="text-2xl font-light text-gray-900 mb-3">ยังไม่มีเมนู</h3>
-            <p className="text-gray-500 mb-8 max-w-md mx-auto">เริ่มต้นสร้างเมนูแรกของคุณและเพิ่มรูปภาพให้ดูน่าสนใจ</p>
-            <Button onClick={() => setShowAddModal(true)} variant="primary">
-              <Plus className="w-5 h-5" />
-              เพิ่มเมนูใหม่
-            </Button>
+            <div className="text-lg font-thin text-gray-600 mb-2 tracking-wide">ไม่มีเมนู</div>
+            <div className="text-sm font-light text-gray-400 mb-8">เริ่มต้นด้วยการเพิ่มเมนูแรก</div>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="px-8 py-3 bg-black text-white text-sm font-light hover:bg-gray-800 transition-colors duration-200 tracking-wide"
+            >
+              เริ่มต้น
+            </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-4">
+          <div className="space-y-6">
             {filteredMenuItems.map(item => (
-              <div key={item._id} className="group">
-                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow transition-all duration-200">
-                  {/* Image */}
-                  <div className="aspect-[4/3] bg-gray-50 overflow-hidden relative">
+              <div key={item._id} className="border-b border-gray-100 pb-6 last:border-b-0">
+                <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+                  {/* Mobile: Image and action buttons row */}
+                  <div className="flex sm:hidden items-center justify-between mb-2">
+                    <div className="w-20 h-20 bg-gray-100 overflow-hidden flex-shrink-0">
+                      {item.image ? (
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ChefHat className="w-6 h-6 text-gray-300" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => { setCopyingMenuItem(item); setShowAddModal(true); }}
+                        className="p-2 text-gray-300 hover:text-gray-600 transition-colors duration-200"
+                        title="คัดลอกเมนู"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => { setSelectedMenuItem(item); setShowEditModal(true); }}
+                        className="p-2 text-gray-300 hover:text-gray-600 transition-colors duration-200"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => deleteMenuItem(item._id)}
+                        className="p-2 text-gray-300 hover:text-red-400 transition-colors duration-200"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Desktop: Image */}
+                  <div className="hidden sm:block w-24 h-24 bg-gray-100 overflow-hidden flex-shrink-0">
                     {item.image ? (
                       <img
                         src={item.image}
                         alt={item.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                        <ChefHat className="w-16 h-16 text-gray-300" />
+                      <div className="w-full h-full flex items-center justify-center">
+                        <ChefHat className="w-8 h-8 text-gray-300" />
                       </div>
                     )}
-                    {/* Status Badge */}
-                    <div className="absolute top-3 right-3">
-                      <span className={`px-2 py-0.5 rounded  font-light border ${item.isActive ? 'bg-black text-white border-black' : 'bg-white text-gray-400 border-gray-300'}`}>
-                        {item.isActive ? 'ใช้งาน' : 'ปิดใช้งาน'}
-                      </span>
-                    </div>
                   </div>
 
                   {/* Content */}
-                  <div className="p-4">
-                    <div className="mb-2">
-                      <h3 className="font-light text-lg text-gray-900 mb-1 truncate">{item.name}</h3>
-                      {item.description && (
-                        <p className="text-gray-500 text-lg leading-relaxed truncate">{item.description}</p>
-                      )}
-                    </div>
-
-                    {/* Financial Info */}
-                    <div className="flex justify-between items-end mb-4">
-                      <div>
-                        <div className=" text-gray-400 mb-1">ราคาขาย</div>
-                        <div className="text-lg font-light text-gray-900">฿{item.price.toLocaleString()}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className=" text-gray-400 mb-1">กำไร</div>
-                        <div className=" font-light text-gray-700">฿{(item.price - (item.totalCost || 0)).toFixed(0)}</div>
-                        <div className=" text-gray-400">{item.totalCost ? (((item.price - item.totalCost) / item.price) * 100).toFixed(0) : '0'}% margin</div>
-                      </div>
-                    </div>
-
-                    {/* Ingredients */}
-                    {/*<div className="mb-4">
-                      <div className=" text-gray-400 mb-1">วัตถุดิบหลัก</div>
-                      <div className="flex flex-wrap gap-1">
-                        {item.ingredients.slice(0, 3).map((ing, index) => {
-                          const ingredient = ingredients.find(i => i._id === ing.ingredientId);
-                          return (
-                            <span key={index} className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded  font-light">
-                              {ingredient?.name}
-                            </span>
-                          );
-                        })}
-                        {item.ingredients.length > 3 && (
-                          <span className="bg-gray-100 text-gray-400 px-2 py-0.5 rounded ">+{item.ingredients.length - 3}</span>
+                  <div className="flex-1">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-3">
+                          <h3 className="font-light text-black tracking-wide text-lg">{item.name}</h3>
+                          <span className={`px-2 py-0.5 text-xs font-light self-start ${
+                            item.isActive
+                              ? 'text-black border border-black'
+                              : 'text-gray-400 border border-gray-300'
+                          }`}>
+                            {item.isActive ? 'ใช้งาน' : 'ปิดใช้งาน'}
+                          </span>
+                        </div>
+                        {item.description && (
+                          <p className="text-sm font-light text-gray-500 mb-4">{item.description}</p>
                         )}
+                        <div className="grid grid-cols-3 gap-4 sm:gap-6">
+                          <div>
+                            <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">ราคาขาย</div>
+                            <div className="font-light text-black">฿{item.price.toLocaleString()}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">ต้นทุน</div>
+                            <div className="font-light text-gray-600">฿{(item.totalCost || 0).toFixed(0)}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">กำไร</div>
+                            <div className="font-light text-black">฿{(item.price - (item.totalCost || 0)).toFixed(0)}</div>
+                            <div className="text-xs font-light text-gray-400">
+                              {item.totalCost ? (((item.price - item.totalCost) / item.price) * 100).toFixed(0) : '0'}% margin
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    </div>*/}
-
-                    {/* Actions */}
-                    <div className="flex gap-2">
-                      <Button onClick={() => { setSelectedMenuItem(item); setShowEditModal(true); }} variant="secondary" className="flex-1" size="sm">
-                        <Edit className="w-4 h-4" />
-                        แก้ไข
-                      </Button>
-                      <Button onClick={() => deleteMenuItem(item._id)} variant="danger" size="sm" className="flex-1">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      {/* Desktop: Action buttons */}
+                      <div className="hidden sm:flex items-center gap-2">
+                        <button
+                          onClick={() => { setCopyingMenuItem(item); setShowAddModal(true); }}
+                          className="p-2 text-gray-300 hover:text-gray-600 transition-colors duration-200"
+                          title="คัดลอกเมนู"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => { setSelectedMenuItem(item); setShowEditModal(true); }}
+                          className="p-2 text-gray-300 hover:text-gray-600 transition-colors duration-200"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => deleteMenuItem(item._id)}
+                          className="p-2 text-gray-300 hover:text-red-400 transition-colors duration-200"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -205,8 +254,9 @@ export default function MenuPage() {
       <MenuItemModal
         isOpen={showAddModal}
         ingredients={ingredients}
-        onClose={() => setShowAddModal(false)}
-        onSuccess={() => { fetchMenuItems(); setShowAddModal(false); }}
+        copyFromMenuItem={copyingMenuItem}
+        onClose={() => { setShowAddModal(false); setCopyingMenuItem(null); }}
+        onSuccess={() => { fetchMenuItems(); setShowAddModal(false); setCopyingMenuItem(null); }}
       />
       <MenuItemModal
         isOpen={showEditModal}
@@ -220,10 +270,11 @@ export default function MenuPage() {
 }
 
 // Menu Item Modal Component
-function MenuItemModal({ isOpen, menuItem, ingredients, onClose, onSuccess }: {
+function MenuItemModal({ isOpen, menuItem, ingredients, copyFromMenuItem, onClose, onSuccess }: {
   isOpen: boolean;
   menuItem?: MenuItemWithCost;
   ingredients: Ingredient[];
+  copyFromMenuItem?: MenuItemWithCost | null;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -250,21 +301,23 @@ function MenuItemModal({ isOpen, menuItem, ingredients, onClose, onSuccess }: {
   // Reset form data when menuItem changes or modal opens/closes
   useEffect(() => {
     if (isOpen) {
-      // Reset form data when modal opens with new menuItem
+      const sourceItem = menuItem || copyFromMenuItem;
+
+      // Reset form data when modal opens with new menuItem or copying
       setFormData({
-        name: menuItem?.name || '',
-        description: menuItem?.description || '',
-        price: menuItem?.price?.toString() || '',
-        image: menuItem?.image || '',
-        isActive: menuItem?.isActive ?? true
+        name: copyFromMenuItem ? `${copyFromMenuItem.name} (สำเนา)` : (menuItem?.name || ''),
+        description: sourceItem?.description || '',
+        price: sourceItem?.price?.toString() || '',
+        image: sourceItem?.image || '',
+        isActive: sourceItem?.isActive ?? true
       });
 
-      setImagePreview(menuItem?.image || '');
+      setImagePreview(sourceItem?.image || '');
 
-      if (menuItem?.ingredients && menuItem.ingredients.length > 0) {
-        console.log('Menu item ingredients:', menuItem.ingredients);
+      if (sourceItem?.ingredients && sourceItem.ingredients.length > 0) {
+        console.log('Menu item ingredients:', sourceItem.ingredients);
         setSelectedIngredients(
-          menuItem.ingredients.map(ing => {
+          sourceItem.ingredients.map(ing => {
             console.log('Processing ingredient:', ing);
             const ingredientId = (ing.ingredientId && typeof ing.ingredientId === 'object')
               ? (ing.ingredientId as any)._id
@@ -393,17 +446,17 @@ function MenuItemModal({ isOpen, menuItem, ingredients, onClose, onSuccess }: {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isEditing ? 'แก้ไขเมนู' : 'เพิ่มเมนูใหม่'}
+      title={isEditing ? 'แก้ไขเมนู' : (copyFromMenuItem ? 'คัดลอกเมนู' : 'เพิ่มเมนูใหม่')}
       size="lg"
     >
-      <div className="p-6 sm:p-8">
-          <form onSubmit={handleSubmit} className="space-y-8">
+      <div className="p-4 sm:p-6 lg:p-8">
+          <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
             {/* Image Upload */}
             <div>
               <div className="space-y-4">
                 {imagePreview ? (
-                  <div className="relative w-full max-w-sm mx-auto">
-                    <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-gray-50">
+                  <div className="relative w-full max-w-xs sm:max-w-sm mx-auto">
+                    <div className="aspect-[4/3] rounded-xl sm:rounded-2xl overflow-hidden bg-gray-50">
                       <img
                         src={imagePreview}
                         alt="Preview"
@@ -424,13 +477,13 @@ function MenuItemModal({ isOpen, menuItem, ingredients, onClose, onSuccess }: {
                 ) : (
                   <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full max-w-sm mx-auto aspect-[4/3] border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-all"
+                    className="w-full max-w-xs sm:max-w-sm mx-auto aspect-[4/3] border-2 border-dashed border-gray-300 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-all"
                   >
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                      <ImageIcon className="w-8 h-8 text-gray-400" />
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3 sm:mb-4">
+                      <ImageIcon className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
                     </div>
-                    <p className="text-gray-600 font-light mb-1">คลิกเพื่ออัพโหลดรูป</p>
-                    <p className="text-lg text-gray-500">PNG, JPG หรือ WEBP</p>
+                    <p className="text-sm sm:text-base text-gray-600 font-light mb-1">คลิกเพื่ออัพโหลดรูป</p>
+                    <p className="text-sm sm:text-base text-gray-500">PNG, JPG หรือ WEBP</p>
                   </div>
                 )}
                 <input
@@ -440,11 +493,11 @@ function MenuItemModal({ isOpen, menuItem, ingredients, onClose, onSuccess }: {
                   onChange={handleImageSelect}
                   className="hidden"
                 />
-               
+
               </div>
             </div>
             {/* Basic Info */}
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               <Input
                 label="ชื่อเมนู"
                 value={formData.name}
@@ -463,13 +516,13 @@ function MenuItemModal({ isOpen, menuItem, ingredients, onClose, onSuccess }: {
               />
             </div>
             <div>
-              <label className="block text-lg  text-gray-700 mb-2">คำอธิบาย</label>
+              <label className="block text-sm sm:text-base font-light text-gray-700 mb-2">คำอธิบาย</label>
               <textarea
                 value={formData.description}
                 onChange={e => setFormData({ ...formData, description: e.target.value })}
                 rows={3}
                 placeholder="อร่อยมาก รสชาติ พิเศษ..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent text-sm sm:text-base"
               />
             </div>
             <div className="flex items-center gap-3">
@@ -481,31 +534,32 @@ function MenuItemModal({ isOpen, menuItem, ingredients, onClose, onSuccess }: {
                   className="sr-only peer"
                 />
                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
-                <span className="ml-3 text-lg font-light text-gray-900">
+                <span className="ml-3 text-sm sm:text-base font-light text-gray-900">
                   เปิดใช้งานเมนูนี้
                 </span>
               </label>
             </div>
             {/* Ingredients */}
             <div>
-              <div className="flex justify-between items-center mb-6">
-                <label className="text-lg font-light text-gray-900">วัตถุดิบที่ใช้</label>
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
+                <label className="text-sm sm:text-base font-light text-gray-900">วัตถุดิบที่ใช้</label>
                 <Button
                   type="button"
                   onClick={addIngredient}
                   variant="secondary"
-                  className="inline-flex items-center gap-2"
+                  className="inline-flex items-center gap-2 text-sm"
+                  size="sm"
                 >
                   <Plus className="w-4 h-4" />
                   เพิ่มวัตถุดิบ
                 </Button>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {selectedIngredients.map((ing, index) => (
-                  <div key={index} className="bg-gray-50 p-4 rounded-2xl">
-                    <div className="flex gap-4 items-end">
+                  <div key={index} className="bg-gray-50 p-3 sm:p-4 rounded-xl sm:rounded-2xl">
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-end">
                       <div className="flex-1">
-                        <label className="block text-lg font-light text-gray-700 mb-2">
+                        <label className="block text-sm sm:text-base font-light text-gray-700 mb-2">
                           วัตถุดิบ
                         </label>
                         <Select
@@ -519,8 +573,8 @@ function MenuItemModal({ isOpen, menuItem, ingredients, onClose, onSuccess }: {
                           required
                         />
                       </div>
-                      <div className="w-32">
-                        <label className="block text-lg font-light text-gray-700 mb-2">
+                      <div className="w-full sm:w-28">
+                        <label className="block text-sm sm:text-base font-light text-gray-700 mb-2">
                           จำนวน
                         </label>
                         <Input
@@ -532,69 +586,72 @@ function MenuItemModal({ isOpen, menuItem, ingredients, onClose, onSuccess }: {
                           required
                         />
                       </div>
-                      <div className="w-24 text-right">
-                        {ing.ingredientId && ing.quantity && (
-                          <div className=" text-gray-500 mb-1">ต้นทุน</div>
-                        )}
-                        {ing.ingredientId && ing.quantity && ingredients.find(i => i._id === ing.ingredientId) && (
-                          <div className="font-light text-gray-900">
-                            ฿{(ingredients.find(i => i._id === ing.ingredientId)!.costPerUnit * parseFloat(ing.quantity)).toFixed(2)}
-                          </div>
+                      <div className="flex justify-between sm:block sm:w-20 sm:text-right">
+                        <div>
+                          {ing.ingredientId && ing.quantity && (
+                            <div className="text-xs sm:text-sm text-gray-500 mb-1">ต้นทุน</div>
+                          )}
+                          {ing.ingredientId && ing.quantity && ingredients.find(i => i._id === ing.ingredientId) && (
+                            <div className="text-sm sm:text-base font-light text-gray-900">
+                              ฿{(ingredients.find(i => i._id === ing.ingredientId)!.costPerUnit * parseFloat(ing.quantity)).toFixed(2)}
+                            </div>
+                          )}
+                        </div>
+                        {selectedIngredients.length > 1 && (
+                          <Button
+                            type="button"
+                            onClick={() => removeIngredient(index)}
+                            variant="danger"
+                            size="sm"
+                            className="flex items-center justify-center"
+                            aria-label="ลบวัตถุดิบ"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         )}
                       </div>
-                      {selectedIngredients.length > 1 && (
-                        <Button
-                          type="button"
-                          onClick={() => removeIngredient(index)}
-                          variant="danger"
-                          className="flex items-center justify-center"
-                          aria-label="ลบวัตถุดิบ"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      )}
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-            {/* Cost Summary - 1 row only */}
-            <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 rounded-2xl">
-              <div className="flex flex-wrap justify-between items-center gap-4">
-                <div className="text-center flex-1 min-w-[120px]">
-                  <div className=" font-light text-gray-500 uppercase tracking-wide mb-1">ต้นทุนรวม</div>
-                  <div className="text-xl  text-gray-900">฿{totalCost.toFixed(0)}</div>
+            {/* Cost Summary */}
+            <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 sm:p-6 rounded-xl sm:rounded-2xl">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <div className="text-xs sm:text-sm font-light text-gray-500 uppercase tracking-wide mb-1">ต้นทุนรวม</div>
+                  <div className="text-lg sm:text-xl font-light text-gray-900">฿{totalCost.toFixed(0)}</div>
                 </div>
-                <div className="text-center flex-1 min-w-[120px]">
-                  <div className=" font-light text-gray-500 uppercase tracking-wide mb-1">ราคาขาย</div>
-                  <div className="text-xl  text-gray-900">฿{price.toFixed(0)}</div>
+                <div className="text-center">
+                  <div className="text-xs sm:text-sm font-light text-gray-500 uppercase tracking-wide mb-1">ราคาขาย</div>
+                  <div className="text-lg sm:text-xl font-light text-gray-900">฿{price.toFixed(0)}</div>
                 </div>
-                <div className="text-center flex-1 min-w-[120px]">
-                  <div className=" font-light text-gray-500 uppercase tracking-wide mb-1">กำไรสุทธิ</div>
-                  <div className={`text-xl  ${profit >= 0 ? 'text-gray-900' : 'text-red-600'}`}>฿{profit.toFixed(0)}</div>
+                <div className="text-center">
+                  <div className="text-xs sm:text-sm font-light text-gray-500 uppercase tracking-wide mb-1">กำไรสุทธิ</div>
+                  <div className={`text-lg sm:text-xl font-light ${profit >= 0 ? 'text-gray-900' : 'text-red-600'}`}>฿{profit.toFixed(0)}</div>
                 </div>
-                <div className="text-center flex-1 min-w-[120px]">
-                  <div className=" font-light text-gray-500 uppercase tracking-wide mb-1">MARGIN</div>
-                  <div className={`text-xl  ${profitMargin >= 0 ? 'text-gray-900' : 'text-red-600'}`}>{profitMargin.toFixed(0)}%</div>
+                <div className="text-center">
+                  <div className="text-xs sm:text-sm font-light text-gray-500 uppercase tracking-wide mb-1">MARGIN</div>
+                  <div className={`text-lg sm:text-xl font-light ${profitMargin >= 0 ? 'text-gray-900' : 'text-red-600'}`}>{profitMargin.toFixed(0)}%</div>
                 </div>
               </div>
               {profit < 0 && (
-                <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
-                  <div className="flex items-center gap-2 font-light">
-                    <div className="w-5 h-5 bg-red-600 rounded-full flex items-center justify-center">
-                      <span className="text-white  font-light">!</span>
+                <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
+                  <div className="flex items-center gap-2 font-light text-sm sm:text-base">
+                    <div className="w-4 h-4 sm:w-5 sm:h-5 bg-red-600 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-xs sm:text-sm font-light">!</span>
                     </div>
                     ราคาขายต่ำกว่าต้นทุน จะทำให้ขาดทุน
                   </div>
                 </div>
               )}
             </div>
-            <div className="flex flex-col flex-row gap-4 ">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <Button
                 type="button"
                 onClick={onClose}
                 variant="secondary"
-                className="flex-1"
+                className="flex-1 text-sm sm:text-base"
               >
                 ยกเลิก
               </Button>
@@ -602,7 +659,7 @@ function MenuItemModal({ isOpen, menuItem, ingredients, onClose, onSuccess }: {
                 type="submit"
                 disabled={loading || selectedIngredients.every(ing => !ing.ingredientId)}
                 variant="primary"
-                className="flex-1"
+                className="flex-1 text-sm sm:text-base"
               >
                 {loading ? 'กำลังบันทึก...' : 'บันทึก'}
               </Button>

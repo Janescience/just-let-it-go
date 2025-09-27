@@ -150,6 +150,19 @@ export async function GET(
     const daysRunning = Math.max(1, Math.ceil((endDateForCalculation.getTime() - boothStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
     const dailyAverage = totalSales / daysRunning;
 
+    // Calculate today's sales
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const todaySales = sales
+      .filter(sale => {
+        const saleDate = new Date(sale.createdAt);
+        return saleDate >= todayStart && saleDate <= todayEnd;
+      })
+      .reduce((sum, sale) => sum + sale.totalAmount, 0);
+
     // Calculate low stock count from booth stock
     let lowStockCount = 0;
     const lowStockItems: string[] = [];
@@ -208,7 +221,8 @@ export async function GET(
         // New fields for BoothCard
         topSellingItem,
         lowStockCount,
-        lowStockItems
+        lowStockItems,
+        todaySales
       }
     });
   } catch (error) {

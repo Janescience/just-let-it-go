@@ -217,7 +217,7 @@ export function BoothDetailModal({
                     <span>เวลาทำการ:</span>
                     <span className="text-gray-700">{booth.openingHours?.start} - {booth.openingHours?.end}</span>
                   </div>
-                  {booth.businessPlan?.equipmentSetId && (
+                  {booth.businessPlan?.equipmentId && (
                     <div className="flex justify-between">
                       <span>อุปกรณ์:</span>
                       <span className="text-gray-700">มีอุปกรณ์ชุดประจำหน้าร้าน</span>
@@ -295,21 +295,27 @@ export function BoothDetailModal({
                           </div>
                         )}
                         {(() => {
-                          // Show equipment cost if there's an equipmentSetId or if total > (rent + staff)
-                          const hasEquipmentSet = booth.businessPlan.equipmentSetId;
+                          // Show equipment cost if there's an equipmentId or if total > (rent + staff)
+                          const hasEquipment = booth.businessPlan.equipmentId;
                           const rent = booth.businessPlan.fixedCosts?.rent || 0;
                           const staff = booth.businessPlan.fixedCosts?.staff || 0;
                           const total = booth.businessPlan.fixedCosts?.total || 0;
                           const equipmentFromCalc = total - rent - staff;
                           const equipmentCost = booth.businessPlan.fixedCosts?.equipment || equipmentFromCalc;
 
-                          return (hasEquipmentSet || equipmentCost > 0) && (
+                          return (hasEquipment || equipmentCost > 0) && (
                             <div className="flex justify-between">
                               <span>- ค่าอุปกรณ์ ({Math.ceil((new Date(booth.endDate).getTime() - new Date(booth.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1} วัน):</span>
                               <span>฿{Math.max(equipmentCost, 0).toLocaleString()}</span>
                             </div>
                           );
                         })()}
+                        {booth.businessPlan.fixedCosts?.additionalExpenses && (
+                          <div className="flex justify-between">
+                            <span>- ค่าใช้จ่ายเพิ่มเติม:</span>
+                            <span>฿{booth.businessPlan.fixedCosts.additionalExpenses.toLocaleString()}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     {booth.businessPlan.breakEven && (

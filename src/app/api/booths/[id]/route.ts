@@ -3,6 +3,7 @@ import { connectDB } from '@/lib/db';
 import { verifyToken } from '@/utils/auth';
 import Booth from '@/lib/models/Booth';
 import User from '@/lib/models/User';
+import Equipment from '@/lib/models/Equipment';
 import bcrypt from 'bcryptjs';
 
 export async function PUT(
@@ -34,7 +35,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, location, startDate, endDate, rentCost, openingHours, staff, employees, isActive } = body;
+    const { name, location, startDate, endDate, rentCost, openingHours, staff, employees, isActive, menuItems, businessPlan } = body;
 
     await connectDB();
 
@@ -209,6 +210,16 @@ export async function PUT(
       booth.employees = employeeData;
     }
 
+    // Update menu items if provided
+    if (menuItems !== undefined) {
+      booth.menuItems = menuItems;
+    }
+
+    // Update business plan if provided
+    if (businessPlan !== undefined) {
+      booth.businessPlan = businessPlan;
+    }
+
     await booth.save();
 
     return NextResponse.json({
@@ -280,6 +291,8 @@ export async function DELETE(
         { status: 400 }
       );
     }
+
+    // Equipment usage history remains (no status management needed)
 
     // Delete all staff users associated with this booth
     await User.deleteMany({ boothId: booth._id });

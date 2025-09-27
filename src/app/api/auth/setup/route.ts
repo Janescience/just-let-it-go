@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   try {
     await dbConnect();
 
-    const { brandName, username, email, name, password } = await request.json();
+    const { brandName, brandLogo, username, email, name, password } = await request.json();
 
     // Validate input
     if (!brandName || !username || !name || !password) {
@@ -28,15 +28,6 @@ export async function POST(request: NextRequest) {
     if (username.length < 3 || username.length > 20) {
       return NextResponse.json(
         { message: 'ชื่อผู้ใช้ต้องมีความยาว 3-20 ตัวอักษร' },
-        { status: 400 }
-      );
-    }
-
-    // Check if system is already set up
-    const existingUser = await User.findOne({});
-    if (existingUser) {
-      return NextResponse.json(
-        { message: 'ระบบได้ตั้งค่าเรียบร้อยแล้ว' },
         { status: 400 }
       );
     }
@@ -71,6 +62,7 @@ export async function POST(request: NextRequest) {
     // Create brand first
     const brand = new Brand({
       name: brandName.trim(),
+      logo: brandLogo || undefined,
       ownerId: tempOwnerId,
     });
 

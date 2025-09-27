@@ -3,9 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, DollarSign, Package, Calendar, Download, Filter } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { DashboardPageLoading } from '@/components/ui';
 
 interface SalesData {
   totalSales: number;
@@ -111,19 +111,22 @@ export default function ReportsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Header title="รายงานการขาย" />
-        <div className="p-4 tablet:p-6">
-          <div className="text-center py-8">กำลังโหลด...</div>
-        </div>
-      </div>
-    );
+    return <DashboardPageLoading title="รายงานการขาย" />;
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header title="รายงานการขาย" />
+      {/* Header */}
+      <div className="border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-thin text-black tracking-wider">รายงาน</h1>
+              <p className="text-sm font-light text-gray-500 mt-1">วิเคราะห์ข้อมูลการขายและผลกำไร</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="p-4 tablet:p-6 pb-20">
         {/* Filters */}

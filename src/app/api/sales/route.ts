@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-
+      
       const itemTotal = menuItem.price * item.quantity;
       calculatedTotal += itemTotal;
 
@@ -108,6 +108,8 @@ export async function POST(request: NextRequest) {
         quantity: item.quantity,
         price: menuItem.price
       });
+
+      
     }
 
     // Verify total amount
@@ -129,6 +131,48 @@ export async function POST(request: NextRequest) {
     });
 
     await sale.save();
+
+    for (const item of items) {
+      const menuItem = await MenuItem.findById(item.menuItemId);
+      if (menuItem && menuItem.ingredients.length > 0) {
+        for (const menuIngredient of menuItem.ingredients) {
+          const ingredient = await Ingredient.findById(menuIngredient.ingredientId);
+
+          const totalUsed = menuIngredient.quantity * item.quantity;
+          const ingredientId = menuIngredient.ingredientId;
+
+          // Record stock movement
+          const stockMovement = new StockMovement({
+            ingredientId,
+            type: 'use',
+            quantity: -totalUsed,
+            reason: `ขาย ${menuItem.name} หักวัตถุดิบ ${ingredient.name} จำนวน ${totalUsed} ${ingredient.unit}`,
+            boothId,
+            saleId: sale._id
+          });
+
+          await stockMovement.save();
+
+          ingredient.stock -= totalUsed;
+          if (ingredient.stock < 0) {
+            ingredient.stock = 0;
+            const accountingTransaction = new AccountingTransaction({
+              date: new Date(),
+              type: 'expense',
+              category: 'sale_cost',
+              amount: ingredient.costPerUnit * totalUsed,
+              description: `การหักต้นทุนวัตถุดิบ - รายการที่ ${sale._id}`,
+              boothId: boothId,
+              relatedId: sale._id,
+              relatedType: 'sale',
+              brandId: payload.user.brandId
+            });
+            await accountingTransaction.save();
+          }
+          await ingredient.save();
+        }
+      }
+    }
 
     let qrCode = null;
 

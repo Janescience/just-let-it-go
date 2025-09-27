@@ -61,81 +61,80 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-white flex items-center justify-center px-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          {/* <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-white text-xl font-light">S</span>
-          </div> */}
-          {/* <h1 className="text-2xl font-light text-black">Shoots B-Hop</h1>
-          <p className="text-gray-600 mt-2">ระบบการออกบูทและตั้งร้านอาหาร</p> */}
+        <div className="text-center mb-12">
+          <img
+            src="https://api.dicebear.com/9.x/notionists/svg?seed=justletitgo&flip=true&scale=100"
+            alt="System Logo"
+            className="w-16 h-16 mx-auto mb-6"
+          />
+          <h1 className="text-2xl font-thin text-black tracking-wider mb-2">ขายไปเหอะ</h1>
+          <p className="text-sm font-light text-gray-400">ระบบจัดการการขายและหน้าร้าน</p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-center flex items-center justify-center gap-2">
-              <LogIn className="w-5 h-5" />
-              เข้าสู่ระบบ
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="bg-white border border-gray-100 p-8">
+          <div className="text-center mb-8">
+            <h2 className="text-lg font-thin text-black tracking-wider">เข้าสู่ระบบ</h2>
+          </div>
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-lg">
+                <div className="border border-gray-200 text-gray-600 px-4 py-3 text-sm font-light bg-gray-50">
                   {error}
                 </div>
               )}
 
               <div>
-                <Input
+                <label className="block text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">
+                  ชื่อผู้ใช้
+                </label>
+                <input
                   name="username"
                   type="text"
-                  label="ชื่อผู้ใช้"
                   value={formData.username}
                   onChange={handleChange}
                   required
                   autoComplete="username"
+                  className="w-full border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none py-2"
                 />
               </div>
 
               <div>
-                <Input
+                <label className="block text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">
+                  รหัสผ่าน
+                </label>
+                <input
                   name="password"
                   type="password"
-                  label="รหัสผ่าน"
                   value={formData.password}
                   onChange={handleChange}
                   required
                   autoComplete="current-password"
+                  className="w-full border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none py-2"
                 />
               </div>
 
-              <Button
+              <button
                 type="submit"
-                variant="primary"
-                className="w-full"
-                loading={loading}
                 disabled={loading || !formData.username || !formData.password}
+                className="w-full py-3 bg-black text-white text-sm font-light tracking-wide hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors duration-200"
               >
-                เข้าสู่ระบบ
-              </Button>
+                {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
+              </button>
             </form>
 
-            <div className="mt-6 text-center space-y-3">
-
-
-              <p className="text-lg text-gray-500">
+            <div className="mt-8 text-center">
+              <p className="text-sm font-light text-gray-400">
                 ไม่มีบัญชีผู้ใช้?
                 <button
                   onClick={() => router.push('/setup')}
-                  className="ml-1 text-black hover:underline font-light"
+                  className="ml-1 text-black hover:text-gray-600 font-light transition-colors duration-200"
                 >
                   ตั้งค่าระบบครั้งแรก
                 </button>
               </p>
             </div>
-          </CardContent>
-        </Card>
+        </div>
       </div>
     </div>
   );

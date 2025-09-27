@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Trash2 } from 'lucide-react';
-import { Modal, Button, Input } from '@/components/ui';
+import { Modal, Input, ModalActionButton } from '@/components/ui';
 import { Booth } from '@/types';
 
 interface BoothDeleteModalProps {
@@ -36,12 +36,30 @@ export function BoothDeleteModal({ booth, onClose, onSuccess }: BoothDeleteModal
     }
   };
 
+  const actions: ModalActionButton[] = [
+    {
+      label: 'ยกเลิก',
+      onClick: onClose,
+      variant: 'secondary',
+      disabled: deleteLoading
+    },
+    {
+      label: deleteLoading ? 'กำลังลบ...' : 'ลบหน้าร้าน',
+      onClick: handleDeleteBooth,
+      variant: 'danger',
+      disabled: deleteLoading || deleteConfirmText !== booth.name,
+      icon: deleteLoading ? undefined : Trash2,
+      loading: deleteLoading
+    }
+  ];
+
   return (
     <Modal
       isOpen={true}
       onClose={onClose}
       title={`ลบหน้าร้าน "${booth.name}"`}
       size="sm"
+      actions={actions}
     >
       <div className="p-6">
         <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -60,38 +78,16 @@ export function BoothDeleteModal({ booth, onClose, onSuccess }: BoothDeleteModal
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-light text-gray-600 mb-2">
-              พิมพ์ "{booth.name}" เพื่อยืนยัน:
-            </label>
-            <Input
-              value={deleteConfirmText}
-              onChange={(e) => setDeleteConfirmText(e.target.value)}
-              placeholder={booth.name}
-              className="text-center"
-            />
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <Button
-              variant="secondary"
-              onClick={onClose}
-              className="flex-1"
-              disabled={deleteLoading}
-            >
-              ยกเลิก
-            </Button>
-            <Button
-              variant="danger"
-              onClick={handleDeleteBooth}
-              className="flex-1"
-              disabled={deleteLoading || deleteConfirmText !== booth.name}
-              icon={deleteLoading ? undefined : Trash2}
-            >
-              {deleteLoading ? 'กำลังลบ...' : 'ลบหน้าร้าน'}
-            </Button>
-          </div>
+        <div>
+          <label className="block text-sm font-light text-gray-600 mb-2">
+            พิมพ์ "{booth.name}" เพื่อยืนยัน:
+          </label>
+          <Input
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+            placeholder={booth.name}
+            className="text-center"
+          />
         </div>
       </div>
     </Modal>

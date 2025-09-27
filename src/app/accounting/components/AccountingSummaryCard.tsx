@@ -17,24 +17,23 @@ export function AccountingSummaryCard({ title, amount, icon, color }: Accounting
     }).format(amount);
   };
 
-  const cardColorClass = color === 'green'
-    ? 'border-green-200 bg-green-50'
-    : 'border-red-200 bg-red-50';
-
   const amountColorClass = color === 'green'
-    ? 'text-green-700'
-    : 'text-red-700';
+    ? 'text-black'
+    : 'text-black';
 
   return (
-    <div className={`border p-6 ${cardColorClass}`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
-          <p className={`text-2xl font-bold ${amountColorClass}`}>
+    <div className="border-b border-gray-100 pb-6">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">{title}</div>
+          <div className="text-2xl font-thin text-black tracking-wide">
             {formatAmount(amount)}
-          </p>
+          </div>
+          <div className={`text-xs font-light mt-1 ${color === 'green' ? 'text-gray-500' : color === 'red' ? 'text-gray-500' : 'text-gray-500'}`}>
+            {color === 'green' ? '+' : color === 'red' ? '-' : ''}
+          </div>
         </div>
-        <div className="flex-shrink-0">
+        <div className="text-gray-300 ml-4">
           {icon}
         </div>
       </div>

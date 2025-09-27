@@ -5,6 +5,7 @@ import Booth from '@/lib/models/Booth';
 import User from '@/lib/models/User';
 import MenuItem from '@/lib/models/MenuItem';
 import AccountingTransaction from '@/lib/models/AccountingTransaction';
+import Equipment from '@/lib/models/Equipment';
 // Import Ingredient to register the model
 import '@/lib/models/Ingredient';
 
@@ -243,14 +244,22 @@ export async function POST(request: NextRequest) {
 
       // 2. Staff salary costs
       if (employees && employees.length > 0) {
+        // Calculate number of days for the booth
+        const startDateObj = new Date(startDate);
+        const endDateObj = new Date(endDate);
+        const numberOfDays = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
         for (const employee of employees) {
           if (employee.salary > 0) {
+            // Calculate total salary (daily rate × number of days)
+            const totalSalary = employee.salary * numberOfDays;
+
             const salaryTransaction = new AccountingTransaction({
               date: new Date(startDate),
               type: 'expense',
               category: 'staff_salary',
-              amount: employee.salary,
-              description: `เงินเดือนพนักงาน ${employee.name} - ${employee.position || 'พนักงาน'}`,
+              amount: totalSalary,
+              description: `เงินเดือนพนักงาน ${employee.name} - ${employee.position || 'พนักงาน'} (฿${employee.salary}/วัน × ${numberOfDays} วัน)`,
               boothId: booth._id,
               relatedId: booth._id,
               relatedType: 'booth_setup',
@@ -261,8 +270,29 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // 3. Equipment cost (if business plan includes equipment)
-      if (businessPlan?.equipmentSetId && businessPlan?.fixedCosts?.equipment > 0) {
+      // 3. Additional expenses (if business plan includes them)
+      if (businessPlan?.additionalExpenses && businessPlan.additionalExpenses.length > 0) {
+        for (const expense of businessPlan.additionalExpenses) {
+          if (expense.amount > 0) {
+            const expenseTransaction = new AccountingTransaction({
+              date: new Date(startDate),
+              type: 'expense',
+              category: 'additional_expense',
+              amount: expense.amount,
+              description: `${expense.description} - หน้าร้าน ${name}`,
+              boothId: booth._id,
+              relatedId: booth._id,
+              relatedType: 'booth_setup',
+              brandId: payload.user.brandId
+            });
+            accountingTransactions.push(expenseTransaction);
+          }
+        }
+      }
+
+      // 4. Equipment cost and usage tracking (if business plan includes equipment)
+      if (businessPlan?.equipmentId && businessPlan?.fixedCosts?.equipment > 0) {
+        // Create accounting transaction
         const equipmentTransaction = new AccountingTransaction({
           date: new Date(startDate),
           type: 'expense',
@@ -275,6 +305,26 @@ export async function POST(request: NextRequest) {
           brandId: payload.user.brandId
         });
         accountingTransactions.push(equipmentTransaction);
+
+        // Track equipment usage (no status change, just usage history)
+        try {
+          const equipment = await Equipment.findById(businessPlan.equipmentId);
+          if (equipment) {
+            // Add usage record only
+            equipment.addUsage(
+              booth._id.toString(),
+              booth.name,
+              new Date(startDate),
+              new Date(endDate)
+            );
+
+            await equipment.save();
+            console.log(`✅ Equipment ${equipment.name} usage recorded for booth ${booth.name}`);
+          }
+        } catch (equipmentError) {
+          console.error('Error recording equipment usage:', equipmentError);
+          // Continue without failing the booth creation
+        }
       }
 
       // Save all accounting transactions

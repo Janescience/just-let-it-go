@@ -141,6 +141,7 @@ export interface Booth {
       rent: number;
       staff: number;
       equipment: number;
+      additionalExpenses: number;
       total: number;
     };
     breakEven: {
@@ -155,7 +156,11 @@ export interface Booth {
       cost: number;
     }[];
     totalCapital: number;
-    equipmentSetId?: string;
+    equipmentId?: string;
+    additionalExpenses?: {
+      description: string;
+      amount: number;
+    }[];
     targetProfit?: {
       type: 'percentage' | 'amount';
       value: number;
@@ -257,6 +262,7 @@ export interface LoginCredentials {
 
 // Equipment types
 export * from './equipment';
+export type { Equipment, EquipmentUsageHistory } from './equipment';
 
 // Accounting types
 export * from './accounting';

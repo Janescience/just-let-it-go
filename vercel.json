@@ -29,6 +29,6 @@
     "MONGODB_URI": "@mongodb_uri",
     "JWT_SECRET": "@jwt_secret",
     "NEXTAUTH_SECRET": "@nextauth_secret",
-    "PWA_CACHE_NAME": "shoots-bhop-cache"
+    "PWA_CACHE_NAME": "justletitgo-cache"
   }
 }

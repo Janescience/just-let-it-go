@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Button } from '@/components/ui';
+import { Modal, ModalActionButton, Button } from '@/components/ui';
 import { Booth, MenuItem } from '@/types';
 import { Step1BasicInfo } from './steps/Step1BasicInfo';
 import { Step2MenuSelection } from './steps/Step2MenuSelection';
@@ -22,7 +22,9 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
     location: booth?.location || '',
     startDate: booth?.startDate ? new Date(booth.startDate).toISOString().split('T')[0] : '',
     endDate: booth?.endDate ? new Date(booth.endDate).toISOString().split('T')[0] : '',
-    numberOfDays: 10,
+    numberOfDays: booth?.startDate && booth?.endDate
+      ? Math.ceil((new Date(booth.endDate).getTime() - new Date(booth.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1
+      : 10,
     rentCost: booth?.rentCost || 0,
     openingStart: booth?.openingHours?.start || '08:00',
     openingEnd: booth?.openingHours?.end || '18:00',
@@ -36,6 +38,14 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
       { name: '', salary: '0', position: 'พนักงาน' }
     ],
 
+    // Equipment - load from existing booth if editing (may not exist in older booths)
+    equipmentId: booth?.businessPlan?.equipmentId || '',
+
+    // Additional Expenses - load from existing booth or default
+    additionalExpenses: booth?.businessPlan?.additionalExpenses || [
+      { description: 'ค่าเดินทาง', amount: 0 }
+    ],
+
     // Menu & Calculations - will be populated later
     selectedMenuItems: [],
     menuItemProportions: {},
@@ -43,6 +53,7 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
       rent: 0,
       staff: 0,
       equipment: 0,
+      additionalExpenses: 0,
       total: 0
     },
     breakEven: {
@@ -65,13 +76,42 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
       revenueNeeded: 0,
       additionalIngredients: 0,
       totalCapitalWithProfit: 0
-    }
+    },
+
+    // Load existing business plan data if editing
+    ...(booth?.businessPlan && (() => {
+      console.log('🔧 Loading businessPlan data for editing:', booth.businessPlan);
+      return {
+        fixedCosts: booth.businessPlan.fixedCosts || {
+          rent: 0,
+          staff: 0,
+          equipment: 0,
+          additionalExpenses: 0,
+          total: 0
+        },
+      breakEven: booth.businessPlan.breakEven || {
+        unitsNeeded: 0,
+        revenueNeeded: 0,
+        dailyTarget: 0
+      },
+        ingredients: booth.businessPlan.ingredients || [],
+        totalCapital: booth.businessPlan.totalCapital || 0,
+        targetProfit: booth.businessPlan.targetProfit || {
+          type: 'percentage',
+          value: 20,
+          unitsNeeded: 0,
+          revenueNeeded: 0,
+          additionalIngredients: 0,
+          totalCapitalWithProfit: 0
+        }
+      };
+    })())
   });
 
   const [availableMenuItems, setAvailableMenuItems] = useState<MenuItem[]>([]);
   const [availableIngredients, setAvailableIngredients] = useState<LocalIngredient[]>([]);
-  const [availableEquipmentSets, setAvailableEquipmentSets] = useState<any[]>([]);
-  const [equipmentTemplates, setEquipmentTemplates] = useState<any[]>([]);
+  // Temporarily disabled equipment selection
+  const [equipments, setEquipments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCredentials, setShowCredentials] = useState(false);
   const [staffCredentials, setStaffCredentials] = useState<{username: string, password: string} | null>(null);
@@ -101,16 +141,24 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
     }
   }, [currentStep]);
 
+  // Preload menu items and ingredients when editing (so they're ready when user goes to step 2)
+  useEffect(() => {
+    if (isEditing && booth) {
+      fetchMenuItems();
+      fetchIngredients();
+    }
+  }, [isEditing, booth]);
+
   // Calculate business plan whenever relevant data changes
   useEffect(() => {
     if (businessPlan.selectedMenuItems.length > 0 && availableIngredients.length > 0) {
       calculateBusinessPlan();
     }
-  }, [businessPlan.selectedMenuItems, businessPlan.menuItemProportions, businessPlan.rentCost, businessPlan.employees, businessPlan.startDate, businessPlan.endDate, businessPlan.targetProfit.value, businessPlan.initialStock, businessPlan.equipmentSetId, availableIngredients]);
+  }, [businessPlan.selectedMenuItems, businessPlan.menuItemProportions, businessPlan.rentCost, businessPlan.employees, businessPlan.startDate, businessPlan.endDate, businessPlan.targetProfit.value, businessPlan.initialStock, businessPlan.equipmentId, businessPlan.additionalExpenses, availableIngredients]);
 
   // Separate effect to recalculate when equipment changes (even without menu items)
   useEffect(() => {
-    if (businessPlan.equipmentSetId && availableIngredients.length > 0) {
+    if (businessPlan.equipmentId && availableIngredients.length > 0) {
       // If we have selected menu items, run full calculation
       if (businessPlan.selectedMenuItems.length > 0) {
         calculateBusinessPlan();
@@ -119,9 +167,9 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
         updateEquipmentCostOnly();
       }
     }
-  }, [businessPlan.equipmentSetId]);
+  }, [businessPlan.equipmentId]);
 
-  // Select pending menu items when availableMenuItems loads
+  // Select pending menu items when availableMenuItems loads (both for editing and copying from booth)
   useEffect(() => {
     if (pendingMenuItemIds.length > 0 && availableMenuItems.length > 0) {
       const selectedItems = availableMenuItems.filter(item =>
@@ -143,6 +191,37 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
       }
     }
   }, [pendingMenuItemIds, availableMenuItems]);
+
+  // Load existing booth menu items when editing
+  useEffect(() => {
+    if (isEditing && booth && availableMenuItems.length > 0 && businessPlan.selectedMenuItems.length === 0) {
+      // Get menu item IDs from booth (handle both populated objects and ID strings)
+      const menuItemIds = (booth.menuItems || []).map((item: any) =>
+        typeof item === 'string' ? item : item._id
+      );
+
+      console.log('🍽️ Loading existing menu items for editing:', menuItemIds);
+
+      if (menuItemIds.length > 0) {
+        const selectedItems = availableMenuItems.filter(item =>
+          menuItemIds.includes(item._id)
+        );
+
+        console.log('🍽️ Found matching menu items:', selectedItems.map(item => item.name));
+
+        if (selectedItems.length > 0) {
+          setBusinessPlan(prev => ({
+            ...prev,
+            selectedMenuItems: selectedItems,
+            menuItemProportions: selectedItems.reduce((acc, item) => {
+              acc[item._id] = Math.round(100 / selectedItems.length);
+              return acc;
+            }, {} as { [key: string]: number })
+          }));
+        }
+      }
+    }
+  }, [isEditing, booth, availableMenuItems, businessPlan.selectedMenuItems.length]);
 
   // Auto-calculate end date when start date or number of days change
   useEffect(() => {
@@ -189,75 +268,37 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
     }
   };
 
+  // Temporarily disabled equipment selection
   const fetchEquipmentData = async () => {
-    if (availableEquipmentSets.length > 0 && equipmentTemplates.length > 0) {
-      return; // Already have data, don't fetch again
-    }
-
     try {
-      // Fetch available equipment sets
-      const setsResponse = await fetch('/api/equipment/sets?status=available', {
+      const response = await fetch('/api/equipment', {
         credentials: 'include'
       });
-      if (setsResponse.ok) {
-        const setsData = await setsResponse.json();
-        setAvailableEquipmentSets(setsData.sets || []);
-      }
-
-      // Fetch templates for display
-      const templatesResponse = await fetch('/api/equipment/templates', {
-        credentials: 'include'
-      });
-      if (templatesResponse.ok) {
-        const templatesData = await templatesResponse.json();
-        setEquipmentTemplates(templatesData.templates || []);
+      if (response.ok) {
+        const data = await response.json();
+        setEquipments(data.equipment || []);
       }
     } catch (error) {
       console.error('Error fetching equipment data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   // Function to calculate equipment cost
-  const calculateEquipmentCost = async (equipmentSetId?: string) => {
-    const setId = equipmentSetId || businessPlan.equipmentSetId;
-    if (!setId) return 0;
+  const calculateEquipmentCost = async (equipmentId?: string) => {
+    const id = equipmentId || businessPlan.equipmentId;
+    if (!id) return 0;
 
     try {
       // Fetch equipment set and template data
-      const setResponse = await fetch(`/api/equipment/sets/${setId}`, {
+      const response = await fetch(`/api/equipment/${id}`, {
         credentials: 'include'
       });
-      if (setResponse.ok) {
-        const setData = await setResponse.json();
-        console.log('🔧 setData.equipmentSet:', setData.equipmentSet);
-        console.log('🔧 templateId:', setData.equipmentSet.templateId);
-
-        // Handle both populated and unpopulated templateId
-        let templateId;
-        if (typeof setData.equipmentSet.templateId === 'object') {
-          templateId = setData.equipmentSet.templateId._id || setData.equipmentSet.templateId.id;
-        } else {
-          templateId = setData.equipmentSet.templateId;
-        }
-
-        // Additional safety check
-        if (!templateId || typeof templateId !== 'string') {
-          console.error('🔧 Invalid templateId:', templateId, typeof templateId);
-          return 0;
-        }
-
-        console.log('🔧 resolved templateId:', templateId);
-
-        const templateResponse = await fetch(`/api/equipment/templates/${templateId}`, {
-          credentials: 'include'
-        });
-        if (templateResponse.ok) {
-          const templateData = await templateResponse.json();
-          const daysDiff = businessPlan.numberOfDays;
-          console.log('🔧 template dailyCost:', templateData.template.dailyCost);
-          console.log('🔧 daysDiff:', daysDiff);
-          return templateData.template.dailyCost * daysDiff;
-        }
+      if (response.ok) {
+        const data = await response.json();
+        console.log('🔧 equipment data:', data.equipment);
+        return data.equipment.dailyCost * businessPlan.numberOfDays;
       }
     } catch (error) {
       console.error('Error calculating equipment cost:', error);
@@ -267,7 +308,7 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
 
   // Function to update only equipment cost when no menu items selected yet
   const updateEquipmentCostOnly = async () => {
-    console.log('🔧 updateEquipmentCostOnly - equipmentSetId:', businessPlan.equipmentSetId);
+    console.log('🔧 updateEquipmentCostOnly - equipmentId:', businessPlan.equipmentId);
     const equipmentCost = await calculateEquipmentCost();
     console.log('🔧 updateEquipmentCostOnly - equipmentCost:', equipmentCost);
 
@@ -276,7 +317,7 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
       fixedCosts: {
         ...prev.fixedCosts,
         equipment: equipmentCost,
-        total: prev.fixedCosts.rent + prev.fixedCosts.staff + equipmentCost
+        total: prev.fixedCosts.rent + prev.fixedCosts.staff + equipmentCost + prev.fixedCosts.additionalExpenses
       }
     }));
     console.log('🔧 updateEquipmentCostOnly - Updated equipment cost:', equipmentCost);
@@ -285,7 +326,7 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
   const calculateBusinessPlan = async () => {
     if (businessPlan.selectedMenuItems.length === 0) return;
 
-    console.log('🔧 calculateBusinessPlan - equipmentSetId:', businessPlan.equipmentSetId);
+    console.log('🔧 calculateBusinessPlan - equipmentId:', businessPlan.equipmentId);
 
     // Calculate period duration
     const startDate = new Date(businessPlan.startDate);
@@ -301,11 +342,17 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
     const equipmentCost = await calculateEquipmentCost();
     console.log('🔧 calculateBusinessPlan - equipmentCost:', equipmentCost);
 
+    // Calculate additional expenses
+    const totalAdditionalExpenses = businessPlan.additionalExpenses.reduce((sum, expense) =>
+      sum + (expense.amount || 0), 0
+    );
+
     const fixedCosts = {
       rent: businessPlan.rentCost,
       staff: totalStaffCost,
       equipment: equipmentCost,
-      total: businessPlan.rentCost + totalStaffCost + equipmentCost
+      additionalExpenses: totalAdditionalExpenses,
+      total: businessPlan.rentCost + totalStaffCost + equipmentCost + totalAdditionalExpenses
     };
 
     // Calculate average profit per item
@@ -364,40 +411,6 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
     console.log('🔧 calculateBusinessPlan - Updated fixedCosts:', fixedCosts);
   };
 
-  const getRequiredIngredients = () => {
-    const ingredientMap = new Map();
-
-    businessPlan.selectedMenuItems.forEach(menuItem => {
-      if (menuItem.ingredients) {
-        menuItem.ingredients.forEach(ing => {
-          let ingredient: any;
-
-          if (typeof ing.ingredientId === 'object' && (ing.ingredientId as any).name) {
-            ingredient = ing.ingredientId;
-          } else {
-            ingredient = availableIngredients.find(avail => avail._id === ing.ingredientId);
-          }
-
-          if (ingredient) {
-            const key = ingredient._id;
-            if (!ingredientMap.has(key)) {
-              ingredientMap.set(key, {
-                id: ingredient._id,
-                name: ingredient.name,
-                unit: ingredient.unit,
-                totalNeeded: 0
-              });
-            }
-
-            const current = ingredientMap.get(key);
-            current.totalNeeded += ing.quantity;
-          }
-        });
-      }
-    });
-
-    return Array.from(ingredientMap.values());
-  };
 
   const calculateIngredientsNeeded = (totalUnits: number) => {
     const ingredientMap = new Map();
@@ -500,7 +513,6 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
 
       // Final calculation
       if (estimatedRevenue > 0) {
-        const averagePrice = businessPlan.selectedMenuItems.reduce((sum, item) => sum + item.price, 0) / businessPlan.selectedMenuItems.length;
         const finalUnits = Math.ceil(estimatedRevenue / averagePrice);
         const finalIngredientCosts = calculateIngredientsNeeded(finalUnits).reduce((sum, ing) => sum + ing.cost, 0);
 
@@ -551,7 +563,7 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
         },
         employees: businessPlan.employees.map(emp => ({
           ...emp,
-          salary: parseFloat(emp.salary || '0') * businessPlan.numberOfDays // Convert daily rate to total
+          salary: parseFloat(emp.salary || '0') // Keep as daily rate
         })),
         staff: {
           username: businessPlan.staffUsername,
@@ -560,7 +572,8 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
         menuItems: businessPlan.selectedMenuItems.map(item => item._id),
         businessPlan: {
           ...businessPlan,
-          equipmentSetId: businessPlan.equipmentSetId
+          equipmentId: businessPlan.equipmentId,
+          additionalExpenses: businessPlan.additionalExpenses
         },
         isActive: true
       };
@@ -577,7 +590,6 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
       );
 
       if (response.ok) {
-        const result = await response.json();
         if (!isEditing) {
           setStaffCredentials({
             username: businessPlan.staffUsername,
@@ -614,6 +626,29 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
       ...prev,
       employees: prev.employees.map((emp, i) =>
         i === index ? { ...emp, [field]: value } : emp
+      )
+    }));
+  };
+
+  const addExpense = () => {
+    setBusinessPlan(prev => ({
+      ...prev,
+      additionalExpenses: [...prev.additionalExpenses, { description: '', amount: 0 }]
+    }));
+  };
+
+  const removeExpense = (index: number) => {
+    setBusinessPlan(prev => ({
+      ...prev,
+      additionalExpenses: prev.additionalExpenses.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateExpense = (index: number, field: string, value: string | number) => {
+    setBusinessPlan(prev => ({
+      ...prev,
+      additionalExpenses: prev.additionalExpenses.map((expense, i) =>
+        i === index ? { ...expense, [field]: value } : expense
       )
     }));
   };
@@ -671,7 +706,11 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
         position: emp.position || 'พนักงาน'
       })) || [{ name: '', salary: '0', position: 'พนักงาน' }],
       // Equipment set
-      equipmentSetId: sourceBooth.businessPlan?.equipmentSetId,
+      equipmentId: sourceBooth.businessPlan?.equipmentId,
+      // Additional expenses - copy from source booth
+      additionalExpenses: sourceBooth.businessPlan?.additionalExpenses || [
+        { description: 'ค่าเดินทาง', amount: 0 }
+      ],
       // Menu items - keep as empty array, will be populated when availableMenuItems loads
       selectedMenuItems: [],
       // Business plan data if exists
@@ -680,7 +719,8 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
           rent: sourceBooth.rentCost,
           staff: sourceBooth.employees?.reduce((sum, emp) => sum + ((emp.salary || 0) * prev.numberOfDays), 0) || 0,
           equipment: sourceBooth.businessPlan?.fixedCosts?.equipment || 0,
-          total: sourceBooth.rentCost + (sourceBooth.employees?.reduce((sum, emp) => sum + ((emp.salary || 0) * prev.numberOfDays), 0) || 0) + (sourceBooth.businessPlan?.fixedCosts?.equipment || 0)
+          additionalExpenses: sourceBooth.businessPlan?.fixedCosts?.additionalExpenses || 0,
+          total: sourceBooth.rentCost + (sourceBooth.employees?.reduce((sum, emp) => sum + ((emp.salary || 0) * prev.numberOfDays), 0) || 0) + (sourceBooth.businessPlan?.fixedCosts?.equipment || 0) + (sourceBooth.businessPlan?.fixedCosts?.additionalExpenses || 0)
         },
         breakEven: sourceBooth.businessPlan.breakEven,
         ingredients: sourceBooth.businessPlan.ingredients,
@@ -767,138 +807,120 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
     );
   }
 
-  // Editing mode - simplified modal
-  if (isEditing) {
-    return (
-      <Modal
-        isOpen={true}
-        onClose={onClose}
-        title="แก้ไขหน้าร้าน"
-        size="md"
-      >
-        <div className="p-6">
-          <div className="text-center text-gray-600 font-light text-sm">
-            การแก้ไขหน้าร้านยังไม่รองรับ Business Planning Calculator
-          </div>
-          <div className="flex gap-2 pt-4">
-            <Button onClick={onClose} className="flex-1">
-              ปิด
-            </Button>
-          </div>
-        </div>
-      </Modal>
-    );
-  }
+
+  // Dynamic actions based on current step
+  const getStepActions = (): ModalActionButton[] => {
+    const actions: ModalActionButton[] = [
+      {
+        label: currentStep === 1 ? 'ยกเลิก' : 'ย้อนกลับ',
+        onClick: currentStep === 1 ? onClose : prevStep,
+        variant: 'secondary'
+      }
+    ];
+
+    if (currentStep < 3) {
+      actions.push({
+        label: 'ถัดไป',
+        onClick: nextStep,
+        variant: 'primary',
+        disabled: !canProceedToNextStep()
+      });
+    } else {
+      actions.push({
+        label: loading ? (isEditing ? 'กำลังอัพเดต...' : 'กำลังสร้าง...') : (isEditing ? 'อัพเดตหน้าร้าน' : 'สร้างหน้าร้าน'),
+        onClick: handleSubmit,
+        variant: 'primary',
+        disabled: loading,
+        loading: loading
+      });
+    }
+
+    return actions;
+  };
 
   return (
     <Modal
       isOpen={true}
       onClose={onClose}
-      title="สร้างหน้าร้านใหม่"
+      title={isEditing ? "แก้ไขหน้าร้าน" : "สร้างหน้าร้านใหม่"}
       size="full"
       className="w-[95vw] h-[95vh] flex flex-col"
+      actions={getStepActions()}
+      showFooterBorder={true}
     >
-      <div className="flex-1 flex flex-col overflow-hidden">{/* Content wrapper */}
-      {/* Step Progress */}
-      <div className="p-4 border-b border-gray-200">
-        <div className="flex items-center justify-center ">
-          {[
-            { number: 1, text: 'ตั้งค่าหน้าร้าน' },
-            { number: 2, text: 'เลือกเมนู' },
-            { number: 3, text: 'ยืนยัน' }
-          ].map((step, index) => (
-            <div key={step.number} className="flex items-center">
-              <div className="flex flex-col items-center">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                  step.number <= currentStep ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-600'
-                }`}>
-                  {step.number}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Step Progress */}
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center justify-center ">
+            {[
+              { number: 1, text: 'ตั้งค่าหน้าร้าน' },
+              { number: 2, text: 'เลือกเมนู' },
+              { number: 3, text: 'ยืนยัน' }
+            ].map((step, index) => (
+              <div key={step.number} className="flex items-center">
+                <div className="flex flex-col items-center">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                    step.number <= currentStep ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-600'
+                  }`}>
+                    {step.number}
+                  </div>
+                  <div className={`text-xs font-light mt-1 ${
+                    step.number === currentStep ? 'text-gray-800' : 'text-gray-500'
+                  }`}>
+                    {step.text}
+                  </div>
                 </div>
-                <div className={`text-xs font-light mt-1 ${
-                  step.number === currentStep ? 'text-gray-800' : 'text-gray-500'
-                }`}>
-                  {step.text}
-                </div>
+                {index < 2 && (
+                  <div className={`w-12 h-0.5 mx-3 mt-3 ${
+                    step.number < currentStep ? 'bg-gray-800' : 'bg-gray-200'
+                  }`} />
+                )}
               </div>
-              {index < 2 && (
-                <div className={`w-12 h-0.5 mx-3 mt-3 ${
-                  step.number < currentStep ? 'bg-gray-800' : 'bg-gray-200'
-                }`} />
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Step Content */}
-      <div className="flex-1 p-6 overflow-y-auto">
-        {/* Step 1: Basic Information */}
-        {currentStep === 1 && (
-          <Step1BasicInfo
-            businessPlan={businessPlan}
-            booths={booths}
-            isEditing={isEditing}
-            onUpdateBasicInfo={updateBasicInfo}
-            onCopyFromBooth={copyFromBooth}
-            onAddEmployee={addEmployee}
-            onRemoveEmployee={removeEmployee}
-            onUpdateEmployee={updateEmployee}
-            availableEquipmentSets={availableEquipmentSets}
-            equipmentTemplates={equipmentTemplates}
-          />
-        )}
-
-        {/* Step 2: Menu Selection & Stock Allocation */}
-        {currentStep === 2 && (
-          <Step2MenuSelection
-            businessPlan={businessPlan}
-            availableMenuItems={availableMenuItems}
-            availableIngredients={availableIngredients}
-            onToggleMenuItem={toggleMenuItem}
-            onSetBusinessPlan={setBusinessPlan}
-            calculateIngredientsNeeded={calculateIngredientsNeeded}
-          />
-        )}
-
-        {/* Step 3: Summary */}
-        {currentStep === 3 && (
-          <Step3Summary
-            businessPlan={businessPlan}
-            getRequiredIngredients={getRequiredIngredients}
-            calculateIngredientsNeeded={calculateIngredientsNeeded}
-          />
-        )}
-
-        </div>
-
-        {/* Footer Buttons */}
-        <div className="p-6 border-t border-gray-200">
-          <div className="flex justify-between">
-            <Button
-              variant="secondary"
-              onClick={currentStep === 1 ? onClose : prevStep}
-            >
-              {currentStep === 1 ? 'ยกเลิก' : 'ย้อนกลับ'}
-            </Button>
-
-            {currentStep < 3 ? (
-              <Button
-                onClick={nextStep}
-                disabled={!canProceedToNextStep()}
-              >
-                ถัดไป
-              </Button>
-            ) : (
-              <Button
-                onClick={handleSubmit}
-                disabled={loading}
-              >
-                {loading ? 'กำลังสร้าง...' : 'สร้างหน้าร้าน'}
-              </Button>
-            )}
+            ))}
           </div>
         </div>
-      </div>{/* End Content wrapper */}
+
+        {/* Step Content */}
+        <div className="flex-1 p-6 overflow-y-auto">
+          {/* Step 1: Basic Information */}
+          {currentStep === 1 && (
+            <Step1BasicInfo
+              businessPlan={businessPlan}
+              booths={booths}
+              isEditing={isEditing}
+              onUpdateBasicInfo={updateBasicInfo}
+              onCopyFromBooth={copyFromBooth}
+              onAddEmployee={addEmployee}
+              onRemoveEmployee={removeEmployee}
+              onUpdateEmployee={updateEmployee}
+              onAddExpense={addExpense}
+              onRemoveExpense={removeExpense}
+              onUpdateExpense={updateExpense}
+              equipments={equipments}
+            />
+          )}
+
+          {/* Step 2: Menu Selection & Stock Allocation */}
+          {currentStep === 2 && (
+            <Step2MenuSelection
+              businessPlan={businessPlan}
+              availableMenuItems={availableMenuItems}
+              availableIngredients={availableIngredients}
+              onToggleMenuItem={toggleMenuItem}
+              onSetBusinessPlan={setBusinessPlan}
+              calculateIngredientsNeeded={calculateIngredientsNeeded}
+            />
+          )}
+
+          {/* Step 3: Summary */}
+          {currentStep === 3 && (
+            <Step3Summary
+              businessPlan={businessPlan}
+              calculateIngredientsNeeded={calculateIngredientsNeeded}
+            />
+          )}
+        </div>
+      </div>
     </Modal>
   );
 }

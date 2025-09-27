@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save } from 'lucide-react';
-import { Button, Input } from '@/components/ui';
+import { Save } from 'lucide-react';
+import { Modal, Input, ModalActionButton } from '@/components/ui';
 import { AccountingTransaction } from '@/types';
 
 interface TransactionModalProps {
@@ -126,24 +126,39 @@ export function TransactionModal({
 
   const currentCategories = formData.type === 'income' ? incomeCategories : expenseCategories;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-md w-full max-h-screen overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-black">
-            {transaction ? 'แก้ไขรายการบัญชี' : 'เพิ่มรายการบัญชี'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
+  const actions: ModalActionButton[] = [
+    {
+      label: 'ยกเลิก',
+      onClick: onClose,
+      variant: 'secondary',
+      disabled: loading
+    },
+    {
+      label: 'บันทึก',
+      onClick: () => {
+        const form = document.querySelector('form');
+        if (form) {
+          form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+        }
+      },
+      variant: 'primary',
+      disabled: loading,
+      loading: loading,
+      icon: Save
+    }
+  ];
 
+  return (
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={transaction ? 'แก้ไขรายการบัญชี' : 'เพิ่มรายการบัญชี'}
+      size="md"
+      actions={actions}
+    >
+      <div className="p-6">
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Date */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -245,35 +260,8 @@ export function TransactionModal({
             </select>
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-4">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={onClose}
-              className="flex-1"
-              disabled={loading}
-            >
-              ยกเลิก
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              className="flex-1 flex items-center justify-center gap-2"
-              disabled={loading}
-            >
-              {loading ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  บันทึก
-                </>
-              )}
-            </Button>
-          </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 }

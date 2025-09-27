@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Package, CheckCircle, AlertCircle } from 'lucide-react';
+import { Package, CheckCircle, AlertCircle, Plus, Trash2 } from 'lucide-react';
 import { Input, Select, Button } from '@/components/ui';
-import { Booth, EquipmentSet, EquipmentTemplate } from '@/types';
+import { Booth, Equipment } from '@/types';
 
 interface BusinessPlan {
   name: string;
@@ -15,7 +15,8 @@ interface BusinessPlan {
   staffUsername: string;
   staffPassword: string;
   employees: { name: string; salary: string; position: string; }[];
-  equipmentSetId?: string;
+  equipmentId?: string;
+  additionalExpenses: { description: string; amount: number; }[];
 }
 
 interface Step1BasicInfoProps {
@@ -27,8 +28,10 @@ interface Step1BasicInfoProps {
   onAddEmployee: () => void;
   onRemoveEmployee: (index: number) => void;
   onUpdateEmployee: (index: number, field: string, value: string) => void;
-  availableEquipmentSets: EquipmentSet[];
-  equipmentTemplates: EquipmentTemplate[];
+  onAddExpense: () => void;
+  onRemoveExpense: (index: number) => void;
+  onUpdateExpense: (index: number, field: string, value: string | number) => void;
+  equipments: Equipment[];
 }
 
 export function Step1BasicInfo({
@@ -40,19 +43,16 @@ export function Step1BasicInfo({
   onAddEmployee,
   onRemoveEmployee,
   onUpdateEmployee,
-  availableEquipmentSets,
-  equipmentTemplates
+  onAddExpense,
+  onRemoveExpense,
+  onUpdateExpense,
+  equipments
 }: Step1BasicInfoProps) {
-  const selectedEquipmentSet = availableEquipmentSets.find(set => set._id === businessPlan.equipmentSetId);
+  const selectedEquipment = equipments.find(equipment => equipment._id === businessPlan.equipmentId);
 
-  // Handle both populated and unpopulated templateId
-  const getTemplateId = (templateId: any) => {
-    return typeof templateId === 'object' && templateId?._id ? templateId._id : templateId;
-  };
+  // Show all equipment (no status filtering)
+  const availableEquipments = equipments;
 
-  const selectedTemplate = selectedEquipmentSet
-    ? equipmentTemplates.find(t => t._id === getTemplateId(selectedEquipmentSet.templateId))
-    : null;
   return (
     <div className="space-y-4">
       {/* Copy from existing booth */}
@@ -147,11 +147,11 @@ export function Step1BasicInfo({
           <div className="text-lg  text-black">เลือกชุดอุปกรณ์</div>
         </div>
 
-        {availableEquipmentSets.length === 0 ? (
+        {availableEquipments.length === 0 ? (
           <div className="text-center py-8 border border-gray-200 bg-gray-50">
             <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <div className="text-lg text-gray-500 mb-2">ไม่มีชุดอุปกรณ์ที่พร้อมใช้งาน</div>
-            <div className="text-gray-400 mb-4">สร้างชุดอุปกรณ์ก่อนเพื่อใช้งาน</div>
+            <div className="text-lg text-gray-500 mb-2">ไม่มีอุปกรณ์ที่พร้อมใช้งาน</div>
+            <div className="text-gray-400 mb-4">สร้างอุปกรณ์ก่อนเพื่อใช้งาน</div>
             <Button
               variant="secondary"
               size="sm"
@@ -163,42 +163,40 @@ export function Step1BasicInfo({
         ) : (
           <div>
             <select
-              value={businessPlan.equipmentSetId || ''}
-              onChange={(e) => onUpdateBasicInfo('equipmentSetId', e.target.value)}
+              value={businessPlan.equipmentId || ''}
+              onChange={(e) => onUpdateBasicInfo('equipmentId', e.target.value)}
               className="w-full px-3 py-2 border border-gray-200 rounded mb-3"
             >
-              <option value="">ไม่ใช้อุปกรณ์จากระบบ</option>
-              {availableEquipmentSets.map(set => {
-                const template = equipmentTemplates.find(t => t._id === getTemplateId(set.templateId));
-                return (
-                  <option key={set._id} value={set._id}>
-                    {set.setName} - {template?.name} (฿{template?.dailyCost.toFixed(2)}/วัน)
-                  </option>
-                );
-              })}
+              <option value="">เลือกอุปกรณ์...</option>
+              {availableEquipments.map(equipment => (
+                <option key={equipment._id} value={equipment._id}>
+                  {equipment.name} - ฿{equipment.dailyCost.toFixed(2)}/วัน
+                </option>
+              ))}
             </select>
 
-            {selectedEquipmentSet && selectedTemplate && (
+            {selectedEquipment && (
               <div className="border border-gray-200 p-3 bg-gray-50">
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircle className="w-4 h-4 text-green-600" />
-                  <div className="text-black">{selectedEquipmentSet.setName}</div>
+                  <div className="text-black">{selectedEquipment.name}</div>
                 </div>
-                <div className="grid grid-cols-3 gap-4  mb-3">
+                <div className="grid grid-cols-3 gap-4 mb-3">
                   <div>
                     <span className="text-gray-600">ราคาซื้อ:</span>
-                    <div className="font-medium">฿{selectedTemplate.totalPrice.toLocaleString()}</div>
+                    <div className="font-medium">฿{selectedEquipment.totalPrice.toLocaleString()}</div>
                   </div>
                   <div>
                     <span className="text-gray-600">ต้นทุนต่อวัน:</span>
-                    <div className="font-medium">฿{selectedTemplate.dailyCost.toFixed(2)}</div>
+                    <div className="font-medium">฿{selectedEquipment.dailyCost.toFixed(2)}</div>
                   </div>
                   <div>
                     <span className="text-gray-600">รวม {businessPlan.numberOfDays} วัน:</span>
-                    <div className="font-medium text-blue-600">฿{(selectedTemplate.dailyCost * businessPlan.numberOfDays).toFixed(2)}</div>
+                    <div className="font-medium text-blue-600">฿{(selectedEquipment.dailyCost * businessPlan.numberOfDays).toFixed(2)}</div>
                   </div>
                 </div>
-                
+
+        
               </div>
             )}
           </div>
@@ -257,6 +255,62 @@ export function Step1BasicInfo({
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Additional Expenses Section */}
+      <div>
+        <div className="flex justify-between items-center mb-3 bg-gray-100 p-2">
+          <label className="text-lg text-gray-700">ค่าใช้จ่ายเพิ่มเติม</label>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onAddExpense}
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            เพิ่มรายการ
+          </Button>
+        </div>
+        <div className="space-y-3">
+          {businessPlan.additionalExpenses.map((expense, index) => (
+            <div key={index} className="bg-gray-50 p-3">
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="รายการค่าใช้จ่าย"
+                  value={expense.description}
+                  onChange={(e) => onUpdateExpense(index, 'description', e.target.value)}
+                  placeholder="เช่น ค่าเดินทาง, ค่าขนส่ง"
+                />
+                <div className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <Input
+                      label="จำนวนเงิน (บาท)"
+                      type="number"
+                      value={expense.amount || ''}
+                      onChange={(e) => onUpdateExpense(index, 'amount', parseFloat(e.target.value) || 0)}
+                      placeholder="0"
+                    />
+                  </div>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => onRemoveExpense(index)}
+                    className="mb-[2px]"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+          {businessPlan.additionalExpenses.length > 0 && (
+            <div className="bg-blue-50 p-3 rounded border border-blue-200">
+              <div className="text-sm text-blue-800 mb-1">รวมค่าใช้จ่ายเพิ่มเติม</div>
+              <div className="text-lg font-medium text-blue-900">
+                ฿{businessPlan.additionalExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0).toLocaleString()}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

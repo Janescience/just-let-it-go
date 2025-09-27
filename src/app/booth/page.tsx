@@ -5,7 +5,6 @@ import { Plus, RefreshCw, MapPin, ChevronDown, ChevronRight } from 'lucide-react
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useBrand } from '@/hooks/useBrand';
-import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui';
 import { Booth, MenuItem } from '@/types';
 import { useRealtime } from '@/utils/realtime';
@@ -15,6 +14,7 @@ import { BoothDeleteModal } from './components/BoothDeleteModal';
 import { BoothMenuModal } from './components/BoothMenuModal';
 import { BoothModal } from './components/BoothModal';
 import { SalesActivitySidebar } from './components/SalesActivitySidebar';
+import { BoothLoading } from './components/BoothLoading';
 
 interface BoothStats {
   booth: Booth & {
@@ -274,38 +274,30 @@ export default function BoothPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-white">
-        <Header title="จัดการหน้าร้าน" />
-        <div className="p-4 tablet:p-6">
-          <div className="grid grid-cols-1 tablet:grid-cols-2 desktop:grid-cols-3 gap-4">
-            {[...Array(6)].map((_, index) => (
-              <div key={index} className="bg-white border border-gray-100 rounded-lg p-4 space-y-3">
-                <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
-                <div className="h-3 bg-gray-100 rounded animate-pulse w-3/4"></div>
-                <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2"></div>
-                <div className="flex justify-between items-center pt-2">
-                  <div className="h-6 bg-gray-100 rounded animate-pulse w-16"></div>
-                  <div className="flex gap-2">
-                    <div className="h-8 bg-gray-200 rounded animate-pulse w-16"></div>
-                    <div className="h-8 bg-gray-200 rounded animate-pulse w-16"></div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+    return <BoothLoading />;
   }
 
   return (
     <div className="min-h-screen bg-white">
-      <Header title="จัดการหน้าร้าน" />
+      {/* Header */}
+      <div className="border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-thin text-black tracking-wider">หน้าร้าน</h1>
+              <p className="text-sm font-light text-gray-500 mt-1">จัดการหน้าร้านและติดตามผลการดำเนินงาน</p>
+            </div>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="px-4 sm:px-6 py-2 border border-gray-200 text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide"
+            >
+              เพิ่มหน้าร้าน
+            </button>
+          </div>
+        </div>
+      </div>
 
-      <div className={`p-4 tablet:p-6 pb-20 transition-all duration-300 ${
-        sidebarOpen ? 'mr-96' : 'mr-0'
-      }`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-20">
         {/* Header Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4  mb-6">
           <div className="flex gap-4 items-center">
@@ -326,13 +318,13 @@ export default function BoothPage() {
             >
               รีเฟรช
             </Button>
-            <Button
+            {/* <Button
               onClick={() => setShowAddModal(true)}
               icon={Plus}
               size="md"
             >
               สร้างหน้าร้าน
-            </Button>
+            </Button> */}
           </div>
         </div>
 
@@ -386,7 +378,7 @@ export default function BoothPage() {
         )}
 
         {/* Empty State */}
-        {booths.length === 0 && (
+        {/* {booths.length === 0 && (
           <div className="text-center py-12">
             <MapPin className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-light text-gray-800 mb-2 tracking-wide">ยังไม่มีหน้าร้าน</h3>
@@ -398,7 +390,7 @@ export default function BoothPage() {
               สร้างหน้าร้าน
             </Button>
           </div>
-        )}
+        )} */}
       </div>
 
       {/* Modals */}

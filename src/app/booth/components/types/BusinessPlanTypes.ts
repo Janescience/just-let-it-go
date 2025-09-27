@@ -8,6 +8,11 @@ export interface LocalIngredient {
   stock: number;
 }
 
+export interface AdditionalExpense {
+  description: string;
+  amount: number;
+}
+
 export interface BusinessPlan {
   // Basic Info
   name: string;
@@ -21,7 +26,8 @@ export interface BusinessPlan {
   staffUsername: string;
   staffPassword: string;
   employees: { name: string; salary: string; position: string; }[];
-  equipmentSetId?: string;
+  equipmentId?: string;
+  additionalExpenses: AdditionalExpense[];
 
   // Menu & Calculations
   selectedMenuItems: MenuItem[];
@@ -30,6 +36,7 @@ export interface BusinessPlan {
     rent: number;
     staff: number;
     equipment: number;
+    additionalExpenses: number;
     total: number;
   };
   breakEven: {

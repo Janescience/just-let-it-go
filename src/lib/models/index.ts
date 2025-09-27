@@ -7,6 +7,5 @@ export { default as Sale } from './Sale';
 export { default as QRPayment } from './QRPayment';
 export { default as DailySummary } from './DailySummary';
 export { default as StockMovement } from './StockMovement';
-export { default as EquipmentTemplate } from './EquipmentTemplate';
-export { default as EquipmentSet } from './EquipmentSet';
+export { default as Equipment } from './Equipment';
 export { default as AccountingTransaction } from './AccountingTransaction';

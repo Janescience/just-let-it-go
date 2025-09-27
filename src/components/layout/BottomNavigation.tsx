@@ -3,9 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Store, Beef, UtensilsCrossed, Hammer, Calculator, ChevronUp,Warehouse } from 'lucide-react';
+import { Home, Store, Beef, UtensilsCrossed, Hammer, Calculator, ChevronUp, Warehouse, LogOut, CircleUserRound, Building2 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/hooks/useAuth';
+import { useBrand } from '@/hooks/useBrand';
 
 interface NavigationItem {
   icon: React.ComponentType<{ className?: string }>;
@@ -67,9 +68,11 @@ const navigationItems: NavigationItem[] = [
 
 export function BottomNavigation() {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const { brand, loading, error } = useBrand();
   const [userRole, setUserRole] = useState<string | null>(null);
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
+  const [showUserMenu, setShowUserMenu] = useState<string | null>(null);
 
   useEffect(() => {
     // Get user role from cookie or localStorage
@@ -123,9 +126,9 @@ export function BottomNavigation() {
 
   return (
     <>
-      {/* Submenu Overlay */}
-      {activeSubmenu && (
-        <div className="fixed inset-0 z-40" onClick={() => setActiveSubmenu(null)} />
+      {/* Overlay to close menus */}
+      {(activeSubmenu || showUserMenu) && (
+        <div className="fixed inset-0 z-40" onClick={() => { setActiveSubmenu(null); setShowUserMenu(null); }} />
       )}
 
       {/* Submenu Dropdown */}
@@ -143,7 +146,7 @@ export function BottomNavigation() {
                   href={submenuItem.href}
                   onClick={() => setActiveSubmenu(null)}
                   className={cn(
-                    'flex items-center px-4 py-3  font-light transition-colors',
+                    'flex items-center px-4 py-3 font-light transition-colors',
                     isActive
                       ? 'text-black bg-gray-100'
                       : 'text-gray-700 hover:text-black hover:bg-gray-50'
@@ -157,52 +160,121 @@ export function BottomNavigation() {
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 md:px-6 safe-area-pb">
-        <div className="flex items-center justify-center">
-          <div className="flex items-center justify-around w-full max-w-4xl">
-            {filteredNavigationItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = item.href ? pathname === item.href : (item.isSubmenu && isBackendRouteActive());
+      {/* User Menu Dropdown */}
+      {showUserMenu === 'user' && (
+        <div className="fixed bottom-20 right-4 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 w-48">
+          <div className="px-3 py-2">
+            <p className="text-sm font-light text-black">{user?.name}</p>
+            <p className="text-xs font-light text-gray-500">{user?.role === 'admin' ? 'ผู้ดูแลระบบ' : 'พนักงานขาย'}</p>
+          </div>
+          <hr className="border-gray-100" />
+          {user?.role === 'admin' && (
+            <>
+              <Link
+                href="/brand"
+                onClick={() => setShowUserMenu(null)}
+                className="flex items-center w-full px-3 py-2 text-xs font-light text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <Building2 className="w-4 h-4 mr-2" />
+                จัดการแบรนด์
+              </Link>
+              <hr className="border-gray-100" />
+            </>
+          )}
+          <button
+            onClick={() => {
+              setShowUserMenu(null);
+              logout();
+            }}
+            className="flex items-center w-full px-3 py-2 text-xs font-light text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            ออกจากระบบ
+          </button>
+        </div>
+      )}
 
-              if (item.isSubmenu) {
+      {/* Single Bottom Navigation Bar */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 md:px-6 safe-area-pb">
+        <div className="flex items-center justify-between">
+          {/* Left: System Logo & Brand */}
+          <div className="flex items-center gap-3">
+            <img
+              src="https://api.dicebear.com/9.x/notionists/svg?seed=justletitgo&flip=true&scale=100"
+              alt="System Logo"
+              className="w-8 h-8 rounded-full object-cover"
+            />
+            <div className="hidden sm:block">
+              <div className="text-sm font-thin text-black tracking-wider">ขายไปเหอะ</div>
+            </div>
+          </div>
+
+          {/* Center: Navigation Menu */}
+          <div className="flex items-center justify-center">
+            <div className="flex items-center gap-4">
+              {filteredNavigationItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = item.href ? pathname === item.href : (item.isSubmenu && isBackendRouteActive());
+
+                if (item.isSubmenu) {
+                  return (
+                    <button
+                      key={item.label}
+                      onClick={() => handleSubmenuToggle(item.label)}
+                      className={cn(
+                        'flex flex-col items-center justify-center p-2 transition-colors duration-200 min-w-[3rem]',
+                        isActive
+                          ? 'text-black'
+                          : 'text-gray-400 hover:text-black'
+                      )}
+                    >
+                      <div className="flex items-center">
+                        <Icon className="w-4 h-4" />
+                        {activeSubmenu === item.label && (
+                          <ChevronUp className="w-2 h-2 ml-1" />
+                        )}
+                      </div>
+                      <span className="text-xs font-light tracking-wide">{item.label}</span>
+                    </button>
+                  );
+                }
+
                 return (
-                  <button
-                    key={item.label}
-                    onClick={() => handleSubmenuToggle(item.label)}
+                  <Link
+                    key={item.href}
+                    href={item.href!}
                     className={cn(
-                      'flex flex-col items-center justify-center p-2 rounded-lg transition-colors duration-200 min-w-[4rem] flex-1 relative',
+                      'flex flex-col items-center justify-center p-2 transition-colors duration-200 min-w-[3rem]',
                       isActive
-                        ? 'text-black bg-gray-100'
-                        : 'text-gray-500 hover:text-black hover:bg-gray-50'
+                        ? 'text-black'
+                        : 'text-gray-400 hover:text-black'
                     )}
                   >
-                    <div className="flex items-center">
-                      <Icon className="w-5 h-5" />
-                      {activeSubmenu === item.label && (
-                        <ChevronUp className="w-3 h-3 ml-1" />
-                      )}
-                    </div>
-                    <span className="font-light">{item.label}</span>
-                  </button>
+                    <Icon className="w-4 h-4" />
+                    <span className="text-xs font-light">{item.label}</span>
+                  </Link>
                 );
-              }
+              })}
+            </div>
+          </div>
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href!}
-                  className={cn(
-                    'flex flex-col items-center justify-center p-2 rounded-lg transition-colors duration-200 min-w-[4rem] flex-1',
-                    isActive
-                      ? 'text-black bg-gray-100'
-                      : 'text-gray-500 hover:text-black hover:bg-gray-50'
-                  )}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span className="font-light">{item.label}</span>
-                </Link>
-              );
-            })}
+          {/* Right: Brand Info & User Menu */}
+          <div className="flex items-center">
+            <button
+              onClick={() => setShowUserMenu(showUserMenu ? null : 'user')}
+              className="flex items-center gap-2 p-2 hover:bg-gray-50 transition-colors duration-200"
+            >
+              {brand?.logo ? (
+                <img
+                  src={brand.logo}
+                  alt="Brand Logo"
+                  className="w-8 h-8 rounded-full object-cover"
+                />
+              ) : (
+                <CircleUserRound className="w-5 h-5 text-gray-400" />
+              )}
+              <span className="hidden sm:block text-xs font-light text-black">{brand?.name || user?.name}</span>
+            </button>
           </div>
         </div>
       </nav>

@@ -1,26 +1,22 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, Settings, Archive } from 'lucide-react';
-import { Button } from '@/components/ui';
-import { EquipmentTemplate, EquipmentSet } from '@/types';
-import { EquipmentTemplatesTab } from './components/EquipmentTemplatesTab';
-import { EquipmentInventoryTab } from './components/EquipmentInventoryTab';
-import { EquipmentTemplateModal } from './components/EquipmentTemplateModal';
-import { EquipmentSetModal } from './components/EquipmentSetModal';
+import { Package, History } from 'lucide-react';
+import { GridPageLoading } from '@/components/ui';
+import { Equipment } from '@/types';
+import { EquipmentListTab } from './components/EquipmentListTab';
+import { EquipmentHistoryTab } from './components/EquipmentHistoryTab';
+import { EquipmentModal } from './components/EquipmentModal';
 
 export default function EquipmentPage() {
-  const [activeTab, setActiveTab] = useState<'templates' | 'inventory'>('templates');
-  const [templates, setTemplates] = useState<EquipmentTemplate[]>([]);
-  const [equipmentSets, setEquipmentSets] = useState<EquipmentSet[]>([]);
+  const [activeTab, setActiveTab] = useState<'equipment' | 'history'>('equipment');
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Modal states
-  const [showTemplateModal, setShowTemplateModal] = useState(false);
-  const [showSetModal, setShowSetModal] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<EquipmentTemplate | null>(null);
-  const [editingSet, setEditingSet] = useState<EquipmentSet | null>(null);
-  const [selectedTemplateForSet, setSelectedTemplateForSet] = useState<EquipmentTemplate | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null);
+  const [copyFromEquipment, setCopyFromEquipment] = useState<Equipment | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -29,23 +25,12 @@ export default function EquipmentPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch equipment templates
-      const templatesResponse = await fetch('/api/equipment/templates', {
+      const response = await fetch('/api/equipment', {
         credentials: 'include'
       });
-      if (templatesResponse.ok) {
-        const templatesData = await templatesResponse.json();
-        setTemplates(templatesData.templates || []);
-      }
-
-      // Fetch equipment sets
-      const setsResponse = await fetch('/api/equipment/sets', {
-        credentials: 'include'
-      });
-      if (setsResponse.ok) {
-        const setsData = await setsResponse.json();
-        console.log('Equipment sets data:', setsData.sets);
-        setEquipmentSets(setsData.sets || []);
+      if (response.ok) {
+        const data = await response.json();
+        setEquipment(data.equipment || []);
       }
     } catch (error) {
       console.error('Error fetching equipment data:', error);
@@ -54,33 +39,29 @@ export default function EquipmentPage() {
     }
   };
 
-  const handleCreateTemplate = () => {
-    setEditingTemplate(null);
-    setShowTemplateModal(true);
+  const handleCreateEquipment = () => {
+    setEditingEquipment(null);
+    setCopyFromEquipment(null);
+    setShowModal(true);
   };
 
-  const handleEditTemplate = (template: EquipmentTemplate) => {
-    setEditingTemplate(template);
-    setShowTemplateModal(true);
+  const handleEditEquipment = (equipment: Equipment) => {
+    setEditingEquipment(equipment);
+    setCopyFromEquipment(null);
+    setShowModal(true);
   };
 
-  const handleCreateSet = (template?: EquipmentTemplate) => {
-    setSelectedTemplateForSet(template || null);
-    setEditingSet(null);
-    setShowSetModal(true);
+  const handleCopyEquipment = (equipment: Equipment) => {
+    setEditingEquipment(null);
+    setCopyFromEquipment(equipment);
+    setShowModal(true);
   };
 
-  const handleEditSet = (set: EquipmentSet) => {
-    setEditingSet(set);
-    setSelectedTemplateForSet(null);
-    setShowSetModal(true);
-  };
-
-  const handleDeleteTemplate = async (templateId: string) => {
-    if (!confirm('คุณแน่ใจที่จะลบแม่แบบอุปกรณ์นี้?')) return;
+  const handleDeleteEquipment = async (equipmentId: string) => {
+    if (!confirm('คุณแน่ใจที่จะลบอุปกรณ์นี้? ประวัติการใช้งานจะถูกลบด้วย')) return;
 
     try {
-      const response = await fetch(`/api/equipment/templates/${templateId}`, {
+      const response = await fetch(`/api/equipment/${equipmentId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
@@ -88,131 +69,82 @@ export default function EquipmentPage() {
       if (response.ok) {
         fetchData();
       } else {
-        alert('เกิดข้อผิดพลาดในการลบแม่แบบ');
+        alert('เกิดข้อผิดพลาดในการลบอุปกรณ์');
       }
     } catch (error) {
-      console.error('Error deleting template:', error);
-      alert('เกิดข้อผิดพลาดในการลบแม่แบบ');
-    }
-  };
-
-  const handleDeleteSet = async (setId: string) => {
-    if (!confirm('คุณแน่ใจที่จะลบชุดอุปกรณ์นี้?')) return;
-
-    try {
-      const response = await fetch(`/api/equipment/sets/${setId}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
-
-      if (response.ok) {
-        fetchData();
-      } else {
-        alert('เกิดข้อผิดพลาดในการลบชุดอุปกรณ์');
-      }
-    } catch (error) {
-      console.error('Error deleting equipment set:', error);
-      alert('เกิดข้อผิดพลาดในการลบชุดอุปกรณ์');
+      console.error('Error deleting equipment:', error);
+      alert('เกิดข้อผิดพลาดในการลบอุปกรณ์');
     }
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-4">
-        <div className="text-center py-12">
-          <div className="w-6 h-6 border-2 border-gray-300 border-t-black rounded-full animate-spin mx-auto mb-3"></div>
-          <p className="text-gray-600 text-lg">กำลังโหลดข้อมูล...</p>
-        </div>
-      </div>
-    );
+    return <GridPageLoading title="จัดการอุปกรณ์" />;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
+    <div className="min-h-screen bg-white">
+      {/* Header */}
+      <div className="border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Package className="w-8 h-8" />
-              <h1 className="text-3xl font-bold text-black">จัดการอุปกรณ์</h1>
+            <div>
+              <h1 className="text-2xl font-thin text-black tracking-wider">อุปกรณ์</h1>
+              <p className="text-sm font-light text-gray-500 mt-1">จัดการอุปกรณ์และติดตามการใช้งาน</p>
             </div>
           </div>
         </div>
+      </div>
 
+      <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Tab Navigation */}
-        <div className="border-b border-gray-200 mb-6">
-          <div className="flex text-2xl">
-            <button
-              onClick={() => setActiveTab('templates')}
-              className={`flex-1 py-4 px-6 transition-colors ${
-                activeTab === 'templates'
-                  ? 'text-black border-b-2 border-black bg-white'
-                  : 'text-gray-500 hover:text-gray-800 bg-gray-50'
-              }`}
-            >
-              <div className="flex items-center justify-center gap-2">
-                <Settings className="w-5 h-5" />
-                แม่แบบอุปกรณ์
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab('inventory')}
-              className={`flex-1 py-4 px-6 transition-colors ${
-                activeTab === 'inventory'
-                  ? 'text-black border-b-2 border-black bg-white'
-                  : 'text-gray-500 hover:text-gray-800 bg-gray-50'
-              }`}
-            >
-              <div className="flex items-center justify-center gap-2">
-                <Archive className="w-5 h-5" />
-                คลังอุปกรณ์
-              </div>
-            </button>
-          </div>
+        <div className="flex border-b border-gray-100 mb-12">
+          <button
+            onClick={() => setActiveTab('equipment')}
+            className={`px-6 py-4 text-sm font-light tracking-wide transition-all duration-200 ${
+              activeTab === 'equipment'
+                ? 'text-black border-b-2 border-black'
+                : 'text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            อุปกรณ์
+          </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`px-6 py-4 text-sm font-light tracking-wide transition-all duration-200 ${
+              activeTab === 'history'
+                ? 'text-black border-b-2 border-black'
+                : 'text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            ประวัติการใช้งาน
+          </button>
         </div>
 
         {/* Tab Content */}
-        <div className="bg-white border border-gray-200 min-h-96">
-          {activeTab === 'templates' ? (
-            <EquipmentTemplatesTab
-              templates={templates}
-              onCreateTemplate={handleCreateTemplate}
-              onEditTemplate={handleEditTemplate}
-              onDeleteTemplate={handleDeleteTemplate}
-              onCreateSet={handleCreateSet}
+        <div className="min-h-96">
+          {activeTab === 'equipment' ? (
+            <EquipmentListTab
+              equipment={equipment}
+              onCreateEquipment={handleCreateEquipment}
+              onEditEquipment={handleEditEquipment}
+              onDeleteEquipment={handleDeleteEquipment}
+              onCopyEquipment={handleCopyEquipment}
             />
           ) : (
-            <EquipmentInventoryTab
-              equipmentSets={equipmentSets}
-              templates={templates}
-              onCreateSet={handleCreateSet}
-              onEditSet={handleEditSet}
-              onDeleteSet={handleDeleteSet}
+            <EquipmentHistoryTab
+              equipment={equipment}
             />
           )}
         </div>
 
-        {/* Modals */}
-        {showTemplateModal && (
-          <EquipmentTemplateModal
-            template={editingTemplate}
-            onClose={() => setShowTemplateModal(false)}
+        {/* Modal */}
+        {showModal && (
+          <EquipmentModal
+            equipment={editingEquipment}
+            copyFrom={copyFromEquipment}
+            onClose={() => setShowModal(false)}
             onSave={() => {
-              setShowTemplateModal(false);
-              fetchData();
-            }}
-          />
-        )}
-
-        {showSetModal && (
-          <EquipmentSetModal
-            equipmentSet={editingSet}
-            selectedTemplate={selectedTemplateForSet}
-            templates={templates}
-            onClose={() => setShowSetModal(false)}
-            onSave={() => {
-              setShowSetModal(false);
+              setShowModal(false);
               fetchData();
             }}
           />

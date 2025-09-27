@@ -31,6 +31,7 @@ interface BoothStats {
       name: string;
       quantity: number;
     };
+    todaySales?: number;
   };
 }
 
@@ -79,6 +80,26 @@ export function BoothCard({ booth, stats, onClick, onSaleClick }: BoothCardProps
   const dailyTargetToBreakEven =
     !isBreakEven && daysLeft > 0 ? Math.ceil(remaining / daysLeft) : 0;
 
+  // Check if booth is underperforming
+  const isUnderperforming = (() => {
+    if (!stats?.booth || isExpired || isUpcoming) return false;
+
+    const daysRunning = stats.booth.daysRunning || 0;
+    if (daysRunning < 2) return false; // Need at least 2 days to evaluate
+
+    // Get daily target from business plan break-even
+    const dailyTarget = booth.businessPlan?.breakEven?.dailyTarget || 0;
+    if (dailyTarget === 0) return false;
+
+    // Expected sales = daily target * days running
+    const expectedSales = dailyTarget * daysRunning;
+    const actualSales = stats.booth.totalSales || 0;
+
+    // Consider underperforming if actual sales < 70% of expected sales
+    const performanceRatio = actualSales / expectedSales;
+    return performanceRatio < 0.7;
+  })();
+
   const handleCardClick = (e: React.MouseEvent) => {
     // Prevent card click when clicking buttons
     if ((e.target as HTMLElement).closest('button')) {
@@ -109,7 +130,17 @@ export function BoothCard({ booth, stats, onClick, onSaleClick }: BoothCardProps
         <div className="flex items-start justify-between">
           <div className="flex flex-col gap-1">
             <CardTitle className="text-lg md:text-xl font-light text-gray-800 tracking-wide">
-              {booth.name}
+              <div className="flex items-center gap-2">
+                {booth.name}
+                {isUnderperforming && (
+                  <div className="relative group">
+                    <AlertTriangle className="w-5 h-5 text-red-500" />
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                      บูธกำลังขายได้น้อยกว่าเป้าหมาย
+                    </div>
+                  </div>
+                )}
+              </div>
             </CardTitle>
             <div className="flex gap-2">
               {booth.isActive && !isExpired && !isUpcoming && (
@@ -181,7 +212,17 @@ export function BoothCard({ booth, stats, onClick, onSaleClick }: BoothCardProps
         </div>
 
         {/* Metrics */}
-        <div className="grid grid-cols-2 gap-2 text-sm">
+        <div className="grid grid-cols-3 gap-2 text-sm">
+          <div className="flex flex-col border border-gray-200 rounded-md bg-gray-50 px-2 py-1">
+            <div className="flex items-center gap-2 ">
+              <Calendar className="w-4 h-4 text-blue-500" />
+              <span className="text-gray-500 text-xs">วันนี้</span>
+            </div>
+            <span className="font-light text-right text-gray-800">
+              ฿{(stats?.booth.todaySales || 0).toLocaleString()}
+            </span>
+          </div>
+
           <div className="flex flex-col border border-gray-200 rounded-md bg-gray-50 px-2 py-1">
             <div className="flex items-center gap-2 ">
               <TrendingUp className="w-4 h-4 text-gray-500" />
