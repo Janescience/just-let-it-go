@@ -17,14 +17,6 @@
       }
     }
   ],
-  "functions": {
-    "app/api/**/*.ts": {
-      "maxDuration": 300
-    },
-    "app/api/realtime/stream.ts": {
-      "maxDuration": 900
-    }
-  },
   "env": {
     "MONGODB_URI": "@mongodb_uri",
     "JWT_SECRET": "@jwt_secret",
