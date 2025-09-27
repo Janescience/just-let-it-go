@@ -106,7 +106,6 @@ export default function SalesPage() {
       try {
         const data = JSON.parse(event.data);
         if (data.type === 'menu-updated') {
-          console.log('Menu updated, refreshing...', data);
           fetchMenuItems();
         }
       } catch (error) {
@@ -119,7 +118,6 @@ export default function SalesPage() {
     };
 
     return () => {
-      console.log('Cleaning up EventSource');
       eventSource.close();
     };
   };
@@ -130,32 +128,24 @@ export default function SalesPage() {
         ? `/api/menu-items?boothId=${selectedBoothId}`
         : '/api/menu-items';
 
-      console.log('🔄 Fetching menu items from:', url);
-      console.log('👤 User info:', { role: user?.role, boothId: user?.boothId });
-      console.log('🏪 Selected booth ID:', selectedBoothId);
 
       const response = await fetch(url);
 
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Menu items API response:', data);
 
         // Handle different API response formats
         let menuItemsArray = [];
         if (Array.isArray(data)) {
           menuItemsArray = data;
-          console.log('📋 Using direct array format');
         } else if (data.menuItems && Array.isArray(data.menuItems)) {
           menuItemsArray = data.menuItems;
-          console.log('📋 Using data.menuItems format, count:', menuItemsArray.length);
         } else if (data.items && Array.isArray(data.items)) {
           menuItemsArray = data.items;
-          console.log('📋 Using data.items format');
         } else {
           console.log('⚠️ Unknown response format:', typeof data, data);
         }
 
-        console.log('🍽️ Final menu items array:', menuItemsArray.length, 'items');
         setMenuItems(menuItemsArray);
       } else {
         console.error('❌ Failed to fetch menu items, status:', response.status);
@@ -173,7 +163,6 @@ export default function SalesPage() {
 
   const fetchSalesData = async () => {
     try {
-      console.log('🔄 Fetching sales data...');
       const params = new URLSearchParams({
         page: currentPage.toString(),
         date: selectedDate,
@@ -183,13 +172,9 @@ export default function SalesPage() {
         params.append('boothId', selectedBoothId);
       }
 
-      console.log('📡 Sales API URL:', `/api/sales/summary?${params}`);
       const response = await fetch(`/api/sales/summary?${params}`);
       if (response.ok) {
         const data = await response.json();
-        console.log('📊 Sales data received:', data);
-        console.log('📊 Has pagination:', !!data.pagination);
-        console.log('📊 Has summary:', !!data.summary);
         setSalesData(data);
       } else {
         console.error('❌ Failed to fetch sales data, status:', response.status);
@@ -382,7 +367,6 @@ export default function SalesPage() {
         selectedBoothId={selectedBoothId}
         onClose={() => setShowPaymentModal(false)}
         onSuccess={() => {
-          console.log('💰 Sale completed - starting booth update process');
           setShowPaymentModal(false);
           clearCart();
 
@@ -390,9 +374,6 @@ export default function SalesPage() {
           if (activeTab === 'history' || activeTab === 'summary') {
             fetchSalesData();
           }
-
-          // Send booth stats update event
-          console.log('📢 Dispatching booth-stats-update event');
           localStorage.setItem('booth-stats-update', Date.now().toString());
           window.dispatchEvent(new CustomEvent('booth-stats-update'));
         }}
