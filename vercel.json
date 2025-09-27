@@ -16,11 +16,5 @@
         "Content-Type": "text/event-stream"
       }
     }
-  ],
-  "env": {
-    "MONGODB_URI": "@mongodb_uri",
-    "JWT_SECRET": "@jwt_secret",
-    "NEXTAUTH_SECRET": "@nextauth_secret",
-    "PWA_CACHE_NAME": "justletitgo-cache"
-  }
+  ]
 }
