@@ -14,7 +14,7 @@ const BrandSchema = new Schema<IBrand>({
     default: null,
   },
   ownerId: {
-    type: Schema.Types.ObjectId,
+    type: String,
     ref: 'User',
     required: true,
   },

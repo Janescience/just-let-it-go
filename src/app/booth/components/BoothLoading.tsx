@@ -49,7 +49,7 @@ export function BoothLoading() {
 
 export function BoothCardLoading() {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div className="bg-white border border-gray-100 overflow-hidden">
       {/* Header */}
       <div className="p-6 pb-4">
         <div className="flex justify-between items-start">

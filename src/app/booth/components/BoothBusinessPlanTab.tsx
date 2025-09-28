@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Target, TrendingUp, Package, DollarSign, BarChart3 } from 'lucide-react';
+import { Target, TrendingUp, Package, DollarSign } from 'lucide-react';
 import { Booth } from '@/types';
 
 interface BoothBusinessPlanTabProps {
@@ -91,22 +91,22 @@ export function BoothBusinessPlanTab({ businessPlan, booth, preloadedStats }: Bo
     <div className="space-y-4">
 
       {/* Break Even Comparison */}
-      <div className="border-2 border-gray-300 p-4">
-        <div className="flex items-center gap-4 mb-3">
+      <div className="border border-gray-100 p-6">
+        <div className="flex items-center gap-4 mb-4">
           <Target className="w-8 h-8 text-gray-700" />
-          <h4 className="text-2xl  text-black">จุดคุ้มทุน</h4>
+          <h4 className="text-lg font-light text-black tracking-wide">จุดคุ้มทุน</h4>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div className="border-2 border-black p-4 text-center bg-white">
-            <div className="text-xl text-gray-700  mb-3">เป้าหมาย</div>
-            <div className="text-3xl  text-black mb-2">{businessPlan.breakEven?.unitsNeeded || 0} จาน</div>
-            <div className="text-xl text-gray-600">฿{businessPlan.breakEven?.revenueNeeded?.toLocaleString() || '0'}</div>
+          <div className="border border-gray-100 p-6 text-center bg-white">
+            <div className="text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">เป้าหมาย</div>
+            <div className="text-3xl font-light text-black mb-2">{businessPlan.breakEven?.unitsNeeded || 0} จาน</div>
+            <div className="text-xl font-light text-gray-600">฿{businessPlan.breakEven?.revenueNeeded?.toLocaleString() || '0'}</div>
           </div>
-          <div className="border-2 border-gray-300 p-4 text-center bg-gray-100">
-            <div className="text-xl text-gray-700  mb-3">ความเป็นจริง</div>
-            <div className="text-3xl  text-black mb-2">{totalSoldUnits} จาน</div>
-            <div className="text-xl text-gray-600 mb-3">฿{totalSales.toLocaleString()}</div>
-            <div className={`text-2xl  ${breakEvenProgress >= 100 ? 'text-black' : 'text-gray-500'}`}>
+          <div className="border border-gray-100 p-6 text-center bg-gray-50">
+            <div className="text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">ความเป็นจริง</div>
+            <div className="text-3xl font-light text-black mb-2">{totalSoldUnits} จาน</div>
+            <div className="text-xl font-light text-gray-600 mb-3">฿{totalSales.toLocaleString()}</div>
+            <div className={`text-2xl font-light ${breakEvenProgress >= 100 ? 'text-black' : 'text-gray-500'}`}>
               {Math.round(breakEvenProgress)}%
             </div>
           </div>
@@ -115,28 +115,28 @@ export function BoothBusinessPlanTab({ businessPlan, booth, preloadedStats }: Bo
 
       {/* Target Profit Comparison */}
       {businessPlan.targetProfit && (
-        <div className="border-2 border-gray-300 p-4">
-          <div className="flex items-center gap-4 mb-3">
+        <div className="border border-gray-100 p-6">
+          <div className="flex items-center gap-4 mb-4">
             <TrendingUp className="w-8 h-8 text-gray-700" />
-            <h4 className="text-2xl  text-black">เป้าหมายกำไร {businessPlan.targetProfit.value}%</h4>
+            <h4 className="text-lg font-light text-black tracking-wide">เป้าหมายกำไร {businessPlan.targetProfit.value}%</h4>
           </div>
           <div className="grid grid-cols-3 gap-8">
-            <div className="border-2 border-black p-6 text-center bg-white">
-              <div className="text-xl text-gray-700  mb-3">เป้าหมาย</div>
-              <div className="text-3xl  text-black mb-2">{businessPlan.targetProfit.unitsNeeded} จาน</div>
-              <div className="text-xl text-gray-600">฿{businessPlan.targetProfit.revenueNeeded.toLocaleString()}</div>
+            <div className="border border-gray-100 p-6 text-center bg-white">
+              <div className="text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">เป้าหมาย</div>
+              <div className="text-3xl font-light text-black mb-2">{businessPlan.targetProfit.unitsNeeded} จาน</div>
+              <div className="text-xl font-light text-gray-600">฿{businessPlan.targetProfit.revenueNeeded.toLocaleString()}</div>
             </div>
-            <div className="border-2 border-gray-300 p-6 text-center bg-gray-100">
-              <div className="text-xl text-gray-700  mb-3">ความเป็นจริง</div>
-              <div className="text-3xl  text-black mb-2">{totalSoldUnits} จาน</div>
-              <div className="text-xl text-gray-600">฿{totalSales.toLocaleString()}</div>
+            <div className="border border-gray-100 p-6 text-center bg-gray-50">
+              <div className="text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">ความเป็นจริง</div>
+              <div className="text-3xl font-light text-black mb-2">{totalSoldUnits} จาน</div>
+              <div className="text-xl font-light text-gray-600">฿{totalSales.toLocaleString()}</div>
             </div>
-            <div className="border-2 border-gray-300 p-6 text-center bg-white">
-              <div className="text-xl text-gray-700  mb-3">ความคืบหน้า</div>
-              <div className={`text-3xl  mb-2 ${targetProfitProgress >= 100 ? 'text-black' : 'text-gray-500'}`}>
+            <div className="border border-gray-100 p-6 text-center bg-white">
+              <div className="text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">ความคืบหน้า</div>
+              <div className={`text-3xl font-light mb-2 ${targetProfitProgress >= 100 ? 'text-black' : 'text-gray-500'}`}>
                 {Math.round(targetProfitProgress)}%
               </div>
-              <div className="text-xl text-gray-600">
+              <div className="text-xl font-light text-gray-600">
                 {targetProfitProgress >= 100 ? 'บรรลุเป้าหมาย!' : `เหลืออีก ${businessPlan.targetProfit.unitsNeeded - totalSoldUnits} จาน`}
               </div>
             </div>
@@ -145,11 +145,11 @@ export function BoothBusinessPlanTab({ businessPlan, booth, preloadedStats }: Bo
       )}
 
       {/* Ingredients Usage vs Plan */}
-      <div className="border-2 border-gray-300">
-        <div className="p-6 border-b-2 border-gray-300 bg-gray-100">
+      <div className="border border-gray-100">
+        <div className="p-6 border-b border-gray-100 bg-gray-50">
           <div className="flex items-center gap-3">
             <Package className="w-8 h-8" />
-            <h4 className=" text-black text-2xl">
+            <h4 className="text-lg font-light text-black tracking-wide">
               เป้าหมายการใช้วัตถุดิบ
             </h4>
           </div>
@@ -158,16 +158,16 @@ export function BoothBusinessPlanTab({ businessPlan, booth, preloadedStats }: Bo
           <table className="w-full text-xl">
             <thead className="bg-black text-white sticky top-0">
               <tr>
-                <th className="text-left p-4 ">วัตถุดิบ</th>
-                <th className="text-center p-4 ">
+                <th className="text-left p-4 font-light">วัตถุดิบ</th>
+                <th className="text-center p-4 font-light">
                   {businessPlan.targetProfit ?
                     `เป้าหมายกำไร (${businessPlan.targetProfit.value}%)` :
                     'เป้าหมายคุ้มทุน'
                   }
                 </th>
-                <th className="text-center p-4 ">ใช้จริง</th>
-                <th className="text-center p-4 ">เหลือ</th>
-                <th className="text-right p-4 ">%</th>
+                <th className="text-center p-4 font-light">ใช้จริง</th>
+                <th className="text-center p-4 font-light">เหลือ</th>
+                <th className="text-right p-4 font-light">%</th>
               </tr>
             </thead>
             <tbody>
@@ -194,15 +194,15 @@ export function BoothBusinessPlanTab({ businessPlan, booth, preloadedStats }: Bo
 
                   return (
                     <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
-                      <td className="p-4  text-black">{ingredient.name}</td>
-                      <td className="p-4 text-center text-gray-600 ">{ingredient.quantity} {ingredient.unit}</td>
-                      <td className="p-4 text-center text-black ">
+                      <td className="p-4 font-light text-black">{ingredient.name}</td>
+                      <td className="p-4 text-center font-light text-gray-600">{ingredient.quantity} {ingredient.unit}</td>
+                      <td className="p-4 text-center font-light text-black">
                         {usedQuantity} {ingredient.unit}
                       </td>
-                      <td className="p-4 text-center text-gray-600 ">
+                      <td className="p-4 text-center font-light text-gray-600">
                         {remainingQuantity} {ingredient.unit}
                       </td>
-                      <td className="p-4 text-right ">
+                      <td className="p-4 text-right font-light">
                         <span className={usagePercentage >= 100 ? 'text-black' : usagePercentage >= 80 ? 'text-gray-600' : 'text-gray-500'}>
                           {Math.round(usagePercentage)}%
                         </span>
@@ -217,58 +217,58 @@ export function BoothBusinessPlanTab({ businessPlan, booth, preloadedStats }: Bo
       </div>
 
       {/* Financial Summary */}
-      <div className="border-2 border-black bg-black text-white p-8">
+      <div className="border border-gray-100 bg-black text-white p-8">
         <div className="flex items-center gap-4 mb-6">
           <DollarSign className="w-8 h-8 text-white" />
-          <div className="text-2xl  text-white">สรุปการเงิน</div>
+          <div className="text-lg font-light text-white tracking-wide">สรุปการเงิน</div>
         </div>
         <div className="grid grid-cols-2 gap-8">
           <div className="space-y-4">
-            <div className="text-2xl  border-b-2 border-gray-600 pb-3 text-white">แผนที่วางไว้</div>
+            <div className="text-lg font-light border-b border-gray-600 pb-3 text-white tracking-wide">แผนที่วางไว้</div>
             <div className="space-y-3">
-              <div className="flex justify-between text-xl">
-                <span className="text-gray-300">เงินทุนคุ้มทุน:</span>
-                <span className=" text-white">฿{businessPlan.totalCapital?.toLocaleString()}</span>
+              <div className="flex justify-between text-sm">
+                <span className="font-light text-gray-300">เงินทุนคุ้มทุน:</span>
+                <span className="font-light text-white">฿{businessPlan.totalCapital?.toLocaleString()}</span>
               </div>
               {businessPlan.targetProfit && (
-                <div className="flex justify-between text-xl">
-                  <span className="text-gray-300">เงินทุนเป้าหมาย:</span>
-                  <span className=" text-white">฿{businessPlan.targetProfit.totalCapitalWithProfit.toLocaleString()}</span>
+                <div className="flex justify-between text-sm">
+                  <span className="font-light text-gray-300">เงินทุนเป้าหมาย:</span>
+                  <span className="font-light text-white">฿{businessPlan.targetProfit.totalCapitalWithProfit.toLocaleString()}</span>
                 </div>
               )}
-              <div className="flex justify-between text-xl">
-                <span className="text-gray-300">ยอดขายคุ้มทุน:</span>
-                <span className=" text-white">฿{businessPlan.breakEven?.revenueNeeded?.toLocaleString()}</span>
+              <div className="flex justify-between text-sm">
+                <span className="font-light text-gray-300">ยอดขายคุ้มทุน:</span>
+                <span className="font-light text-white">฿{businessPlan.breakEven?.revenueNeeded?.toLocaleString()}</span>
               </div>
               {businessPlan.targetProfit && (
-                <div className="flex justify-between text-xl">
-                  <span className="text-gray-300">ยอดขายเป้าหมาย:</span>
-                  <span className=" text-white">฿{businessPlan.targetProfit.revenueNeeded.toLocaleString()}</span>
+                <div className="flex justify-between text-sm">
+                  <span className="font-light text-gray-300">ยอดขายเป้าหมาย:</span>
+                  <span className="font-light text-white">฿{businessPlan.targetProfit.revenueNeeded.toLocaleString()}</span>
                 </div>
               )}
             </div>
           </div>
           <div className="space-y-4">
-            <div className="text-2xl  border-b-2 border-gray-600 pb-3 text-white">ผลลัพธ์จริง</div>
+            <div className="text-lg font-light border-b border-gray-600 pb-3 text-white tracking-wide">ผลลัพธ์จริง</div>
             <div className="space-y-3">
-              <div className="flex justify-between text-xl">
-                <span className="text-gray-300">ยอดขายปัจจุบัน:</span>
-                <span className=" text-white">฿{totalSales.toLocaleString()}</span>
+              <div className="flex justify-between text-sm">
+                <span className="font-light text-gray-300">ยอดขายปัจจุบัน:</span>
+                <span className="font-light text-white">฿{totalSales.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between text-xl">
-                <span className="text-gray-300">จานที่ขายได้:</span>
-                <span className=" text-white">{totalSoldUnits} จาน</span>
+              <div className="flex justify-between text-sm">
+                <span className="font-light text-gray-300">จานที่ขายได้:</span>
+                <span className="font-light text-white">{totalSoldUnits} จาน</span>
               </div>
-              <div className="flex justify-between text-xl">
-                <span className="text-gray-300">ความคืบหน้าคุ้มทุน:</span>
-                <span className={` ${breakEvenProgress >= 100 ? 'text-white' : 'text-gray-400'}`}>
+              <div className="flex justify-between text-sm">
+                <span className="font-light text-gray-300">ความคืบหน้าคุ้มทุน:</span>
+                <span className={`font-light ${breakEvenProgress >= 100 ? 'text-white' : 'text-gray-400'}`}>
                   {Math.round(breakEvenProgress)}%
                 </span>
               </div>
               {businessPlan.targetProfit && (
-                <div className="flex justify-between text-xl">
-                  <span className="text-gray-300">ความคืบหน้าเป้าหมาย:</span>
-                  <span className={` ${targetProfitProgress >= 100 ? 'text-white' : 'text-gray-400'}`}>
+                <div className="flex justify-between text-sm">
+                  <span className="font-light text-gray-300">ความคืบหน้าเป้าหมาย:</span>
+                  <span className={`font-light ${targetProfitProgress >= 100 ? 'text-white' : 'text-gray-400'}`}>
                     {Math.round(targetProfitProgress)}%
                   </span>
                 </div>

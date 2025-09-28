@@ -66,8 +66,8 @@ export async function GET(request: NextRequest) {
 
     // Calculate total cost for each menu item
     const menuItemsWithCost = menuItems.map(item => {
-      const totalCost = item.ingredients.reduce((cost, ing) => {
-        const ingredient = ing.ingredientId as any;
+      const totalCost = item.ingredients.reduce((cost: number, ing: { ingredientId: { costPerUnit: number }; quantity: number }) => {
+        const ingredient = ing.ingredientId;
         return cost + (ingredient.costPerUnit * ing.quantity);
       }, 0);
 

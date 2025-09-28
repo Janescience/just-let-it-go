@@ -21,7 +21,7 @@ export function EquipmentModal({
     description: '',
     estimatedLifespanDays: 730, // 2 ปี
     purchaseDate: new Date().toISOString().split('T')[0],
-    status: 'available' as const,
+    status: 'available' as 'available' | 'in_use' | 'maintenance' | 'broken',
     notes: '',
     items: [] as EquipmentItem[]
   });

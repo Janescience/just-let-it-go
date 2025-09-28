@@ -163,7 +163,7 @@ EquipmentSchema.methods.setInUse = function(boothId: string, boothName: string) 
 EquipmentSchema.methods.setAvailable = function(endDate: Date) {
   if (this.status === 'in_use' && this.currentBoothId) {
     // Find the current usage start date (latest usage without end date)
-    const currentUsage = this.usageHistory.find(usage => !usage.endDate);
+    const currentUsage = this.usageHistory.find((usage: { endDate?: Date; startDate: Date }) => !usage.endDate);
     if (currentUsage) {
       this.addUsage(this.currentBoothId, this.currentBoothName, currentUsage.startDate, endDate);
     }

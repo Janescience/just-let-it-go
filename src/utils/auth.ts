@@ -65,7 +65,7 @@ export function verifyToken(token: string): any {
     console.log('Token verification successful');
     return decodedPayload;
   } catch (error) {
-    console.log('Token verification failed:', error?.message || error);
+    console.log('Token verification failed:', error instanceof Error ? error.message : error);
     return null;
   }
 }

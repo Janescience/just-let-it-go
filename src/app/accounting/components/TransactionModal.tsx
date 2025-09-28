@@ -38,7 +38,7 @@ export function TransactionModal({
         amount: transaction.amount.toString(),
         description: transaction.description,
         boothId: transaction.boothId && typeof transaction.boothId === 'object' && '_id' in transaction.boothId
-          ? transaction.boothId._id
+          ? (transaction.boothId as { _id: string })._id
           : transaction.boothId || ''
       });
     } else {

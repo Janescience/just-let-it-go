@@ -108,7 +108,7 @@ export function SalesActivitySidebar({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Activity className="w-5 h-5 text-gray-400" />
-              <div className="text-lg font-thin text-black tracking-wider">กิจกรรมการขาย</div>
+              <div className="text-lg font-light text-black tracking-wide">กิจกรรมการขาย</div>
             </div>
             <button
               onClick={onToggle}

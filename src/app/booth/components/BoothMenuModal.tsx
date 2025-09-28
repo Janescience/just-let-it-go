@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Check } from 'lucide-react';
-import { Modal, Button, Input } from '@/components/ui';
+import { Modal } from '@/components/ui';
 import { Booth, MenuItem } from '@/types';
 
 interface MenuItemWithSelection extends MenuItem {
@@ -29,9 +29,13 @@ export function BoothMenuModal({ booth, onClose, onSuccess }: BoothMenuModalProp
       const response = await fetch(`/api/booths/${booth._id}/menu`);
       if (response.ok) {
         const data = await response.json();
-        const menuItemsWithSelection = data.allMenuItems.map((item: MenuItem) => ({
+
+        const boothMenuItems = data.booth?.menuItems || [];
+        const allMenuItems = data.allMenuItems || [];
+
+        const menuItemsWithSelection = allMenuItems.map((item: MenuItem) => ({
           ...item,
-          selected: data.boothMenuItems.some((boothItem: MenuItem) => boothItem._id === item._id)
+          selected: boothMenuItems.some((boothItem: any) => boothItem._id === item._id)
         }));
         setMenuItems(menuItemsWithSelection);
       } else {
@@ -66,7 +70,7 @@ export function BoothMenuModal({ booth, onClose, onSuccess }: BoothMenuModalProp
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          menuItems: selectedMenuIds
+          menuItemIds: selectedMenuIds
         })
       });
 
@@ -102,11 +106,11 @@ export function BoothMenuModal({ booth, onClose, onSuccess }: BoothMenuModalProp
         </p>
 
         <div className="relative">
-          <Input
+          <input
             placeholder="ค้นหาเมนู..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none w-full px-3 py-2"
           />
         </div>
       </div>
@@ -158,13 +162,13 @@ export function BoothMenuModal({ booth, onClose, onSuccess }: BoothMenuModalProp
                       {item.selected && <Check className="w-2.5 h-2.5 text-white" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className=" text-gray-900 text-lg">{item.name}</h4>
+                      <h4 className="text-lg font-light text-black tracking-wide">{item.name}</h4>
                       {item.description && (
-                        <p className=" text-gray-600 mt-0.5 truncate">{item.description}</p>
+                        <p className="font-light text-gray-600 mt-0.5 truncate">{item.description}</p>
                       )}
                     </div>
                   </div>
-                  <div className="text-lg  text-gray-900 ml-3">
+                  <div className="text-lg font-light text-black ml-3">
                     ฿{item.price.toLocaleString()}
                   </div>
                 </div>
@@ -176,20 +180,20 @@ export function BoothMenuModal({ booth, onClose, onSuccess }: BoothMenuModalProp
 
       <div className="p-4 border-t border-gray-100">
         <div className="flex gap-2 justify-end">
-          <Button
-            variant="secondary"
+          <button
             onClick={onClose}
             disabled={menuSubmitting}
+            className="px-6 py-2 border border-gray-200 text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide disabled:opacity-50"
           >
             ยกเลิก
-          </Button>
-          <Button
-            variant="primary"
+          </button>
+          <button
             onClick={handleMenuSubmit}
             disabled={menuSubmitting || menuLoading}
+            className="bg-black text-white hover:bg-gray-800 px-6 py-2 border border-gray-200 text-sm font-light transition-colors duration-200 tracking-wide disabled:opacity-50"
           >
             {menuSubmitting ? 'กำลังบันทึก...' : 'บันทึก'}
-          </Button>
+          </button>
         </div>
       </div>
     </Modal>

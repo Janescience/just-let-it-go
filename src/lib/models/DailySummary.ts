@@ -5,7 +5,7 @@ interface IDailySummary extends Omit<DailySummary, '_id'>, Document {}
 
 const DailySummarySchema = new Schema<IDailySummary>({
   boothId: {
-    type: Schema.Types.ObjectId,
+    type: String,
     ref: 'Booth',
     required: true,
   },
@@ -30,7 +30,7 @@ const DailySummarySchema = new Schema<IDailySummary>({
   },
   itemsSold: [{
     menuItemId: {
-      type: Schema.Types.ObjectId,
+      type: String,
       ref: 'MenuItem',
       required: true,
     },

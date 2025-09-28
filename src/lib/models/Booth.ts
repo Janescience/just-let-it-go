@@ -97,8 +97,7 @@ const BoothSchema = new Schema<IBooth>({
     },
   }],
   brandId: {
-    type: Schema.Types.ObjectId,
-    ref: 'Brand',
+    type: String,
     required: true,
   },
   isActive: {
@@ -130,6 +129,18 @@ const BoothSchema = new Schema<IBooth>({
       costPerUnit: Number,
     }],
     totalCapital: Number,
+    equipmentId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Equipment',
+    },
+    additionalExpenses: [{
+      description: String,
+      amount: Number,
+      categoryId: {
+        type: Schema.Types.ObjectId,
+        ref: 'ExpenseCategory',
+      },
+    }],
     targetProfit: {
       type: {
         type: String,
@@ -150,4 +161,9 @@ BoothSchema.index({ brandId: 1 });
 BoothSchema.index({ brandId: 1, isActive: 1 });
 BoothSchema.index({ startDate: 1, endDate: 1 });
 
-export default mongoose.models.Booth || mongoose.model<IBooth>('Booth', BoothSchema);
+// Clear the model cache to ensure schema updates are applied
+if (mongoose.models.Booth) {
+  delete mongoose.models.Booth;
+}
+
+export default mongoose.model<IBooth>('Booth', BoothSchema);

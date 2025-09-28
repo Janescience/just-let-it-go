@@ -3,7 +3,7 @@ import { connectDB } from '@/lib/db';
 import { verifyToken } from '@/utils/auth';
 import Booth from '@/lib/models/Booth';
 import MenuItem from '@/lib/models/MenuItem';
-import { menuEmitter } from '@/app/api/events/menu/route';
+import { menuEmitter } from '@/utils/menuEmitter';
 
 export async function PUT(
   request: NextRequest,
@@ -164,10 +164,10 @@ export async function GET(
 
     // Calculate stock status for each menu item
     const menuItemsWithStock = booth.menuItems.map((menuItem: any) => {
-      const menuIngredients = menuItem.ingredients.map((ing: any) => {
+      const menuIngredients = menuItem.ingredients.map((ing: { ingredientId: any; quantity: number }) => {
         // Find corresponding booth stock
         const boothStock = booth.boothStock.find(
-          (stock: any) => stock.ingredientId._id.toString() === ing.ingredientId._id.toString()
+          (stock: { ingredientId: any; allocatedQuantity: number; usedQuantity: number; remainingQuantity: number }) => stock.ingredientId._id.toString() === ing.ingredientId._id.toString()
         );
 
         const allocated = boothStock?.allocatedQuantity || 0;
@@ -204,11 +204,11 @@ export async function GET(
 
       // Calculate max servings for this menu item (limited by ingredient with least servings)
       const maxServings = menuIngredients.length > 0
-        ? Math.min(...menuIngredients.map(ing => ing.possibleServings))
+        ? Math.min(...menuIngredients.map((ing: { possibleServings: number }) => ing.possibleServings))
         : 0;
 
       // Find limiting ingredient
-      const limitingIngredient = menuIngredients.find(ing => ing.possibleServings === maxServings);
+      const limitingIngredient = menuIngredients.find((ing: { possibleServings: number }) => ing.possibleServings === maxServings);
 
       return {
         _id: menuItem._id,

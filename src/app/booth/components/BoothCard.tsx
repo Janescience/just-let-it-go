@@ -1,7 +1,5 @@
 import React from 'react';
-import { MapPin, Calendar, TrendingUp, AlertTriangle, Users, Flame, Eye, ShoppingCart } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui';
-import { Button } from '@/components/ui';
+import { Calendar, TrendingUp, AlertTriangle, Users, Flame, Eye, ShoppingCart } from 'lucide-react';
 import { Booth } from '@/types';
 
 interface BoothStats {
@@ -121,15 +119,15 @@ export function BoothCard({ booth, stats, onClick, onSaleClick }: BoothCardProps
   };
 
   return (
-    <Card
-      className="cursor-pointer transition-all duration-300 rounded-lg border border-gray-200 bg-white hover:shadow-md"
+    <div
+      className="cursor-pointer transition-all duration-300 border border-gray-100 bg-white hover:border-gray-200 flex flex-col h-full"
       onClick={handleCardClick}
     >
       {/* Header */}
-      <CardHeader className="pb-3">
+      <div className="p-6 pb-3">
         <div className="flex items-start justify-between">
           <div className="flex flex-col gap-1">
-            <CardTitle className="text-lg md:text-xl font-light text-gray-800 tracking-wide">
+            <h3 className="text-lg font-light text-black tracking-wide">
               <div className="flex items-center gap-2">
                 {booth.name}
                 {isUnderperforming && (
@@ -141,20 +139,20 @@ export function BoothCard({ booth, stats, onClick, onSaleClick }: BoothCardProps
                   </div>
                 )}
               </div>
-            </CardTitle>
+            </h3>
             <div className="flex gap-2">
               {booth.isActive && !isExpired && !isUpcoming && (
-                <span className="border border-gray-300 text-gray-700 px-2 py-0.5 rounded-full text-xs font-light">
+                <span className="border border-gray-200 text-gray-700 px-2 py-0.5 text-xs font-light">
                   เปิดใช้งาน
                 </span>
               )}
               {isExpired && (
-                <span className="border border-gray-300 text-gray-500 px-2 py-0.5 rounded-full text-xs font-light">
+                <span className="border border-gray-200 text-gray-500 px-2 py-0.5 text-xs font-light">
                   หมดอายุ
                 </span>
               )}
               {isUpcoming && (
-                <span className="border border-gray-300 text-gray-500 px-2 py-0.5 rounded-full text-xs font-light">
+                <span className="border border-gray-200 text-gray-500 px-2 py-0.5 text-xs font-light">
                   ยังไม่เริ่ม
                 </span>
               )}
@@ -162,15 +160,15 @@ export function BoothCard({ booth, stats, onClick, onSaleClick }: BoothCardProps
           </div>
 
           <div className="flex flex-col items-end">
-            <span className="border border-gray-300 text-gray-600 text-xs px-2 py-0.5 rounded-full font-light">
+            <span className="border border-gray-200 text-gray-600 text-xs px-2 py-0.5 font-light">
               เหลือ {daysLeft} วัน
             </span>
           </div>
         </div>
-      </CardHeader>
+      </div>
 
       {/* Content */}
-      <CardContent className="space-y-5">
+      <div className="flex-1 px-6 space-y-5 mb-2">
         {/* Progress */}
         <div className="space-y-2">
           <div className="flex justify-between text-xs font-light text-gray-600">
@@ -213,7 +211,7 @@ export function BoothCard({ booth, stats, onClick, onSaleClick }: BoothCardProps
 
         {/* Metrics */}
         <div className="grid grid-cols-3 gap-2 text-sm">
-          <div className="flex flex-col border border-gray-200 rounded-md bg-gray-50 px-2 py-1">
+          <div className="flex flex-col border border-gray-200 bg-gray-50 px-2 py-1">
             <div className="flex items-center gap-2 ">
               <Calendar className="w-4 h-4 text-blue-500" />
               <span className="text-gray-500 text-xs">วันนี้</span>
@@ -223,7 +221,7 @@ export function BoothCard({ booth, stats, onClick, onSaleClick }: BoothCardProps
             </span>
           </div>
 
-          <div className="flex flex-col border border-gray-200 rounded-md bg-gray-50 px-2 py-1">
+          <div className="flex flex-col border border-gray-200 bg-gray-50 px-2 py-1">
             <div className="flex items-center gap-2 ">
               <TrendingUp className="w-4 h-4 text-gray-500" />
               <span className="text-gray-500 text-xs">เฉลี่ย/วัน</span>
@@ -234,7 +232,7 @@ export function BoothCard({ booth, stats, onClick, onSaleClick }: BoothCardProps
           </div>
 
           {dailyTargetToBreakEven > 0 && (
-            <div className="flex flex-col border border-gray-200 rounded-md bg-gray-50 px-2 py-1">
+            <div className="flex flex-col border border-gray-200 bg-gray-50 px-2 py-1">
               <div className="flex items-center gap-2 ">
                 <Calendar className="w-4 h-4 text-gray-500" />
                 <span className="text-gray-500 text-xs">เป้า/วัน</span>
@@ -246,11 +244,10 @@ export function BoothCard({ booth, stats, onClick, onSaleClick }: BoothCardProps
           )}
         </div>
 
-
         {/* Alerts */}
         {(stats?.booth.topSellingItem && (
           <div className="space-y-2">
-              <div className="flex items-center gap-2 border border-gray-200 px-3 py-2 rounded-md bg-gray-50">
+              <div className="flex items-center gap-2 border border-gray-200 px-3 py-2 bg-gray-50">
                 <Flame className="w-4 h-4 text-gray-500" />
                 <span className="text-xs text-gray-700">
                   ขายดี:{' '}
@@ -263,53 +260,49 @@ export function BoothCard({ booth, stats, onClick, onSaleClick }: BoothCardProps
           </div>
         )
         )}
+      </div>
 
-        {/* Footer */}
-        <div className="border-t pt-3 mt-auto">
-          <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+      {/* Fixed Footer */}
+      <div className="border-t border-gray-100  p-4 mt-auto">
+        <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+          <div className="flex items-center gap-1">
+            <Calendar className="w-4 h-4" />
+            <span>
+              {formatDate(booth.startDate)} - {formatDate(booth.endDate)}
+            </span>
+          </div>
+          {booth.employees?.length > 0 && (
             <div className="flex items-center gap-1">
-              <Calendar className="w-4 h-4" />
+              <Users className="w-4 h-4" />
               <span>
-                {formatDate(booth.startDate)} - {formatDate(booth.endDate)}
+                {booth.employees.slice(0, 2).map((emp: any) => emp.name || 'พนักงาน').join(', ')}
+                {booth.employees.length > 2 &&
+                  ` +${booth.employees.length - 2}`}
               </span>
             </div>
-            {booth.employees?.length > 0 && (
-              <div className="flex items-center gap-1">
-                <Users className="w-4 h-4" />
-                <span>
-                  {booth.employees.slice(0, 2).map((emp) => emp.name).join(', ')}
-                  {booth.employees.length > 2 &&
-                    ` +${booth.employees.length - 2}`}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleViewClick}
-              className="flex-1 flex items-center gap-1 text-xs font-light"
-            >
-              <Eye className="w-3 h-3" />
-              ดูข้อมูล
-            </Button>
-            {booth.isActive && !isExpired && !isUpcoming && onSaleClick && (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleSaleClick}
-                className="flex-1 flex items-center gap-1 text-xs font-light"
-              >
-                <ShoppingCart className="w-3 h-3" />
-                ขาย
-              </Button>
-            )}
-          </div>
+          )}
         </div>
-      </CardContent>
-    </Card>
+
+        {/* Action Buttons */}
+        <div className="flex gap-2">
+          <button
+            onClick={handleViewClick}
+            className="flex-1 flex items-center justify-center gap-1 text-xs font-light px-3 py-2 border border-gray-200 text-black hover:bg-white transition-colors duration-200"
+          >
+            <Eye className="w-3 h-3" />
+            ดูข้อมูล
+          </button>
+          {booth.isActive && !isExpired && !isUpcoming && onSaleClick && (
+            <button
+              onClick={handleSaleClick}
+              className="flex-1 flex items-center justify-center gap-1 text-xs font-light px-3 py-2 bg-black text-white hover:bg-gray-800 transition-colors duration-200"
+            >
+              <ShoppingCart className="w-3 h-3" />
+              ขาย
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

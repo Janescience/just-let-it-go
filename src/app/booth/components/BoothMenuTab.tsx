@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChefHat, Plus, DollarSign, Package, AlertTriangle, CheckCircle, UtensilsCrossed } from 'lucide-react';
-import { Button, Input } from '@/components/ui';
+// No UI imports needed
 import { Booth, MenuWithStock } from '@/types';
 
 interface BoothMenuTabProps {
@@ -92,35 +92,28 @@ export function BoothMenuTab({ booth, onRefresh, onOpenMenuModal }: BoothMenuTab
   }, [booth._id]);
 
   return (
-    <div className="space-y-4">
-      {/* Header Section */}
-      <div className="p-2">
-        <div className="flex items-center justify-end">
-          <Button
-            variant="primary"
-            size="md"
-            onClick={onOpenMenuModal}
-          >
-            <Plus className="w-5 h-5" />
-            จัดการเมนู
-          </Button>
-        </div>
-      </div>
-
+    <div className="space-y-6">
       {/* Menu Items */}
-      <div className="border border-gray-200 rounded-lg bg-white">
-        <div className="p-4 border-b border-gray-200 bg-gray-50">
-          <div className="flex items-center gap-3">
-            <UtensilsCrossed className="w-5 h-5 text-gray-500" />
-            <div className="text-lg font-light text-gray-800 tracking-wide">รายการเมนู ({booth.menuItems?.length || 0} รายการ)</div>
+      <div className="border border-gray-100 p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <UtensilsCrossed className="w-4 h-4 text-gray-600" />
+            <label className="text-lg font-light text-black tracking-wide">รายการเมนู ({booth.menuItems?.length || 0} รายการ)</label>
           </div>
+          <button
+            onClick={onOpenMenuModal}
+            className="px-6 py-2 border border-gray-200 text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            จัดการเมนู
+          </button>
         </div>
 
-        <div className="">
+        <div className="space-y-6">
           {loading ? (
-            <div className="space-y-0">
+            <div className="space-y-6">
               {[...Array(4)].map((_, index) => (
-                <div key={index} className={`p-4 border-b border-gray-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} space-y-4`}>
+                <div key={index} className="space-y-4">
                   {/* Menu header skeleton */}
                   <div className="flex justify-between items-start">
                     <div className="space-y-2 flex-1">
@@ -144,56 +137,50 @@ export function BoothMenuTab({ booth, onRefresh, onOpenMenuModal }: BoothMenuTab
               ))}
             </div>
           ) : menuWithStock && menuWithStock.length > 0 ? (
-            <div className="space-y-0">
+            <div className="space-y-6">
               {menuWithStock.map((item: MenuWithStock, index: number) => (
-                <div key={item._id || index} className={`p-4 border-b border-gray-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                <div key={item._id || index} className="border-b border-gray-100 pb-6 last:border-b-0">
                   {/* Menu Header */}
-                  <div className="flex justify-end items-end ">
-                    <div className="flex-1">
-                      <div className="text-lg font-light text-gray-800 mb-3">{item.name}</div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="w-4 h-4 text-gray-600" />
-                          <span className="font-light text-gray-600">ราคาขาย:</span>
-                          <span className="font-light text-gray-800">฿{item.price?.toLocaleString()}</span>
+                  <div className="flex-1">
+                    <div className="font-light text-black tracking-wide text-lg mb-4">{item.name}</div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">ราคาขาย</div>
+                        <div className="font-light text-black">฿{item.price?.toLocaleString()}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">ต้นทุน</div>
+                        <div className="font-light text-gray-700">
+                          ฿{(() => {
+                            const totalCost = item.ingredients?.reduce((cost: number, ing: any) => {
+                              // หา ingredient จาก API /ingredients ด้วย ingredientId
+                              const ingredient = ingredients.find(avail => avail._id === ing.ingredientId);
+                              const costPerUnit = ingredient ? ingredient.costPerUnit : 0;
+                              const quantity = ing.quantityNeeded || 0;
+                              return cost + (costPerUnit * quantity);
+                            }, 0) || 0;
+                            return totalCost.toFixed(2);
+                          })()}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Package className="w-4 h-4 text-gray-600" />
-                          <span className="font-light text-gray-600">ต้นทุน:</span>
-                          <span className="font-light text-gray-700">
-                            ฿{(() => {
-                              const totalCost = item.ingredients?.reduce((cost: number, ing: any) => {
-                                // หา ingredient จาก API /ingredients ด้วย ingredientId
-                                const ingredient = ingredients.find(avail => avail._id === ing.ingredientId);
-                                const costPerUnit = ingredient ? ingredient.costPerUnit : 0;
-                                const quantity = ing.quantityNeeded || 0;
-                                return cost + (costPerUnit * quantity);
-                              }, 0) || 0;
-                              return totalCost.toFixed(2);
-                            })()}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4 text-gray-600" />
-                          <span className="font-light text-gray-600">กำไร:</span>
-                          <span className="font-light text-gray-700">
-                            ฿{(() => {
-                              const totalCost = item.ingredients?.reduce((cost: number, ing: any) => {
-                                // หา ingredient จาก API /ingredients ด้วย ingredientId
-                                const ingredient = ingredients.find(avail => avail._id === ing.ingredientId);
-                                const costPerUnit = ingredient ? ingredient.costPerUnit : 0;
-                                const quantity = ing.quantityNeeded || 0;
-                                return cost + (costPerUnit * quantity);
-                              }, 0) || 0;
-                              const profit = (item.price || 0) - totalCost;
-                              return profit.toFixed(2);
-                            })()}
-                          </span>
+                      </div>
+                      <div>
+                        <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">กำไร</div>
+                        <div className="font-light text-black">
+                          ฿{(() => {
+                            const totalCost = item.ingredients?.reduce((cost: number, ing: any) => {
+                              // หา ingredient จาก API /ingredients ด้วย ingredientId
+                              const ingredient = ingredients.find(avail => avail._id === ing.ingredientId);
+                              const costPerUnit = ingredient ? ingredient.costPerUnit : 0;
+                              const quantity = ing.quantityNeeded || 0;
+                              return cost + (costPerUnit * quantity);
+                            }, 0) || 0;
+                            const profit = (item.price || 0) - totalCost;
+                            return profit.toFixed(2);
+                          })()}
                         </div>
                       </div>
                     </div>
                   </div>
-
                 </div>
               ))}
             </div>
@@ -202,14 +189,13 @@ export function BoothMenuTab({ booth, onRefresh, onOpenMenuModal }: BoothMenuTab
               <UtensilsCrossed className="w-12 h-12 text-gray-300 mx-auto mb-4" />
               <div className="text-lg font-light text-gray-800 mb-2">ยังไม่มีเมนูที่กำหนดไว้</div>
               <div className="text-sm font-light text-gray-500 mb-6">เริ่มต้นเพิ่มเมนูแรกของคุณ</div>
-              <Button
-                variant="primary"
+              <button
                 onClick={onOpenMenuModal}
-                className="flex items-center gap-2"
+                className="px-6 py-2 border border-gray-200 text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide inline-flex items-center gap-2"
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-4 h-4" />
                 เพิ่มเมนู
-              </Button>
+              </button>
             </div>
           )}
         </div>

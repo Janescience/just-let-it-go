@@ -5,7 +5,7 @@ interface IQRPayment extends Omit<QRPayment, '_id'>, Document {}
 
 const QRPaymentSchema = new Schema<IQRPayment>({
   saleId: {
-    type: Schema.Types.ObjectId,
+    type: String,
     ref: 'Sale',
     required: true,
   },

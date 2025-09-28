@@ -23,7 +23,7 @@ const MenuItemSchema = new Schema<IMenuItem>({
   },
   ingredients: [{
     ingredientId: {
-      type: Schema.Types.ObjectId,
+      type: String,
       ref: 'Ingredient',
       required: true,
     },
@@ -34,7 +34,7 @@ const MenuItemSchema = new Schema<IMenuItem>({
     },
   }],
   brandId: {
-    type: Schema.Types.ObjectId,
+    type: String,
     ref: 'Brand',
     required: true,
   },

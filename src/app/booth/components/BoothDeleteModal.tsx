@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Trash2 } from 'lucide-react';
-import { Modal, Input, ModalActionButton } from '@/components/ui';
+import { Modal, ModalActionButton } from '@/components/ui';
 import { Booth } from '@/types';
 
 interface BoothDeleteModalProps {
@@ -79,14 +79,14 @@ export function BoothDeleteModal({ booth, onClose, onSuccess }: BoothDeleteModal
         </div>
 
         <div>
-          <label className="block text-sm font-light text-gray-600 mb-2">
+          <label className="text-xs font-light text-gray-400 mb-2 tracking-wider uppercase block">
             พิมพ์ "{booth.name}" เพื่อยืนยัน:
           </label>
-          <Input
+          <input
             value={deleteConfirmText}
             onChange={(e) => setDeleteConfirmText(e.target.value)}
             placeholder={booth.name}
-            className="text-center"
+            className="text-center border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none w-full px-3 py-2"
           />
         </div>
       </div>

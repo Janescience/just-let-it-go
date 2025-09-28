@@ -166,7 +166,7 @@ export class RealtimeBroadcaster {
     const targetClients = [
       event.boothId,
       event.brandId
-    ].filter(Boolean);
+    ].filter((id): id is string => Boolean(id));
 
     targetClients.forEach(clientId => {
       const writers = this.clients.get(clientId);

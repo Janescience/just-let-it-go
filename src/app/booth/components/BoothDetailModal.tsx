@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Store, DollarSign } from 'lucide-react';
-import { Modal, Button } from '@/components/ui';
+import { Store, DollarSign, Package } from 'lucide-react';
+import { Modal } from '@/components/ui';
 import { Booth } from '@/types';
 import { BoothSalesTab } from './BoothSalesTab';
 import { BoothMenuTab } from './BoothMenuTab';
@@ -120,20 +120,18 @@ export function BoothDetailModal({
   const footerButtons = (
     <div className="p-6">
       <div className="flex gap-3 justify-end">
-        <Button
-          variant="secondary"
+        <button
           onClick={onEdit}
-          size="md"
+          className="px-6 py-2 border border-gray-200 text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide"
         >
           แก้ไข
-        </Button>
-        <Button
-          variant="danger"
+        </button>
+        <button
           onClick={onDelete}
-          size="md"
+          className="px-6 py-2 border border-red-200 text-sm font-light text-red-600 hover:bg-red-50 transition-colors duration-200 tracking-wide"
         >
           ลบ
-        </Button>
+        </button>
       </div>
     </div>
   );
@@ -150,117 +148,117 @@ export function BoothDetailModal({
     >
 
         {/* Tab Navigation */}
-        <div className="border-b border-gray-100">
-        <div className="flex border-b border-gray-100 px-4 py-2">
+        <div className="flex border-b border-gray-100 px-6">
           <button
             onClick={() => setActiveTab('detail')}
-            className={`flex-1 py-3 px-4  font-light transition-colors ${
+            className={`px-6 py-4 text-sm font-light tracking-wide transition-all duration-200 ${
               activeTab === 'detail'
-                ? 'text-gray-800 border-b-2 border-gray-800 bg-white'
-                : 'text-gray-500 hover:text-gray-800 bg-gray-50'
+                ? 'text-black border-b-2 border-black'
+                : 'text-gray-400 hover:text-gray-600'
             }`}
           >
             ข้อมูลร้าน
           </button>
           <button
             onClick={() => setActiveTab('sales')}
-            className={`flex-1 py-3 px-4  font-light transition-colors ${
+            className={`px-6 py-4 text-sm font-light tracking-wide transition-all duration-200 ${
               activeTab === 'sales'
-                ? 'text-gray-800 border-b-2 border-gray-800 bg-white'
-                : 'text-gray-500 hover:text-gray-800 bg-gray-50'
+                ? 'text-black border-b-2 border-black'
+                : 'text-gray-400 hover:text-gray-600'
             }`}
           >
             ยอดขาย
           </button>
           <button
             onClick={() => setActiveTab('menu')}
-            className={`flex-1 py-3 px-4  font-light transition-colors ${
+            className={`px-6 py-4 text-sm font-light tracking-wide transition-all duration-200 ${
               activeTab === 'menu'
-                ? 'text-gray-800 border-b-2 border-gray-800 bg-white'
-                : 'text-gray-500 hover:text-gray-800 bg-gray-50'
+                ? 'text-black border-b-2 border-black'
+                : 'text-gray-400 hover:text-gray-600'
             }`}
           >
             จัดการเมนู
           </button>
         </div>
-      </div>
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto p-1 md:p-6">
+        <div className="flex-1 overflow-y-auto p-6">
         {/* Tab 1: Booth Detail - Step3Summary Style */}
         {activeTab === 'detail' && (
-          <div className="space-y-4">
+          <div className="space-y-6">
 
             {/* Step 1 Summary: Basic Information */}
-            <div className="border border-gray-200 p-3">
-              <div className="flex items-center gap-2 mb-3">
+            <div className="border border-gray-100 p-6">
+              <div className="flex items-center gap-2 mb-4">
                 <Store className="w-4 h-4 text-gray-600" />
-                <label className="text-lg text-gray-700">ข้อมูลพื้นฐาน</label>
+                <label className="text-lg font-light text-black tracking-wide">ข้อมูลพื้นฐาน</label>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span>ชื่อร้าน:</span>
-                    <span className="text-gray-700 font-medium">{booth.name}</span>
+                    <span className="font-light">ชื่อบูธ:</span>
+                    <span className="font-light text-black">{booth.name}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>สถานที่:</span>
-                    <span className="text-gray-700">{booth.location}</span>
+                    <span className="font-light">สถานที่:</span>
+                    <span className="font-light text-gray-700">{booth.location}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>ระยะเวลา:</span>
-                    <span className="text-gray-700 text-sm">
-                      {Math.ceil((new Date(booth.endDate).getTime() - new Date(booth.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1} วัน ({formatDate(booth.startDate)} - {formatDate(booth.endDate)})
-                    </span>
+                    <span className="font-light">ระยะเวลา:</span>
+                    <span className="font-light text-gray-700">{Math.ceil((new Date(booth.endDate).getTime() - new Date(booth.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1} วัน ({formatDate(booth.startDate)} - {formatDate(booth.endDate)})</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>เวลาทำการ:</span>
-                    <span className="text-gray-700">{booth.openingHours?.start} - {booth.openingHours?.end}</span>
+                    <span className="font-light">เวลาทำการ:</span>
+                    <span className="font-light text-gray-700">{booth.openingHours?.start} - {booth.openingHours?.end}</span>
                   </div>
                   {booth.businessPlan?.equipmentId && (
                     <div className="flex justify-between">
-                      <span>อุปกรณ์:</span>
-                      <span className="text-gray-700">มีอุปกรณ์ชุดประจำหน้าร้าน</span>
+                      <span className="font-light">อุปกรณ์:</span>
+                      <span className="font-light text-gray-700">
+                        {typeof booth.businessPlan.equipmentId === 'object' && booth.businessPlan.equipmentId !== null && 'name' in booth.businessPlan.equipmentId
+                          ? (booth.businessPlan.equipmentId as any).name
+                          : 'มีอุปกรณ์ชุดประจำหน้าร้าน'}
+                      </span>
                     </div>
                   )}
                 </div>
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span>ค่าเช่า:</span>
-                    <span className="text-gray-700 font-medium">฿{booth.rentCost.toLocaleString()}</span>
+                    <span className="font-light">ค่าเช่าบูธ:</span>
+                    <span className="font-light text-black">฿{booth.rentCost.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>พนักงาน:</span>
-                    <span className="text-gray-700">{booth.employees?.length || 0} คน</span>
+                    <span className="font-light">พนักงาน:</span>
+                    <span className="font-light text-gray-700">{booth.employees?.length || 0} คน</span>
                   </div>
                   {booth.businessPlan && (
                     <div className="flex justify-between">
-                      <span>ค่าแรงรวม:</span>
-                      <span className="text-gray-700 font-medium">
+                      <span className="font-light">ค่าแรงรวม:</span>
+                      <span className="font-light text-black">
                         ฿{booth.businessPlan.fixedCosts?.staff?.toLocaleString() || '0'}
                       </span>
                     </div>
                   )}
                   {booth.employees && booth.employees.length > 0 && (
                     <div className="space-y-1">
-                      <div>รายชื่อพนักงาน:</div>
+                      <div className="font-light">รายชื่อพนักงาน:</div>
                       {booth.employees.map((emp, index) => (
-                        <div key={index} className="text-sm text-gray-600">
-                          {emp.name} ({emp.position || 'พนักงาน'}) - ฿{emp.salary}
+                        <div key={index} className="text-sm font-light text-gray-600">
+                          {emp.name} ({emp.position || 'พนักงาน'}) - ฿{emp.salary}/วัน
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
                 <div className="space-y-3">
-                  <div className="mb-2">ข้อมูลการเข้าสู่ระบบ POS</div>
-                  <div className="border border-gray-200 p-3">
-                    <div className="text-sm text-gray-600">Username:</div>
-                    <div className="text-gray-800">{booth.staff?.username}</div>
+                  <div className="mb-2 font-light">ข้อมูลการเข้าสู่ระบบ POS</div>
+                  <div className="border border-gray-100 p-3">
+                    <div className="text-xs font-light text-gray-400 tracking-wider uppercase">Username:</div>
+                    <div className="font-light text-black">{booth.staff?.username}</div>
                   </div>
-                  <div className="border border-gray-200 p-3">
-                    <div className="text-sm text-gray-600">Password:</div>
-                    <div className="text-gray-800">{booth.staff?.password}</div>
+                  <div className="border border-gray-100 p-3">
+                    <div className="text-xs font-light text-gray-400 tracking-wider uppercase">Password:</div>
+                    <div className="font-light text-black">{booth.staff?.password}</div>
                   </div>
                 </div>
               </div>
@@ -269,29 +267,29 @@ export function BoothDetailModal({
 
             {/* Financial Summary */}
             {booth.businessPlan && (
-              <div className="border border-gray-200 p-3">
-                <div className="flex items-center gap-2 mb-3">
+              <div className="border border-gray-100 p-6">
+                <div className="flex items-center gap-2 mb-4">
                   <DollarSign className="w-4 h-4 text-gray-600" />
-                  <label className="text-lg text-gray-700">สรุปทางการเงิน</label>
+                  <label className="text-lg font-light text-black tracking-wide">สรุปรวม</label>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <div className="flex justify-between">
-                        <span className="font-medium">ต้นทุนคงที่:</span>
-                        <span className="font-medium">
+                        <span className="font-light">ต้นทุนคงที่:</span>
+                        <span className="font-light text-black">
                           ฿{booth.businessPlan.fixedCosts?.total?.toLocaleString() || '0'}
                         </span>
                       </div>
                       <div className="pl-4 space-y-1 text-sm text-gray-600">
                         <div className="flex justify-between">
-                          <span>- ค่าเช่าหน้าร้าน:</span>
-                          <span>฿{booth.businessPlan.fixedCosts?.rent?.toLocaleString() || booth.rentCost.toLocaleString()}</span>
+                          <span className="font-light">- ค่าเช่าบูธ ({Math.ceil((new Date(booth.endDate).getTime() - new Date(booth.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1} วัน):</span>
+                          <span className="font-light">฿{booth.businessPlan.fixedCosts?.rent?.toLocaleString() || booth.rentCost.toLocaleString()}</span>
                         </div>
                         {booth.businessPlan.fixedCosts?.staff && (
                           <div className="flex justify-between">
-                            <span>- ค่าแรงพนักงาน:</span>
-                            <span>฿{booth.businessPlan.fixedCosts.staff.toLocaleString()}</span>
+                            <span className="font-light">- ค่าแรงพนักงาน ({Math.ceil((new Date(booth.endDate).getTime() - new Date(booth.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1} วัน):</span>
+                            <span className="font-light">฿{booth.businessPlan.fixedCosts.staff.toLocaleString()}</span>
                           </div>
                         )}
                         {(() => {
@@ -300,47 +298,90 @@ export function BoothDetailModal({
                           const rent = booth.businessPlan.fixedCosts?.rent || 0;
                           const staff = booth.businessPlan.fixedCosts?.staff || 0;
                           const total = booth.businessPlan.fixedCosts?.total || 0;
-                          const equipmentFromCalc = total - rent - staff;
+                          const additionalExpenses = booth.businessPlan.fixedCosts?.additionalExpenses || 0;
+                          const equipmentFromCalc = total - rent - staff - additionalExpenses;
                           const equipmentCost = booth.businessPlan.fixedCosts?.equipment || equipmentFromCalc;
 
                           return (hasEquipment || equipmentCost > 0) && (
                             <div className="flex justify-between">
-                              <span>- ค่าอุปกรณ์ ({Math.ceil((new Date(booth.endDate).getTime() - new Date(booth.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1} วัน):</span>
-                              <span>฿{Math.max(equipmentCost, 0).toLocaleString()}</span>
+                              <span className="font-light">- ค่าอุปกรณ์ ({Math.ceil((new Date(booth.endDate).getTime() - new Date(booth.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1} วัน):</span>
+                              <span className="font-light">฿{Math.max(equipmentCost, 0).toLocaleString()}</span>
                             </div>
                           );
                         })()}
-                        {booth.businessPlan.fixedCosts?.additionalExpenses && (
+                        {/* Additional Costs Details */}
+                        {booth.businessPlan.additionalExpenses && booth.businessPlan.additionalExpenses.length > 0 && (
+                          <div className="space-y-2">
+                            <div className="font-light text-gray-600">- ค่าใช้จ่ายเพิ่มเติม:</div>
+                            {booth.businessPlan.additionalExpenses.map((expense, index) => (
+                              <div key={index} className="flex justify-between pl-4">
+                                <span className="font-light text-gray-600">• {expense.description}</span>
+                                <span className="font-light">฿{expense.amount.toLocaleString()}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {/* Fallback for old data structure */}
+                        {!booth.businessPlan.additionalExpenses && booth.businessPlan.fixedCosts?.additionalExpenses && (
                           <div className="flex justify-between">
-                            <span>- ค่าใช้จ่ายเพิ่มเติม:</span>
-                            <span>฿{booth.businessPlan.fixedCosts.additionalExpenses.toLocaleString()}</span>
+                            <span className="font-light">- ค่าใช้จ่ายเพิ่มเติม:</span>
+                            <span className="font-light">฿{booth.businessPlan.fixedCosts.additionalExpenses.toLocaleString()}</span>
                           </div>
                         )}
                       </div>
                     </div>
-                    {booth.businessPlan.breakEven && (
+
+                    {/* Variable Costs Section */}
+                    {booth.businessPlan.ingredients && (
                       <div className="space-y-2">
                         <div className="flex justify-between">
-                          <span className="font-medium">เป้าหมายคุ้มทุน:</span>
-                          <span className="font-medium">{booth.businessPlan.breakEven.unitsNeeded} จาน</span>
+                          <span className="font-light">ต้นทุนผันแปร:</span>
+                          <span className="font-light text-black">
+                            ฿{booth.businessPlan.ingredients.reduce((sum: number, ing: any) => sum + (ing.cost || 0), 0).toLocaleString()}
+                          </span>
                         </div>
                         <div className="pl-4 space-y-1 text-sm text-gray-600">
                           <div className="flex justify-between">
-                            <span>- รายได้ต้องการ:</span>
-                            <span>฿{booth.businessPlan.breakEven.revenueNeeded?.toLocaleString() || '0'}</span>
+                            <span className="font-light">- ค่าวัตถุดิบ:</span>
+                            <span className="font-light">฿{booth.businessPlan.ingredients.reduce((sum: number, ing: any) => sum + (ing.cost || 0), 0).toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Reserve Fund Section */}
+                    {booth.businessPlan.fixedCosts?.total && booth.businessPlan.ingredients && (
+                      <div className="flex justify-between border-t pt-2">
+                        <span className="font-light">เงินสำรอง (10%):</span>
+                        <span className="font-light text-black">
+                          ฿{((booth.businessPlan.fixedCosts.total + booth.businessPlan.ingredients.reduce((sum: number, ing: any) => sum + (ing.cost || 0), 0)) * 0.1).toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+
+                    {booth.businessPlan.breakEven && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="font-light">เป้าหมายคุ้มทุน:</span>
+                          <span className="font-light text-black">{booth.businessPlan.breakEven.unitsNeeded} จาน</span>
+                        </div>
+                        <div className="pl-4 space-y-1 text-sm text-gray-600">
+                          <div className="flex justify-between">
+                            <span className="font-light">- รายได้ต้องการ:</span>
+                            <span className="font-light">฿{booth.businessPlan.breakEven.revenueNeeded?.toLocaleString() || '0'}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span>- เป้าหมายต่อวัน:</span>
-                            <span>{booth.businessPlan.breakEven.dailyTarget || 0} จาน</span>
+                            <span className="font-light">- เป้าหมายต่อวัน:</span>
+                            <span className="font-light">{booth.businessPlan.breakEven.dailyTarget || 0} จาน</span>
                           </div>
                         </div>
                       </div>
                     )}
                   </div>
                   <div className="flex items-center justify-center">
-                    <div className="border border-gray-200 p-6 text-center">
-                      <div className="text-sm text-gray-600 mb-2">เงินทุนที่ใช้</div>
-                      <div className="text-3xl font-bold text-gray-800">
+                    <div className="border border-gray-100 p-6 text-center">
+                      <div className="text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">เงินทุนที่ใช้</div>
+                      <div className="text-3xl font-light text-black tracking-wide">
                         ฿{booth.businessPlan.totalCapital?.toLocaleString() || '0'}
                       </div>
                     </div>
@@ -351,24 +392,24 @@ export function BoothDetailModal({
 
             {/* Profit Ladder */}
             {booth.businessPlan && booth.businessPlan.breakEven && (
-              <div className="border border-gray-200 p-3">
-                <div className="flex items-center gap-2 mb-3">
-                  <DollarSign className="w-4 h-4 text-gray-600" />
-                  <label className="text-lg text-gray-700">เปรียบเทียบกำไร</label>
+              <div className="border border-gray-100 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Package className="w-4 h-4 text-gray-600" />
+                  <label className="text-lg font-light text-black tracking-wide">เปรียบเทียบกำไร</label>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-gray-200">
-                        <th className="text-center py-2 px-2 whitespace-nowrap">เปอร์เซ็นต์กำไร</th>
-                        <th className="text-right py-2 px-2 whitespace-nowrap">ต้นทุนคงที่</th>
-                        <th className="text-right py-2 px-2 whitespace-nowrap">ต้นทุนผันแปร</th>
-                        <th className="text-right py-2 px-2 whitespace-nowrap">เงินทุนรวม</th>
-                        <th className="text-right py-2 px-2 whitespace-nowrap">กำไรที่ได้</th>
-                        <th className="text-right py-2 px-2 whitespace-nowrap">ขายได้</th>
-                        <th className="text-center py-2 px-2 whitespace-nowrap">ขายทั้งหมด (จาน)</th>
-                        <th className="text-center py-2 px-2 whitespace-nowrap">วันล่ะ (จาน)</th>
-                        <th className="text-right py-2 px-2 whitespace-nowrap">ขายได้วันล่ะ</th>
+                        <th className="text-center py-2 px-2 whitespace-nowrap font-light">เปอร์เซ็นต์กำไร</th>
+                        <th className="text-right py-2 px-2 whitespace-nowrap font-light">ต้นทุนคงที่</th>
+                        <th className="text-right py-2 px-2 whitespace-nowrap font-light">ต้นทุนผันแปร</th>
+                        <th className="text-right py-2 px-2 whitespace-nowrap font-light">เงินทุนรวม</th>
+                        <th className="text-right py-2 px-2 whitespace-nowrap font-light">กำไรที่ได้</th>
+                        <th className="text-right py-2 px-2 whitespace-nowrap font-light">ขายได้</th>
+                        <th className="text-center py-2 px-2 whitespace-nowrap font-light">ขายทั้งหมด (จาน)</th>
+                        <th className="text-center py-2 px-2 whitespace-nowrap font-light">วันล่ะ (จาน)</th>
+                        <th className="text-right py-2 px-2 whitespace-nowrap font-light">ขายได้วันล่ะ</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -417,15 +458,15 @@ export function BoothDetailModal({
 
                         return (
                           <tr key={profit} className="border-b border-gray-100 hover:bg-gray-50">
-                            <td className="text-center py-2 font-medium">{profit}%</td>
-                            <td className="text-right py-2">฿{Math.round(fixedCosts).toLocaleString()}</td>
-                            <td className="text-right py-2">฿{Math.round(ingredientCost).toLocaleString()}</td>
-                            <td className="text-right py-2">฿{Math.round(finalTotalCapital).toLocaleString()}</td>
-                            <td className="text-right py-2 font-medium text-gray-800">฿{Math.round(totalProfit).toLocaleString()}</td>
-                            <td className="text-right py-2">฿{Math.round(requiredRevenue).toLocaleString()}</td>
-                            <td className="text-center py-2">{finalUnitsNeeded.toLocaleString()}</td>
-                            <td className="text-center py-2">{dailyUnitsNeeded.toLocaleString()}</td>
-                            <td className="text-right py-2">฿{dailyRevenue.toLocaleString()}</td>
+                            <td className="text-center py-2 font-light">{profit}%</td>
+                            <td className="text-right py-2 font-light">฿{Math.round(fixedCosts).toLocaleString()}</td>
+                            <td className="text-right py-2 font-light">฿{Math.round(ingredientCost).toLocaleString()}</td>
+                            <td className="text-right py-2 font-light">฿{Math.round(finalTotalCapital).toLocaleString()}</td>
+                            <td className="text-right py-2 font-light text-black">฿{Math.round(totalProfit).toLocaleString()}</td>
+                            <td className="text-right py-2 font-light">฿{Math.round(requiredRevenue).toLocaleString()}</td>
+                            <td className="text-center py-2 font-light">{finalUnitsNeeded.toLocaleString()}</td>
+                            <td className="text-center py-2 font-light">{dailyUnitsNeeded.toLocaleString()}</td>
+                            <td className="text-right py-2 font-light">฿{dailyRevenue.toLocaleString()}</td>
                           </tr>
                         );
                       })}
@@ -441,7 +482,7 @@ export function BoothDetailModal({
         {/* Tab 2: Sales Daily Detail */}
         {activeTab === 'sales' && (
           dataLoading ? (
-            <div className="p-6 space-y-6">
+            <div className="space-y-6">
               {/* Chart skeleton */}
               <div className="space-y-4">
                 <div className="h-4 bg-gray-200 rounded animate-pulse w-1/3"></div>

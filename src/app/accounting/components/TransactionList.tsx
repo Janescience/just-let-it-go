@@ -77,8 +77,9 @@ export function TransactionList({
                       <Edit className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => onDelete(transaction._id)}
+                      onClick={() => transaction._id && onDelete(transaction._id)}
                       className="p-2 text-gray-300 hover:text-red-400 transition-colors duration-200"
+                      disabled={!transaction._id}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -111,7 +112,7 @@ export function TransactionList({
 
                 {transaction.boothId && typeof transaction.boothId === 'object' && 'name' in transaction.boothId && (
                   <div className="text-xs font-light text-gray-400">
-                    หน้าร้าน: {transaction.boothId.name}
+                    หน้าร้าน: {(transaction.boothId as { name: string }).name}
                   </div>
                 )}
               </div>
@@ -131,8 +132,9 @@ export function TransactionList({
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => onDelete(transaction._id)}
+                    onClick={() => transaction._id && onDelete(transaction._id)}
                     className="p-2 text-gray-300 hover:text-red-400 transition-colors duration-200"
+                    disabled={!transaction._id}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { verifyToken } from '@/utils/auth';
 import Ingredient from '@/lib/models/Ingredient';
+import StockMovement from '@/lib/models/StockMovement';
+import AccountingTransaction from '@/lib/models/AccountingTransaction';
 
 export async function PUT(
   request: NextRequest,
@@ -78,12 +80,44 @@ export async function PUT(
       }
     }
 
+    // Track cost changes for accounting
+    const oldCostPerUnit = ingredient.costPerUnit;
+    const costChanged = oldCostPerUnit !== costPerUnit;
+
     ingredient.name = name.trim();
     ingredient.unit = unit.trim();
     ingredient.costPerUnit = costPerUnit;
     ingredient.minimumStock = minimumStock;
 
     await ingredient.save();
+
+    // If cost per unit changed, record adjustment for existing stock
+    if (costChanged && ingredient.stock > 0) {
+      const costDifference = (costPerUnit - oldCostPerUnit) * ingredient.stock;
+
+      // Record stock movement for cost adjustment
+      const stockMovement = new StockMovement({
+        ingredientId: ingredient._id,
+        type: 'adjustment',
+        quantity: 0, // No quantity change, just cost adjustment
+        cost: Math.abs(costDifference),
+        reason: `ปรับปรุงต้นทุน: ${name.trim()} จาก ฿${oldCostPerUnit.toFixed(2)} เป็น ฿${costPerUnit.toFixed(2)} ต่อหน่วย`
+      });
+      await stockMovement.save();
+
+      // Record accounting transaction for cost adjustment
+      const accountingTransaction = new AccountingTransaction({
+        date: new Date(),
+        type: costDifference > 0 ? 'expense' : 'income',
+        category: 'ปรับปรุงต้นทุนวัตถุดิบ',
+        amount: Math.abs(costDifference),
+        description: `ปรับปรุงต้นทุน: ${name.trim()} (${ingredient.stock} ${unit.trim()}) จาก ฿${oldCostPerUnit.toFixed(2)} เป็น ฿${costPerUnit.toFixed(2)}`,
+        relatedId: ingredient._id,
+        relatedType: 'stock_purchase',
+        brandId: payload.user.brandId
+      });
+      await accountingTransaction.save();
+    }
 
     return NextResponse.json({
       message: 'แก้ไขวัตถุดิบเรียบร้อยแล้ว',

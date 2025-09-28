@@ -181,7 +181,7 @@ export function generatePaymentQRString(data: PaymentQRData): string | null {
     return qrPayload;
 
   } catch (error) {
-    console.error('Error generating PromptPay QR:', error, error.message);
+    console.error('Error generating PromptPay QR:', error, error instanceof Error ? error.message : 'Unknown error');
     return null;
   }
 }

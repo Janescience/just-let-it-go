@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Calculate menu statistics
-      sale.items.forEach(item => {
+      sale.items.forEach((item: { menuItemId: any; quantity: number; price: number }) => {
         const menuId = item.menuItemId.toString();
         if (!summary.menuStats[menuId]) {
           summary.menuStats[menuId] = {

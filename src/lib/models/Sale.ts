@@ -5,13 +5,13 @@ interface ISale extends Omit<Sale, '_id'>, Document {}
 
 const SaleSchema = new Schema<ISale>({
   boothId: {
-    type: Schema.Types.ObjectId,
+    type: String,
     ref: 'Booth',
     required: true,
   },
   items: [{
     menuItemId: {
-      type: Schema.Types.ObjectId,
+      type: String,
       ref: 'MenuItem',
       required: true,
     },
@@ -42,11 +42,11 @@ const SaleSchema = new Schema<ISale>({
     default: 'pending',
   },
   qrCodeId: {
-    type: Schema.Types.ObjectId,
+    type: String,
     ref: 'QRPayment',
   },
   employeeId: {
-    type: Schema.Types.ObjectId,
+    type: String,
     ref: 'User',
   },
 }, {

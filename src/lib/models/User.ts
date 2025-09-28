@@ -36,12 +36,12 @@ const UserSchema = new Schema<IUser>({
     default: 'admin',
   },
   brandId: {
-    type: Schema.Types.ObjectId,
+    type: String,
     ref: 'Brand',
     required: true,
   },
   boothId: {
-    type: Schema.Types.ObjectId,
+    type: String,
     ref: 'Booth',
     default: null,
   },

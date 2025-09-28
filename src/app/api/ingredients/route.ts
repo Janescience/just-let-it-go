@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { verifyToken } from '@/utils/auth';
 import Ingredient from '@/lib/models/Ingredient';
+import StockMovement from '@/lib/models/StockMovement';
+import AccountingTransaction from '@/lib/models/AccountingTransaction';
 
 export async function GET(request: NextRequest) {
   try {
@@ -112,6 +114,31 @@ export async function POST(request: NextRequest) {
     });
 
     await ingredient.save();
+
+    // Record initial stock movement if stock > 0
+    if (stock > 0) {
+      const stockMovement = new StockMovement({
+        ingredientId: ingredient._id,
+        type: 'purchase',
+        quantity: stock,
+        cost: costPerUnit * stock,
+        reason: `เพิ่มวัตถุดิบเริ่มต้น: ${name.trim()}`
+      });
+      await stockMovement.save();
+
+      // Record accounting transaction for initial stock purchase
+      const accountingTransaction = new AccountingTransaction({
+        date: new Date(),
+        type: 'expense',
+        category: 'วัตถุดิบ',
+        amount: costPerUnit * stock,
+        description: `ซื้อวัตถุดิบเริ่มต้น: ${name.trim()} (${stock} ${unit.trim()})`,
+        relatedId: ingredient._id,
+        relatedType: 'stock_purchase',
+        brandId: payload.user.brandId
+      });
+      await accountingTransaction.save();
+    }
 
     return NextResponse.json({
       message: 'เพิ่มวัตถุดิบเรียบร้อยแล้ว',

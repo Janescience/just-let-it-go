@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, Target, Calendar, Package, BarChart3, DollarSign, Eye } from 'lucide-react';
+import { TrendingUp, Calendar, Package, BarChart3, Edit, X, Check, Trash2 } from 'lucide-react';
 import { Booth } from '@/types';
 
 interface BoothSalesTabProps {
@@ -14,6 +14,9 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
   const [loading, setLoading] = useState(true);
   const [ingredientViewMode, setIngredientViewMode] = useState<'total' | 'daily'>('total');
   const [selectedDate, setSelectedDate] = useState<string>('');
+  const [editingDate, setEditingDate] = useState<string | null>(null);
+  const [editingSales, setEditingSales] = useState<any[]>([]);
+  const [showSalesDetail, setShowSalesDetail] = useState<string | null>(null);
 
   // Get date range for this booth
   const getBoothDateRange = () => {
@@ -50,7 +53,7 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
 
     return booth.businessPlan.ingredients.map((ingredient: any) => ({
       ...ingredient,
-      usedQuantity: Math.round((ingredient.quantity * unitsSoldThatDay) / breakEvenUnits),
+      usedQuantity: (ingredient.quantity * unitsSoldThatDay) / breakEvenUnits,
       usedValue: (ingredient.cost * unitsSoldThatDay) / breakEvenUnits
     }));
   };
@@ -66,7 +69,7 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
 
     return booth.businessPlan.ingredients.map((ingredient: any) => ({
       ...ingredient,
-      usedQuantity: Math.round((ingredient.quantity * totalSoldUnits) / breakEvenUnits),
+      usedQuantity: (ingredient.quantity * totalSoldUnits) / breakEvenUnits,
       usedValue: (ingredient.cost * totalSoldUnits) / breakEvenUnits
     }));
   };
@@ -174,6 +177,155 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
     }
   };
 
+  // Fetch sales detail for a specific date
+  const fetchSalesForDate = async (date: string) => {
+    try {
+      const response = await fetch(`/api/sales`);
+      if (response.ok) {
+        const data = await response.json();
+        const allSales = data.sales || [];
+
+        // Filter sales for this booth and date
+        const dateSales = allSales.filter((sale: any) => {
+          const saleDate = new Date(sale.createdAt).toISOString().split('T')[0];
+          const saleBoothId = sale.boothId._id || sale.boothId;
+          return saleDate === date && saleBoothId === booth._id;
+        });
+
+        return dateSales;
+      }
+      return [];
+    } catch (error) {
+      console.error('Error fetching sales for date:', error);
+      return [];
+    }
+  };
+
+  // Edit sales for a specific date
+  const handleEditDate = async (date: string) => {
+    const sales = await fetchSalesForDate(date);
+    setEditingDate(date);
+    setEditingSales(sales);
+    setShowSalesDetail(date);
+  };
+
+  // Update item quantity
+  const updateItemQuantity = (saleIndex: number, itemIndex: number, newQuantity: number) => {
+    const updatedSales = [...editingSales];
+    const sale = updatedSales[saleIndex];
+    const item = sale.items[itemIndex];
+
+    // Update quantity
+    item.quantity = Math.max(0, newQuantity);
+
+    // Recalculate sale total
+    sale.totalAmount = sale.items.reduce((total: number, item: any) =>
+      total + (item.price * item.quantity), 0
+    );
+
+    setEditingSales(updatedSales);
+  };
+
+  // Save changes
+  const saveSalesChanges = async () => {
+    try {
+      setLoading(true);
+
+      // Update each modified sale
+      for (const sale of editingSales) {
+        const response = await fetch(`/api/sales/${sale._id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            items: sale.items.map((item: any) => ({
+              menuItemId: item.menuItemId._id || item.menuItemId,
+              quantity: item.quantity
+            }))
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to update sale');
+        }
+      }
+
+      // Refresh data
+      await fetchDailySalesData();
+      if (preloadedStats) {
+        // Refresh stats if needed
+        await fetchBoothStats();
+      }
+
+      // Reset edit state
+      setEditingDate(null);
+      setEditingSales([]);
+      setShowSalesDetail(null);
+
+      console.log('✅ Sales updated successfully');
+
+    } catch (error) {
+      console.error('❌ Error saving sales changes:', error);
+      // You might want to show an error message to the user here
+      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cancel edit
+  const cancelEdit = () => {
+    setEditingDate(null);
+    setEditingSales([]);
+    setShowSalesDetail(null);
+  };
+
+  // Delete sale
+  const deleteSale = async (saleId: string) => {
+    if (!confirm('คุณแน่ใจหรือไม่ที่จะลบรายการขายนี้? การกระทำนี้ไม่สามารถยกเลิกได้')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await fetch(`/api/sales/${saleId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete sale');
+      }
+
+      // Refresh data
+      await fetchDailySalesData();
+      if (preloadedStats) {
+        await fetchBoothStats();
+      }
+
+      // If this was the last sale for the date, close the detail view
+      const remainingSales = editingSales.filter(sale => sale._id !== saleId);
+      if (remainingSales.length === 0) {
+        setShowSalesDetail(null);
+        setEditingDate(null);
+        setEditingSales([]);
+      } else {
+        setEditingSales(remainingSales);
+      }
+
+      console.log('✅ Sale deleted successfully');
+
+    } catch (error) {
+      console.error('❌ Error deleting sale:', error);
+      alert('เกิดข้อผิดพลาดในการลบข้อมูล: ' + (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -207,21 +359,17 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Sales Progress Summary */}
-      <div className="border border-gray-200 rounded-lg bg-white p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <TrendingUp className="w-5 h-5 text-gray-500" />
-          <h4 className="text-lg font-light text-gray-800 tracking-wide">สรุปยอดขาย</h4>
+      <div className="border border-gray-100 p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <TrendingUp className="w-4 h-4 text-gray-600" />
+          <label className="text-lg font-light text-black tracking-wide">สรุปยอดขาย</label>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="border border-gray-200 rounded-lg bg-gray-50 p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Calendar className="w-4 h-4 text-gray-500" />
-              <div className="text-sm font-light text-gray-600">ดำเนินการมา</div>
-            </div>
-            <div className="space-y-3">
-              <div className="text-lg font-light text-gray-800">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div>
+            <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">ดำเนินการมา</div>
+            <div className="font-light text-black">
                 {(() => {
                   const startDate = new Date(booth.startDate);
                   const endDate = new Date(booth.endDate);
@@ -238,43 +386,27 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
 
                   return `${effectiveDaysPassed}/${totalDays}`;
                 })()} วัน
-              </div>
             </div>
           </div>
 
-          <div className="border border-gray-200 rounded-lg bg-gray-50 p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <BarChart3 className="w-4 h-4 text-gray-500" />
-              <div className="text-sm font-light text-gray-600">จำนวนที่ขายได้</div>
-            </div>
-            <div className="space-y-3">
-              <div className="text-lg font-light text-gray-800">
-                {statsData?.menuStats?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0} จาน
-              </div>
+          <div>
+            <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">จำนวนที่ขายได้</div>
+            <div className="font-light text-black">
+              {statsData?.menuStats?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0} จาน
             </div>
           </div>
 
-          <div className="border border-gray-200 rounded-lg bg-gray-50 p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <DollarSign className="w-4 h-4 text-gray-500" />
-              <div className="text-sm font-light text-gray-600">ยอดขายรวม</div>
-            </div>
-            <div className="space-y-3">
-              <div className="text-lg font-light text-gray-800">
-                ฿{statsData?.totalSales?.toLocaleString() || '0'}
-              </div>
+          <div>
+            <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">ยอดขายรวม</div>
+            <div className="font-light text-black">
+              ฿{statsData?.totalSales?.toLocaleString() || '0'}
             </div>
           </div>
 
-          <div className="border border-gray-200 rounded-lg bg-gray-50 p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <TrendingUp className="w-4 h-4 text-gray-500" />
-              <div className="text-sm font-light text-gray-600">กำไร</div>
-            </div>
-            <div className="space-y-3">
-              <div className="text-lg font-light text-gray-800">
-                ฿{statsData?.profit?.toLocaleString() || '0'}
-              </div>
+          <div>
+            <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">กำไร</div>
+            <div className="font-light text-black">
+              ฿{statsData?.profit?.toLocaleString() || '0'}
             </div>
           </div>
         </div>
@@ -323,218 +455,304 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
       </div> */}
 
       {/* Ingredients Usage Table */}
-      <div className="border border-gray-200 rounded-lg bg-white">
-        <div className="p-4 border-b border-gray-200 bg-gray-50">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-3">
-              <Package className="w-5 h-5 text-gray-500" />
-              <h4 className="text-lg font-light text-gray-800 tracking-wide">การใช้วัตถุดิบ</h4>
+      <div className="border border-gray-100 p-6">
+        <div className="flex flex-col gap-4 mb-6">
+          <div className="flex items-center gap-2">
+            <Package className="w-4 h-4 text-gray-600" />
+            <label className="text-lg font-light text-black tracking-wide">การใช้วัตถุดิบ</label>
+          </div>
+
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIngredientViewMode('total')}
+                className={`px-4 py-2 text-sm font-light tracking-wide transition-all duration-200 ${
+                  ingredientViewMode === 'total'
+                    ? 'text-black border-b-2 border-black'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                ยอดรวม
+              </button>
+              <button
+                onClick={() => setIngredientViewMode('daily')}
+                className={`px-4 py-2 text-sm font-light tracking-wide transition-all duration-200 ${
+                  ingredientViewMode === 'daily'
+                    ? 'text-black border-b-2 border-black'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                รายวัน
+              </button>
             </div>
 
-            {/* View Mode Toggle */}
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg p-1">
-                <button
-                  onClick={() => setIngredientViewMode('total')}
-                  className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                    ingredientViewMode === 'total'
-                      ? 'bg-blue-500 text-white'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  ยอดรวม
-                </button>
-                <button
-                  onClick={() => setIngredientViewMode('daily')}
-                  className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                    ingredientViewMode === 'daily'
-                      ? 'bg-blue-500 text-white'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  รายวัน
-                </button>
+            {/* Date Picker - Only show when in daily mode */}
+            {ingredientViewMode === 'daily' && (
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-gray-600" />
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  min={getBoothDateRange().min}
+                  max={getBoothDateRange().max}
+                  className="border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none px-3 py-1"
+                />
               </div>
-
-              {/* Date Picker - Only show when in daily mode */}
-              {ingredientViewMode === 'daily' && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-gray-500" />
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    min={getBoothDateRange().min}
-                    max={getBoothDateRange().max}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
-        <div className="max-h-96 overflow-y-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-800 text-white sticky top-0">
-              <tr>
-                <th className="text-left p-3 font-light">วัตถุดิบ</th>
-                <th className="text-center p-3 font-light">ใช้ไปแล้ว</th>
-                <th className="text-right p-3 font-light">มูลค่าที่ใช้</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(() => {
+        <div className="space-y-3">
+          {(() => {
+            const ingredientsData = ingredientViewMode === 'total'
+              ? calculateTotalIngredientUsage()
+              : calculateDailyIngredientUsage(selectedDate);
+
+            return ingredientsData.length > 0 ? (
+              <>
+                <div className="grid grid-cols-3 gap-4 pb-2 border-b border-gray-200">
+                  <div className="text-xs font-light text-gray-400 tracking-wider uppercase">วัตถุดิบ</div>
+                  <div className="text-xs font-light text-gray-400 tracking-wider uppercase text-center">ใช้ไปแล้ว</div>
+                  <div className="text-xs font-light text-gray-400 tracking-wider uppercase text-right">มูลค่าที่ใช้</div>
+                </div>
+                {ingredientsData.map((ingredient: any, index: number) => (
+                  <div key={index} className="grid grid-cols-3 gap-4 py-3 border-b border-gray-100">
+                    <div className="font-light text-black">{ingredient.name}</div>
+                    <div className="font-light text-gray-700 text-center">
+                      {ingredient.usedQuantity.toFixed(2)} {ingredient.unit}
+                    </div>
+                    <div className="font-light text-black text-right">
+                      ฿{ingredient.usedValue.toFixed(2)}
+                    </div>
+                  </div>
+                ))}
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <div className="font-light text-gray-500">
+                  {ingredientViewMode === 'daily'
+                    ? 'ไม่มีข้อมูลการขายในวันที่เลือก'
+                    : 'ไม่มีข้อมูลวัตถุดิบ'
+                  }
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* Total */}
+        <div className="border-t border-gray-200 pt-4 mt-4">
+          <div className="flex justify-between">
+            <div className="font-light text-black">
+              รวมมูลค่าวัตถุดิบที่ใช้{ingredientViewMode === 'daily' ? ' (วันนี้)' : ' (รวมทั้งหมด)'}:
+            </div>
+            <div className="font-light text-black">
+              ฿{(() => {
                 const ingredientsData = ingredientViewMode === 'total'
                   ? calculateTotalIngredientUsage()
                   : calculateDailyIngredientUsage(selectedDate);
 
-                return ingredientsData.length > 0 ? (
-                  ingredientsData.map((ingredient: any, index: number) => (
-                    <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
-                      <td className="p-3 text-gray-800 font-light">{ingredient.name}</td>
-                      <td className="p-3 text-center text-gray-800 font-light">
-                        {ingredient.usedQuantity} {ingredient.unit}
-                      </td>
-                      <td className="p-3 text-right text-gray-800 font-light">
-                        ฿{ingredient.usedValue.toLocaleString()}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={3} className="p-8 text-center text-gray-500 font-light text-sm">
-                      {ingredientViewMode === 'daily'
-                        ? 'ไม่มีข้อมูลการขายในวันที่เลือก'
-                        : 'ไม่มีข้อมูลวัตถุดิบ'
-                      }
-                    </td>
-                  </tr>
-                );
+                const totalValue = ingredientsData.reduce((sum: number, ingredient: any) => sum + ingredient.usedValue, 0);
+                return totalValue.toFixed(2);
               })()}
-            </tbody>
-            <tfoot>
-              <tr className="border-t border-gray-800 bg-gray-800 text-white">
-                <td className="p-3 font-light" colSpan={2}>
-                  รวมมูลค่าวัตถุดิบที่ใช้{ingredientViewMode === 'daily' ? ' (วันนี้)' : ' (รวมทั้งหมด)'}:
-                </td>
-                <td className="p-3 text-right font-light text-sm">
-                  ฿{(() => {
-                    const ingredientsData = ingredientViewMode === 'total'
-                      ? calculateTotalIngredientUsage()
-                      : calculateDailyIngredientUsage(selectedDate);
-
-                    const totalValue = ingredientsData.reduce((sum: number, ingredient: any) => sum + ingredient.usedValue, 0);
-                    return totalValue.toLocaleString();
-                  })()}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Menu Sales Summary */}
-      <div className="border border-gray-200 rounded-lg bg-white">
-        <div className="p-4 border-b border-gray-200 bg-gray-50">
-          <div className="flex items-center gap-3">
-            <BarChart3 className="w-5 h-5 text-gray-500" />
-            <h4 className="text-lg font-light text-gray-800 tracking-wide">สรุปยอดขายแต่ละเมนู</h4>
-          </div>
+      <div className="border border-gray-100 p-6">
+        <div className="flex items-center gap-2 mb-6">
+          <BarChart3 className="w-4 h-4 text-gray-600" />
+          <label className="text-lg font-light text-black tracking-wide">สรุปยอดขายแต่ละเมนู</label>
         </div>
-        <div className="max-h-96 overflow-y-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-800 text-white sticky top-0">
-              <tr>
-                <th className="text-left p-3 font-light">เมนู</th>
-                <th className="text-center p-3 font-light">จำนวนที่ขาย</th>
-                <th className="text-right p-3 font-light">ยอดขาย</th>
-              </tr>
-            </thead>
-            <tbody>
-              {statsData?.menuStats && statsData.menuStats.length > 0 ? (
-                statsData.menuStats
-                  .sort((a: any, b: any) => b.quantity - a.quantity) // เรียงจากมากไปน้อย
-                  .map((menuItem: any, index: number) => (
-                    <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
-                      <td className="p-3 text-gray-800 font-light">{menuItem.name}</td>
-                      <td className="p-3 text-center text-gray-800 font-light">
-                        {menuItem.quantity.toLocaleString()} จาน
-                      </td>
-                      <td className="p-3 text-right text-gray-800 font-light">
-                        ฿{menuItem.revenue.toLocaleString()}
-                      </td>
-                    </tr>
-                  ))
-              ) : (
-                <tr>
-                  <td colSpan={3} className="p-8 text-center text-gray-500 text-lg">
-                    ไม่มีข้อมูลการขาย
-                  </td>
-                </tr>
-              )}
-            </tbody>
-            <tfoot>
-              <tr className="border-t border-gray-800 bg-gray-800 text-white">
-                <td className="p-3 font-light">รวมทั้งหมด:</td>
-                <td className="p-3 text-center font-light text-sm">
-                  {statsData?.menuStats?.reduce((sum: number, item: any) => sum + item.quantity, 0).toLocaleString() || '0'} จาน
-                </td>
-                <td className="p-3 text-right font-light text-sm">
-                  ฿{statsData?.totalSales?.toLocaleString() || '0'}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+
+        <div className="space-y-3">
+          {statsData?.menuStats && statsData.menuStats.length > 0 ? (
+            <>
+              <div className="grid grid-cols-3 gap-4 pb-2 border-b border-gray-200">
+                <div className="text-xs font-light text-gray-400 tracking-wider uppercase">เมนู</div>
+                <div className="text-xs font-light text-gray-400 tracking-wider uppercase text-center">จำนวนที่ขาย</div>
+                <div className="text-xs font-light text-gray-400 tracking-wider uppercase text-right">ยอดขาย</div>
+              </div>
+              {statsData.menuStats
+                .sort((a: any, b: any) => b.quantity - a.quantity) // เรียงจากมากไปน้อย
+                .map((menuItem: any, index: number) => (
+                  <div key={index} className="grid grid-cols-3 gap-4 py-3 border-b border-gray-100">
+                    <div className="font-light text-black">{menuItem.name}</div>
+                    <div className="font-light text-gray-700 text-center">
+                      {menuItem.quantity.toLocaleString()} จาน
+                    </div>
+                    <div className="font-light text-black text-right">
+                      ฿{menuItem.revenue.toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+
+              {/* Total */}
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="font-light text-black">รวมทั้งหมด:</div>
+                  <div className="font-light text-black text-center">
+                    {statsData.menuStats.reduce((sum: number, item: any) => sum + item.quantity, 0).toLocaleString()} จาน
+                  </div>
+                  <div className="font-light text-black text-right">
+                    ฿{statsData?.totalSales?.toLocaleString() || '0'}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <div className="font-light text-gray-500">ไม่มีข้อมูลการขาย</div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Daily Sales Table */}
-      <div className="border border-gray-200 rounded-lg bg-white">
-        <div className="p-4 border-b border-gray-200 bg-gray-50">
-          <div className="flex items-center gap-3">
-            <Calendar className="w-5 h-5 text-gray-500" />
-            <h4 className="text-lg font-light text-gray-800 tracking-wide">ยอดขายรายวัน</h4>
-          </div>
+      <div className="border border-gray-100 p-6">
+        <div className="flex items-center gap-2 mb-6">
+          <Calendar className="w-4 h-4 text-gray-600" />
+          <label className="text-lg font-light text-black tracking-wide">ยอดขายรายวัน</label>
         </div>
-        <div className="max-h-96 overflow-y-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-800 text-white sticky top-0">
-              <tr>
-                <th className="text-left p-3 font-light">วันที่</th>
-                <th className="text-right p-3 font-light">เงินสด</th>
-                <th className="text-right p-3 font-light">เงินโอน</th>
-                <th className="text-right p-3 font-light">รวม</th>
-                <th className="text-right p-3 font-light">ออเดอร์</th>
-              </tr>
-            </thead>
-            <tbody>
-              {dailySalesData.length > 0 ? (
-                dailySalesData.map((day, index) => (
-                  <tr key={day.date} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
-                    <td className="p-3 text-gray-800 font-light">{day.displayDate}</td>
-                    <td className="p-3 text-right text-green-600 font-light">
+
+        <div className="space-y-3">
+          {dailySalesData.length > 0 ? (
+            <>
+              <div className="grid grid-cols-6 gap-4 pb-2 border-b border-gray-200">
+                <div className="text-xs font-light text-gray-400 tracking-wider uppercase">วันที่</div>
+                <div className="text-xs font-light text-gray-400 tracking-wider uppercase text-right">เงินสด</div>
+                <div className="text-xs font-light text-gray-400 tracking-wider uppercase text-right">เงินโอน</div>
+                <div className="text-xs font-light text-gray-400 tracking-wider uppercase text-right">รวม</div>
+                <div className="text-xs font-light text-gray-400 tracking-wider uppercase text-right">ออเดอร์</div>
+                <div className="text-xs font-light text-gray-400 tracking-wider uppercase text-center">จัดการ</div>
+              </div>
+              {dailySalesData.map((day, index) => (
+                <React.Fragment key={day.date}>
+                  <div className="grid grid-cols-6 gap-4 py-3 border-b border-gray-100">
+                    <div className="font-light text-black">{day.displayDate}</div>
+                    <div className="font-light text-green-600 text-right">
                       ฿{day.cash?.toLocaleString() || '0'}
-                    </td>
-                    <td className="p-3 text-right text-blue-600 font-light">
+                    </div>
+                    <div className="font-light text-blue-600 text-right">
                       ฿{day.transfer?.toLocaleString() || '0'}
-                    </td>
-                    <td className="p-3 text-right text-gray-800 font-light">
+                    </div>
+                    <div className="font-light text-black text-right">
                       ฿{day.total.toLocaleString()}
-                    </td>
-                    <td className="p-3 text-right text-gray-600 font-light">
+                    </div>
+                    <div className="font-light text-gray-700 text-right">
                       {day.orders}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-gray-500 font-light text-sm">
-                    ไม่มีข้อมูลการขาย
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                    </div>
+                    <div className="text-center">
+                      {day.orders > 0 && (
+                        <button
+                          onClick={() => handleEditDate(day.date)}
+                          className="p-2 text-gray-300 hover:text-gray-600 transition-colors duration-200"
+                          title="แก้ไขยอดขาย"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Sales Detail Modal */}
+                  {showSalesDetail === day.date && (
+                    <div className="mt-4 border border-gray-100 p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <label className="text-lg font-light text-black tracking-wide">
+                          รายละเอียดการขายวันที่ {day.displayDate}
+                        </label>
+                        <div className="flex items-center gap-2">
+                          {editingDate === day.date && (
+                            <>
+                              <button
+                                onClick={saveSalesChanges}
+                                className="px-4 py-2 border border-gray-200 text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide inline-flex items-center gap-2"
+                              >
+                                <Check className="w-4 h-4" />
+                                บันทึก
+                              </button>
+                              <button
+                                onClick={cancelEdit}
+                                className="px-4 py-2 border border-gray-200 text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide inline-flex items-center gap-2"
+                              >
+                                <X className="w-4 h-4" />
+                                ยกเลิก
+                              </button>
+                            </>
+                          )}
+                          <button
+                            onClick={() => setShowSalesDetail(null)}
+                            className="px-4 py-2 border border-gray-200 text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide inline-flex items-center gap-2"
+                          >
+                            <X className="w-4 h-4" />
+                            ปิด
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Sales Items List */}
+                      <div className="space-y-3">
+                        {editingSales.map((sale, saleIndex) => (
+                          <div key={sale._id} className="border border-gray-100 p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-light text-gray-600">
+                                ออเดอร์ #{sale._id.slice(-6)} - {sale.paymentMethod === 'cash' ? 'เงินสด' : 'เงินโอน'}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-light text-black">
+                                  ฿{sale.totalAmount.toLocaleString()}
+                                </span>
+                                <button
+                                  onClick={() => deleteSale(sale._id)}
+                                  className="p-2 text-gray-300 hover:text-red-600 transition-colors duration-200"
+                                  title="ลบออเดอร์"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              {sale.items.map((item: any, itemIndex: number) => (
+                                <div key={itemIndex} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+                                  <span className="font-light text-black">{item.menuItemId.name || 'Unknown Menu'}</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-light text-gray-600">฿{item.price}</span>
+                                    <span className="font-light text-gray-600">×</span>
+                                    {editingDate === day.date ? (
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        value={item.quantity}
+                                        onChange={(e) => updateItemQuantity(saleIndex, itemIndex, parseInt(e.target.value) || 0)}
+                                        className="w-16 px-2 py-1 border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none text-center"
+                                      />
+                                    ) : (
+                                      <span className="font-light text-black">{item.quantity}</span>
+                                    )}
+                                    <span className="font-light text-black">
+                                      = ฿{(item.price * item.quantity).toLocaleString()}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </React.Fragment>
+              ))}
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <div className="font-light text-gray-500">ไม่มีข้อมูลการขาย</div>
+            </div>
+          )}
         </div>
       </div>
     </div>

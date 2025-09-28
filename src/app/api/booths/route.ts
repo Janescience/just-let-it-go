@@ -3,12 +3,12 @@ import { connectDB } from '@/lib/db';
 import { verifyToken } from '@/utils/auth';
 import Booth from '@/lib/models/Booth';
 import User from '@/lib/models/User';
-import MenuItem from '@/lib/models/MenuItem';
 import AccountingTransaction from '@/lib/models/AccountingTransaction';
 import Equipment from '@/lib/models/Equipment';
-// Import Ingredient to register the model
-import '@/lib/models/Ingredient';
 
+// Ensure models are registered
+import '@/lib/models/MenuItem';
+import '@/lib/models/Ingredient';
 export async function GET(request: NextRequest) {
   try {
     const token = request.cookies.get('auth-token')?.value;
@@ -36,7 +36,15 @@ export async function GET(request: NextRequest) {
 
     await connectDB();
 
-    const booths = await Booth.find({ brandId: payload.user.brandId })
+    // Import models dynamically to ensure proper registration
+    const [BoothModel, MenuItemModel, IngredientModel, UserModel] = await Promise.all([
+      import('@/lib/models/Booth').then(m => m.default),
+      import('@/lib/models/MenuItem').then(m => m.default),
+      import('@/lib/models/Ingredient').then(m => m.default),
+      import('@/lib/models/User').then(m => m.default),
+    ]);
+
+    let booths = await BoothModel.find({ brandId: payload.user.brandId })
       .populate('staff.userId', 'username name')
       .populate({
         path: 'menuItems',
@@ -48,6 +56,21 @@ export async function GET(request: NextRequest) {
       })
       .select('+businessPlan') // Include businessPlan field
       .sort({ createdAt: -1 });
+
+    // Manually populate equipmentId for each booth
+    for (const booth of booths) {
+      if (booth.businessPlan?.equipmentId) {
+        try {
+          const Equipment = (await import('@/lib/models/Equipment')).default;
+          const equipment = await Equipment.findById(booth.businessPlan.equipmentId);
+          if (equipment) {
+            (booth.businessPlan as any).equipmentId = equipment;
+          }
+        } catch (error) {
+          console.log('Equipment not found or model not available');
+        }
+      }
+    }
 
     return NextResponse.json({
       booths
@@ -275,7 +298,7 @@ export async function POST(request: NextRequest) {
           if (equipment) {
             // Add usage record only
             equipment.addUsage(
-              booth._id.toString(),
+              (booth._id as any).toString(),
               booth.name,
               new Date(startDate),
               new Date(endDate)

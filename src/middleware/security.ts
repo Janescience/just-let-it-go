@@ -22,7 +22,7 @@ export function withSecurity(handler: (request: NextRequest) => Promise<NextResp
       const suspiciousActivity = detectSuspiciousActivity(request);
       if (suspiciousActivity.suspicious) {
         console.warn('Suspicious activity detected:', {
-          ip: request.ip,
+          ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
           userAgent: request.headers.get('user-agent'),
           path: request.nextUrl.pathname,
           reasons: suspiciousActivity.reasons

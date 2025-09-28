@@ -151,27 +151,83 @@ export async function POST(request: NextRequest) {
     ingredient.stock = newStock;
     await ingredient.save();
 
-    // Create accounting transaction for purchases
-    if (type === 'purchase' && cost && cost > 0) {
-      try {
-        const totalCost = Math.abs(quantity) * cost;
-        const accountingTransaction = new AccountingTransaction({
-          date: new Date(),
-          type: 'expense',
-          category: 'ingredient_cost',
-          amount: totalCost,
-          description: `ซื้อวัตถุดิบเข้าคลัง - ${ingredient.name} จำนวน ${Math.abs(quantity)} ${ingredient.unit} ราคา ${cost} บาท/${ingredient.unit}${reason ? ` (${reason})` : ''}`,
-          boothId: boothId || null,
-          relatedId: movement._id,
-          relatedType: 'stock_purchase',
-          brandId: payload.user.brandId
-        });
+    // Create accounting transactions based on movement type
+    try {
+      let accountingTransaction = null;
 
-        await accountingTransaction.save();
-      } catch (accountingError) {
-        // Continue even if accounting fails
-        console.error('Error creating accounting transaction for stock purchase:', accountingError);
+      switch (type) {
+        case 'purchase':
+          if (cost && cost > 0) {
+            const totalCost = Math.abs(quantity) * cost;
+            accountingTransaction = new AccountingTransaction({
+              date: new Date(),
+              type: 'expense',
+              category: 'วัตถุดิบ',
+              amount: totalCost,
+              description: `ซื้อวัตถุดิบเข้าคลัง: ${ingredient.name} จำนวน ${Math.abs(quantity)} ${ingredient.unit} ราคา ${cost} บาท/${ingredient.unit}${reason ? ` (${reason})` : ''}`,
+              boothId: boothId || null,
+              relatedId: movement._id,
+              relatedType: 'stock_purchase',
+              brandId: payload.user.brandId
+            });
+          }
+          break;
+
+        case 'use':
+          // Record cost of goods used based on current cost per unit
+          const useCost = Math.abs(quantity) * ingredient.costPerUnit;
+          accountingTransaction = new AccountingTransaction({
+            date: new Date(),
+            type: 'expense',
+            category: 'ต้นทุนขาย',
+            amount: useCost,
+            description: `ใช้วัตถุดิบ: ${ingredient.name} จำนวน ${Math.abs(quantity)} ${ingredient.unit}${reason ? ` (${reason})` : ''}`,
+            boothId: boothId || null,
+            relatedId: movement._id,
+            relatedType: 'stock_purchase',
+            brandId: payload.user.brandId
+          });
+          break;
+
+        case 'waste':
+          // Record waste as expense (loss)
+          const wasteCost = Math.abs(quantity) * ingredient.costPerUnit;
+          accountingTransaction = new AccountingTransaction({
+            date: new Date(),
+            type: 'expense',
+            category: 'สูญเสีย',
+            amount: wasteCost,
+            description: `สูญเสียวัตถุดิบ: ${ingredient.name} จำนวน ${Math.abs(quantity)} ${ingredient.unit}${reason ? ` (${reason})` : ''}`,
+            boothId: boothId || null,
+            relatedId: movement._id,
+            relatedType: 'stock_purchase',
+            brandId: payload.user.brandId
+          });
+          break;
+
+        case 'adjustment':
+          // Record adjustment cost based on cost per unit
+          const adjustmentCost = Math.abs(quantity) * ingredient.costPerUnit;
+          accountingTransaction = new AccountingTransaction({
+            date: new Date(),
+            type: stockChange > 0 ? 'expense' : 'income',
+            category: stockChange > 0 ? 'ปรับเพิ่มสต็อก' : 'ปรับลดสต็อก',
+            amount: adjustmentCost,
+            description: `ปรับปรุงสต็อก: ${ingredient.name} ${stockChange > 0 ? 'เพิ่ม' : 'ลด'} ${Math.abs(quantity)} ${ingredient.unit}${reason ? ` (${reason})` : ''}`,
+            boothId: boothId || null,
+            relatedId: movement._id,
+            relatedType: 'stock_purchase',
+            brandId: payload.user.brandId
+          });
+          break;
       }
+
+      if (accountingTransaction) {
+        await accountingTransaction.save();
+      }
+    } catch (accountingError) {
+      // Continue even if accounting fails
+      console.error('Error creating accounting transaction for stock movement:', accountingError);
     }
 
     return NextResponse.json({

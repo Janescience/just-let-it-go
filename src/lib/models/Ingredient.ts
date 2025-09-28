@@ -32,7 +32,7 @@ const IngredientSchema = new Schema<IIngredient>({
     default: 0,
   },
   brandId: {
-    type: Schema.Types.ObjectId,
+    type: String,
     ref: 'Brand',
     required: true,
   },

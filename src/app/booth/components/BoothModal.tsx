@@ -39,12 +39,17 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
     ],
 
     // Equipment - load from existing booth if editing (may not exist in older booths)
-    equipmentId: booth?.businessPlan?.equipmentId || '',
+    equipmentId: (() => {
+      const rawEquipmentId = booth?.businessPlan?.equipmentId;
+      if (!rawEquipmentId) return '';
+      // Handle both string IDs and populated objects
+      return typeof rawEquipmentId === 'string' ? rawEquipmentId : (rawEquipmentId as any)?._id || '';
+    })(),
 
     // Additional Expenses - load from existing booth or default
-    additionalExpenses: booth?.businessPlan?.additionalExpenses || [
-      { description: 'ค่าเดินทาง', amount: 0 }
-    ],
+    additionalExpenses: booth?.businessPlan?.additionalExpenses && booth.businessPlan.additionalExpenses.length > 0
+      ? booth.businessPlan.additionalExpenses
+      : [{ description: 'ค่าเดินทาง', amount: 0 }],
 
     // Menu & Calculations - will be populated later
     selectedMenuItems: [],
@@ -80,8 +85,17 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
 
     // Load existing business plan data if editing
     ...(booth?.businessPlan && (() => {
-      console.log('🔧 Loading businessPlan data for editing:', booth.businessPlan);
       return {
+        // Preserve equipment and additional expenses that were set above
+        equipmentId: (() => {
+          const rawEquipmentId = booth.businessPlan.equipmentId;
+          if (!rawEquipmentId) return '';
+          // Handle both string IDs and populated objects
+          return typeof rawEquipmentId === 'string' ? rawEquipmentId : (rawEquipmentId as any)?._id || '';
+        })(),
+        additionalExpenses: booth.businessPlan.additionalExpenses && booth.businessPlan.additionalExpenses.length > 0
+          ? booth.businessPlan.additionalExpenses
+          : [{ description: 'ค่าเดินทาง', amount: 0 }],
         fixedCosts: booth.businessPlan.fixedCosts || {
           rent: 0,
           staff: 0,
@@ -141,11 +155,12 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
     }
   }, [currentStep]);
 
-  // Preload menu items and ingredients when editing (so they're ready when user goes to step 2)
+  // Preload menu items, ingredients, and equipment when editing (so they're ready when user goes to step 2)
   useEffect(() => {
     if (isEditing && booth) {
       fetchMenuItems();
       fetchIngredients();
+      fetchEquipmentData(); // Also fetch equipment data when editing
     }
   }, [isEditing, booth]);
 
@@ -200,14 +215,10 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
         typeof item === 'string' ? item : item._id
       );
 
-      console.log('🍽️ Loading existing menu items for editing:', menuItemIds);
-
       if (menuItemIds.length > 0) {
         const selectedItems = availableMenuItems.filter(item =>
           menuItemIds.includes(item._id)
         );
-
-        console.log('🍽️ Found matching menu items:', selectedItems.map(item => item.name));
 
         if (selectedItems.length > 0) {
           setBusinessPlan(prev => ({
@@ -258,7 +269,6 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
       const response = await fetch('/api/ingredients');
       if (response.ok) {
         const data = await response.json();
-        console.log('Ingredients data:', data);
         setAvailableIngredients(data.ingredients || []);
       } else {
         console.error('Failed to fetch ingredients, status:', response.status);
@@ -287,7 +297,11 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
 
   // Function to calculate equipment cost
   const calculateEquipmentCost = async (equipmentId?: string) => {
-    const id = equipmentId || businessPlan.equipmentId;
+    const rawId = equipmentId || businessPlan.equipmentId;
+    if (!rawId) return 0;
+
+    // Handle both string IDs and populated objects
+    const id = typeof rawId === 'string' ? rawId : (rawId as any)?._id || rawId;
     if (!id) return 0;
 
     try {
@@ -297,7 +311,6 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
       });
       if (response.ok) {
         const data = await response.json();
-        console.log('🔧 equipment data:', data.equipment);
         return data.equipment.dailyCost * businessPlan.numberOfDays;
       }
     } catch (error) {
@@ -308,9 +321,7 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
 
   // Function to update only equipment cost when no menu items selected yet
   const updateEquipmentCostOnly = async () => {
-    console.log('🔧 updateEquipmentCostOnly - equipmentId:', businessPlan.equipmentId);
     const equipmentCost = await calculateEquipmentCost();
-    console.log('🔧 updateEquipmentCostOnly - equipmentCost:', equipmentCost);
 
     setBusinessPlan(prev => ({
       ...prev,
@@ -320,13 +331,11 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
         total: prev.fixedCosts.rent + prev.fixedCosts.staff + equipmentCost + prev.fixedCosts.additionalExpenses
       }
     }));
-    console.log('🔧 updateEquipmentCostOnly - Updated equipment cost:', equipmentCost);
   };
 
   const calculateBusinessPlan = async () => {
     if (businessPlan.selectedMenuItems.length === 0) return;
 
-    console.log('🔧 calculateBusinessPlan - equipmentId:', businessPlan.equipmentId);
 
     // Calculate period duration
     const startDate = new Date(businessPlan.startDate);
@@ -340,7 +349,6 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
 
     // Calculate equipment cost if selected
     const equipmentCost = await calculateEquipmentCost();
-    console.log('🔧 calculateBusinessPlan - equipmentCost:', equipmentCost);
 
     // Calculate additional expenses
     const totalAdditionalExpenses = businessPlan.additionalExpenses.reduce((sum, expense) =>
@@ -408,7 +416,6 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
       }
     }));
 
-    console.log('🔧 calculateBusinessPlan - Updated fixedCosts:', fixedCosts);
   };
 
 

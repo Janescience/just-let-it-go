@@ -143,12 +143,12 @@ export async function PUT(
     // Handle employee updates if provided
     if (employees !== undefined) {
       // Get current employee user IDs
-      const currentEmployeeIds = booth.employees
-        .filter(emp => emp.userId)
-        .map(emp => emp.userId.toString());
+      const currentEmployeeIds = (booth.employees as any[])
+        .filter((emp: any) => emp.userId)
+        .map((emp: any) => emp.userId.toString());
 
       // Delete users for employees that are no longer in the list
-      const newEmployeeNames = employees.map((emp: any) => emp.name?.trim()).filter(Boolean);
+      const newEmployeeNames = employees.map((emp: { name?: string }) => emp.name?.trim()).filter(Boolean);
       const usersToDelete = await User.find({
         boothId: booth._id,
         name: { $nin: newEmployeeNames }

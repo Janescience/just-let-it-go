@@ -281,15 +281,15 @@ export default function BoothPage() {
     <div className="min-h-screen bg-white">
       {/* Header */}
       <div className="border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl sm:text-2xl font-thin text-black tracking-wider">หน้าร้าน</h1>
+              <h1 className="text-2xl font-thin text-black tracking-wider">หน้าร้าน</h1>
               <p className="text-sm font-light text-gray-500 mt-1">จัดการหน้าร้านและติดตามผลการดำเนินงาน</p>
             </div>
             <button
               onClick={() => setShowAddModal(true)}
-              className="px-4 sm:px-6 py-2 border border-gray-200 text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide"
+              className="px-6 py-2 border border-gray-200 text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide"
             >
               เพิ่มหน้าร้าน
             </button>
@@ -297,7 +297,7 @@ export default function BoothPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-20">
+      <div className="max-w-7xl mx-auto px-6 py-8 pb-20">
         {/* Header Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4  mb-6">
           <div className="flex gap-4 items-center">
@@ -310,14 +310,20 @@ export default function BoothPage() {
           </div>
 
           <div className="flex gap-2 text-right justify-end">
-            <Button
+            <button
+              onClick={() => fetchBoothsStats()}
+              className="px-6 py-2 border border-gray-200 text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide"
+            >
+              รีเฟรช
+            </button>
+            {/* <Button
               variant="secondary"
               onClick={() => fetchBoothsStats()}
               icon={RefreshCw}
               size="md"
             >
               รีเฟรช
-            </Button>
+            </Button> */}
             {/* <Button
               onClick={() => setShowAddModal(true)}
               icon={Plus}
@@ -426,10 +432,12 @@ export default function BoothPage() {
           booth={selectedBooth}
           onClose={() => {
             setShowMenuModal(false);
-            setSelectedBooth(null);
+            setShowDetailModal(true); // Go back to detail modal
           }}
           onSuccess={() => {
             fetchBooths();
+            setShowMenuModal(false);
+            setShowDetailModal(true); // Go back to detail modal after success
           }}
         />
       )}
@@ -473,6 +481,7 @@ export default function BoothPage() {
           onOpenMenuModal={() => {
             setShowDetailModal(false);
             setShowMenuModal(true);
+            // Don't reset selectedBooth so we can go back to detail modal
           }}
         />
       )}

@@ -5,7 +5,7 @@ interface IStockMovement extends Omit<StockMovement, '_id'>, Document {}
 
 const StockMovementSchema = new Schema<IStockMovement>({
   ingredientId: {
-    type: Schema.Types.ObjectId,
+    type: String,
     ref: 'Ingredient',
     required: true,
   },
@@ -27,11 +27,11 @@ const StockMovementSchema = new Schema<IStockMovement>({
     trim: true,
   },
   boothId: {
-    type: Schema.Types.ObjectId,
+    type: String,
     ref: 'Booth',
   },
   saleId: {
-    type: Schema.Types.ObjectId,
+    type: String,
     ref: 'Sale',
   },
 }, {

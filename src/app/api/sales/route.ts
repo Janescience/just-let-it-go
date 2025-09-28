@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
       items: validatedItems,
       totalAmount: calculatedTotal,
       paymentMethod,
-      paymentStatus: paymentMethod === 'cash' ? 'completed' : 'pending',
+      paymentStatus: 'completed',
       employeeId: payload.user.id
     });
 
@@ -328,13 +328,13 @@ async function processBackgroundTasks(
                 // Check for low booth stock and broadcast alert
                 const lowStockThreshold = Math.max(
                   boothStockEntry.allocatedQuantity * 0.2, // 20% of allocated
-                  (boothStockEntry.ingredientId.minimumStock || 0) // Or minimum stock from ingredient
+                  ((boothStockEntry.ingredientId as any)?.minimumStock || 0) // Or minimum stock from ingredient
                 );
 
                 if (boothStockEntry.remainingQuantity <= lowStockThreshold) {
                   const lowStockEvent = createLowStockAlert(
                     brandId,
-                    boothStockEntry.ingredientId.name || 'Unknown',
+                    (boothStockEntry.ingredientId as any)?.name || 'Unknown',
                     boothStockEntry.remainingQuantity,
                     lowStockThreshold
                   );

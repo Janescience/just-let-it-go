@@ -43,15 +43,28 @@ export async function GET(request: NextRequest) {
 
     // Date range filter
     if (startDate && endDate) {
+      const startDateObj = new Date(startDate);
+      const endDateObj = new Date(new Date(endDate).getTime() + 24 * 60 * 60 * 1000 - 1);
+
+      console.log('🔍 Date range filter:', {
+        startDate,
+        endDate,
+        startDateObj,
+        endDateObj
+      });
+
       matchQuery.createdAt = {
-        $gte: new Date(startDate),
-        $lte: new Date(new Date(endDate).getTime() + 24 * 60 * 60 * 1000 - 1)
+        $gte: startDateObj,
+        $lte: endDateObj
       };
     }
 
     // Get booths for the brand
     const booths = await Booth.find({ brandId: payload.user.brandId }).select('_id name');
-    const boothIds = booths.map(booth => booth._id);
+    const boothIds = booths.map(booth => (booth._id as any).toString()); // Convert to strings
+
+    console.log('🔍 Booths found:', booths.length);
+    console.log('🔍 Booth IDs (as strings):', boothIds);
 
     if (boothId && boothId !== 'all') {
       matchQuery.boothId = boothId;
@@ -59,8 +72,30 @@ export async function GET(request: NextRequest) {
       matchQuery.boothId = { $in: boothIds };
     }
 
-    // Only completed sales
-    matchQuery.paymentStatus = 'completed';
+    // Debug: Check what sales exist first
+    console.log('🔍 Debug matchQuery before paymentStatus:', JSON.stringify(matchQuery));
+
+    const allSales = await Sale.find({
+      boothId: { $in: boothIds }
+    }).select('paymentStatus createdAt totalAmount boothId items').limit(10);
+
+    console.log('🔍 Found sales in database:', allSales.length);
+    console.log('🔍 Sample sales:', allSales.map(s => ({
+      paymentStatus: s.paymentStatus,
+      createdAt: s.createdAt,
+      totalAmount: s.totalAmount,
+      boothId: s.boothId,
+      items: s.items
+    })));
+
+    // Debug items structure
+    if (allSales.length > 0 && allSales[0].items) {
+      console.log('🔍 First sale items structure:', JSON.stringify(allSales[0].items, null, 2));
+    }
+
+    // Include all sales regardless of payment status
+
+    console.log('🔍 Final matchQuery:', JSON.stringify(matchQuery));
 
     // Aggregate sales data
     const salesAggregation = await Sale.aggregate([
@@ -75,72 +110,118 @@ export async function GET(request: NextRequest) {
       }
     ]);
 
+    console.log('🔍 Sales aggregation result:', salesAggregation);
+
     const salesSummary = salesAggregation[0] || {
       totalSales: 0,
       totalOrders: 0,
       averageOrderValue: 0
     };
 
+    console.log('🔍 Sales summary:', salesSummary);
+
     // Top selling items
-    const topSellingItems = await Sale.aggregate([
-      { $match: matchQuery },
-      { $unwind: '$items' },
-      {
-        $group: {
-          _id: '$items.menuItemId',
-          quantity: { $sum: '$items.quantity' },
-          revenue: { $sum: { $multiply: ['$items.quantity', '$items.price'] } }
+    let topSellingItems = [];
+    try {
+      console.log('🔍 Starting top selling items aggregation...');
+
+      // First, test basic aggregation without lookup
+      const basicItems = await Sale.aggregate([
+        { $match: matchQuery },
+        { $unwind: '$items' },
+        {
+          $group: {
+            _id: '$items.menuItemId',
+            quantity: { $sum: '$items.quantity' },
+            revenue: { $sum: { $multiply: ['$items.quantity', '$items.price'] } }
+          }
         }
-      },
-      {
-        $lookup: {
-          from: 'menuitems',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'menuItem'
-        }
-      },
-      { $unwind: '$menuItem' },
-      {
-        $project: {
-          name: '$menuItem.name',
-          quantity: 1,
-          revenue: 1
-        }
-      },
-      { $sort: { quantity: -1 } },
-      { $limit: 10 }
-    ]);
+      ]);
+
+      console.log('🔍 Basic items aggregation (before lookup):', basicItems);
+
+      topSellingItems = await Sale.aggregate([
+        { $match: matchQuery },
+        { $unwind: '$items' },
+        {
+          $group: {
+            _id: '$items.menuItemId',
+            quantity: { $sum: '$items.quantity' },
+            revenue: { $sum: { $multiply: ['$items.quantity', '$items.price'] } }
+          }
+        },
+        {
+          $addFields: {
+            menuItemObjectId: { $toObjectId: '$_id' }
+          }
+        },
+        {
+          $lookup: {
+            from: 'menuitems',
+            localField: 'menuItemObjectId',
+            foreignField: '_id',
+            as: 'menuItem'
+          }
+        },
+        { $unwind: { path: '$menuItem', preserveNullAndEmptyArrays: true } },
+        {
+          $project: {
+            name: { $ifNull: ['$menuItem.name', 'Unknown Menu Item'] },
+            quantity: 1,
+            revenue: 1
+          }
+        },
+        { $sort: { quantity: -1 } },
+        { $limit: 10 }
+      ]);
+
+      console.log('🔍 Top selling items result:', topSellingItems);
+    } catch (error) {
+      console.error('🔍 Error in top selling items aggregation:', error);
+    }
 
     // Sales by booth
-    const salesByBooth = await Sale.aggregate([
-      { $match: matchQuery },
-      {
-        $group: {
-          _id: '$boothId',
-          sales: { $sum: '$totalAmount' },
-          orders: { $sum: 1 }
-        }
-      },
-      {
-        $lookup: {
-          from: 'booths',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'booth'
-        }
-      },
-      { $unwind: '$booth' },
-      {
-        $project: {
-          boothName: '$booth.name',
-          sales: 1,
-          orders: 1,
-          profit: { $multiply: ['$sales', 0.3] } // Simplified profit calculation
-        }
-      },
-      { $sort: { sales: -1 } }
-    ]);
+    let salesByBooth = [];
+    try {
+      console.log('🔍 Starting sales by booth aggregation...');
+      salesByBooth = await Sale.aggregate([
+        { $match: matchQuery },
+        {
+          $group: {
+            _id: '$boothId',
+            sales: { $sum: '$totalAmount' },
+            orders: { $sum: 1 }
+          }
+        },
+        {
+          $addFields: {
+            boothObjectId: { $toObjectId: '$_id' }
+          }
+        },
+        {
+          $lookup: {
+            from: 'booths',
+            localField: 'boothObjectId',
+            foreignField: '_id',
+            as: 'booth'
+          }
+        },
+        { $unwind: { path: '$booth', preserveNullAndEmptyArrays: true } },
+        {
+          $project: {
+            boothName: { $ifNull: ['$booth.name', 'Unknown Booth'] },
+            sales: 1,
+            orders: 1,
+            profit: { $multiply: ['$sales', 0.3] } // Simplified profit calculation
+          }
+        },
+        { $sort: { sales: -1 } }
+      ]);
+
+      console.log('🔍 Sales by booth result:', salesByBooth);
+    } catch (error) {
+      console.error('🔍 Error in sales by booth aggregation:', error);
+    }
 
     // Daily sales
     const dailySales = await Sale.aggregate([
@@ -177,8 +258,8 @@ export async function GET(request: NextRequest) {
         const menuItem = menuItems.find(m => m._id.toString() === item.menuItemId.toString());
         if (menuItem) {
           // Simplified cost calculation
-          const itemCost = menuItem.ingredients.reduce((cost, ing) => {
-            const ingredient = ing.ingredientId as any;
+          const itemCost = menuItem.ingredients.reduce((cost: number, ing: { ingredientId: { costPerUnit: number }; quantity: number }) => {
+            const ingredient = ing.ingredientId;
             return cost + (ingredient.costPerUnit * ing.quantity);
           }, 0);
           totalCost += itemCost * item.quantity;

@@ -24,8 +24,6 @@ export function MainLayout({
     <div className="min-h-screen bg-gray-50">
       <Header
         title={title}
-        brandName={brandName}
-        brandLogo={brandLogo}
       />
 
       <main className={cn(

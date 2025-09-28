@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { CheckCircle, Circle, Package, MenuIcon, Wrench, Store, ArrowRight } from 'lucide-react';
+import { CheckCircle, Circle, Package, MenuIcon, Wrench, Store, QrCode, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
 
@@ -20,6 +20,7 @@ interface OnboardingGuideProps {
     hasMenuItems: boolean;
     hasEquipment: boolean;
     hasBooths: boolean;
+    hasPaymentInfo: boolean;
   };
 }
 
@@ -56,6 +57,14 @@ function OnboardingGuide({ completionStatus }: OnboardingGuideProps) {
       icon: Store,
       href: '/booth',
       completed: completionStatus.hasBooths
+    },
+    {
+      id: 'payment',
+      title: 'ตั้งค่าการชำระเงิน',
+      description: 'กรอกเลขพร้อมเพย์เพื่อสร้าง QR Code สำหรับรับชำระเงิน',
+      icon: QrCode,
+      href: '/brand',
+      completed: completionStatus.hasPaymentInfo
     }
   ];
 
@@ -110,7 +119,7 @@ function OnboardingGuide({ completionStatus }: OnboardingGuideProps) {
             รายการสิ่งที่ต้องทำให้เสร็จ
           </h3>
 
-          {steps.map((step, index) => {
+          {steps.map((step) => {
             const Icon = step.icon;
             const isCompleted = step.completed;
 

@@ -128,18 +128,6 @@ export function PaymentModal({
       const currentCart = [...cart];
       const currentTotalAmount = totalAmount;
 
-      console.log('🔄 Processing payment in background...');
-      console.log('📦 Payment data:', {
-        items: currentCart.map(item => ({
-          menuItemId: item._id,
-          quantity: item.quantity,
-          price: item.price
-        })),
-        totalAmount: currentTotalAmount,
-        paymentMethod: currentPaymentMethod,
-        boothId: currentBoothId
-      });
-
       const response = await fetch('/api/sales', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -155,13 +143,9 @@ export function PaymentModal({
         })
       });
 
-      console.log('📡 API Response status:', response.status);
 
       if (response.ok) {
         const result = await response.json();
-        console.log('✅ Payment processed successfully in background:', result);
-
-        console.log('📢 Dispatching booth-stats-update event from background process');
         localStorage.setItem('booth-stats-update', Date.now().toString());
         window.dispatchEvent(new CustomEvent('booth-stats-update'));
       } else {
@@ -179,8 +163,6 @@ export function PaymentModal({
       const currentCart = [...cart];
       const currentTotalAmount = totalAmount;
 
-      console.log('🔄 Processing transfer payment in background...');
-
       const response = await fetch('/api/sales', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -197,7 +179,6 @@ export function PaymentModal({
       });
 
       if (response.ok) {
-        console.log('✅ Transfer payment processed successfully in background');
 
         localStorage.setItem('booth-stats-update', Date.now().toString());
         window.dispatchEvent(new CustomEvent('booth-stats-update'));
