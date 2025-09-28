@@ -11,7 +11,7 @@ const kanit = Kanit({
 
 export const metadata: Metadata = {
   title: 'ขายไปเหอะ',
-  description: 'ขายอะไรได้ก็หายไปเหอะ',
+  description: 'ขายอะไรได้ก็ขายไปเหอะ',
   manifest: '/manifest.json',
   icons: {
     icon: 'https://api.dicebear.com/9.x/notionists/svg?seed=justletitgo&flip=true&scale=100',
