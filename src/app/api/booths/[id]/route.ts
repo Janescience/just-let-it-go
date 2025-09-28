@@ -278,27 +278,106 @@ export async function DELETE(
       );
     }
 
-    // Check if booth has any sales records
+    // Import all required models
     const { default: Sale } = await import('@/lib/models/Sale');
-    const salesCount = await Sale.countDocuments({ boothId: booth._id });
+    const { default: StockMovement } = await import('@/lib/models/StockMovement');
+    const { default: AccountingTransaction } = await import('@/lib/models/AccountingTransaction');
+    const { default: DailySummary } = await import('@/lib/models/DailySummary');
+    const { default: Ingredient } = await import('@/lib/models/Ingredient');
 
-    if (salesCount > 0) {
-      return NextResponse.json(
-        {
-          message: `ไม่สามารถลบหน้าร้านนี้ได้ เนื่องจากมีประวัติการขาย ${salesCount} รายการ`,
-          salesCount
-        },
-        { status: 400 }
-      );
+    console.log(`Starting deletion process for booth: ${booth._id}`);
+
+    // 1. คืน stock จาก StockMovement ที่เป็น type 'use' ก่อนลบ
+    const stockMovements = await StockMovement.find({
+      boothId: booth._id,
+      type: 'use'
+    });
+    console.log(`Found ${stockMovements.length} stock movements to restore`);
+
+    let totalRestoredItems = 0;
+    for (const movement of stockMovements) {
+      try {
+        const ingredientDoc = await Ingredient.findById(movement.ingredientId);
+        if (ingredientDoc) {
+          // คืน stock ที่เคยหยิบไปใช้ (StockMovement type 'use' มักจะเป็นค่าลบ ต้องใช้ Math.abs)
+          const quantityToRestore = Math.abs(movement.quantity);
+          const stockBefore = ingredientDoc.stock;
+          ingredientDoc.stock += quantityToRestore;
+          await ingredientDoc.save();
+          totalRestoredItems++;
+          console.log(`✓ Restored ${quantityToRestore} ${ingredientDoc.unit} to ingredient: ${ingredientDoc.name} (${stockBefore} → ${ingredientDoc.stock})`);
+        } else {
+          console.warn(`⚠ Ingredient not found for movement ${movement._id}`);
+        }
+      } catch (error) {
+        console.warn(`❌ Error restoring stock for movement ${movement._id}:`, error);
+      }
     }
+    console.log(`📦 Total restored: ${totalRestoredItems} stock movements`);
 
-    // Equipment usage history remains (no status management needed)
+    // 2. ลบข้อมูลการขาย (Sales)
+    const sales = await Sale.find({ boothId: booth._id });
+    console.log(`Found ${sales.length} sales records to delete`);
+    await Sale.deleteMany({ boothId: booth._id });
+    console.log(`🗑️ Deleted ${sales.length} sales records`);
 
-    // Delete all staff users associated with this booth
-    await User.deleteMany({ boothId: booth._id });
+    // 3. ลบข้อมูลการเคลื่อนไหวของ stock (หลังจากคืน stock แล้ว)
+    const deletedStockMovements = await StockMovement.deleteMany({ boothId: booth._id });
+    console.log(`🗑️ Deleted ${deletedStockMovements.deletedCount} stock movement records`);
 
-    // Delete the booth
+    // 4. ลบข้อมูลบัญชี (Accounting Transactions)
+    const accountingTransactions = await AccountingTransaction.deleteMany({ boothId: booth._id });
+    console.log(`🗑️ Deleted ${accountingTransactions.deletedCount} accounting transaction records`);
+
+    // 5. ลบข้อมูล Daily Summary
+    const dailySummaries = await DailySummary.deleteMany({ boothId: booth._id });
+    console.log(`🗑️ Deleted ${dailySummaries.deletedCount} daily summary records`);
+
+    // 6. ลบประวัติการใช้อุปกรณ์และคืนสถานะอุปกรณ์
+    const equipments = await Equipment.find({
+      $or: [
+        { currentBoothId: booth._id },
+        { 'usageHistory.boothId': booth._id }
+      ]
+    });
+
+    for (const equipment of equipments) {
+      // คืนสถานะอุปกรณ์เป็น available ถ้ากำลังใช้อยู่
+      if (equipment.currentBoothId && equipment.currentBoothId.toString() === String(booth._id)) {
+        equipment.status = 'available';
+        equipment.currentBoothId = null;
+        equipment.currentBoothName = '';
+        console.log(`🔧 Set equipment ${equipment.name} as available`);
+      }
+
+      // ลบประวัติการใช้งานที่เกี่ยวข้องกับ booth นี้
+      const originalHistoryLength = equipment.usageHistory.length;
+      equipment.usageHistory = equipment.usageHistory.filter(
+        (history: any) => history.boothId.toString() !== String(booth._id)
+      );
+
+      if (equipment.usageHistory.length !== originalHistoryLength) {
+        // คำนวณ totalDaysUsed ใหม่
+        equipment.totalDaysUsed = equipment.usageHistory.reduce(
+          (total: number, history: any) => total + (history.daysUsed || 0),
+          0
+        );
+        // คำนวณค่าเสื่อมใหม่
+        equipment.calculateDepreciation();
+        console.log(`🔧 Removed usage history and recalculated depreciation for equipment: ${equipment.name}`);
+      }
+
+      await equipment.save();
+    }
+    console.log(`🔧 Updated ${equipments.length} equipment records`);
+
+    // 7. ลบพนักงาน staff ทั้งหมดที่เกี่ยวข้องกับ booth
+    const deletedUsers = await User.deleteMany({ boothId: booth._id });
+    console.log(`👥 Deleted ${deletedUsers.deletedCount} staff user accounts`);
+
+    // 8. ลบ booth
     await Booth.findByIdAndDelete(id);
+    console.log(`🏪 Deleted booth: ${booth.name}`);
 
     return NextResponse.json({
       message: 'ลบหน้าร้านเรียบร้อยแล้ว'

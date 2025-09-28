@@ -5,6 +5,7 @@ import Ingredient from '@/lib/models/Ingredient';
 import MenuItem from '@/lib/models/MenuItem';
 import Equipment from '@/lib/models/Equipment';
 import Booth from '@/lib/models/Booth';
+import Brand from '@/lib/models/Brand';
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,18 +28,26 @@ export async function GET(request: NextRequest) {
     }
 
     // Check completion status for each step using brandId from payload
-    const [ingredientCount, menuItemCount, equipmentCount, boothCount] = await Promise.all([
+    const [ingredientCount, menuItemCount, equipmentCount, boothCount, brand] = await Promise.all([
       Ingredient.countDocuments({ brandId: payload.user.brandId }),
       MenuItem.countDocuments({ brandId: payload.user.brandId }),
       Equipment.countDocuments({ brandId: payload.user.brandId }),
-      Booth.countDocuments({ brandId: payload.user.brandId })
+      Booth.countDocuments({ brandId: payload.user.brandId }),
+      Brand.findById(payload.user.brandId)
     ]);
+
+    // Check if payment info is configured (either has uploaded QR code or manual setup)
+    const hasPaymentInfo = brand?.paymentInfo && (
+      brand.paymentInfo.qrCodeImage ||
+      (brand.paymentInfo.type && brand.paymentInfo.value)
+    );
 
     const completionStatus = {
       hasIngredients: ingredientCount > 0,
       hasMenuItems: menuItemCount > 0,
       hasEquipment: equipmentCount > 0,
-      hasBooths: boothCount > 0
+      hasBooths: boothCount > 0,
+      hasPaymentInfo: Boolean(hasPaymentInfo)
     };
 
     const allCompleted = Object.values(completionStatus).every(Boolean);

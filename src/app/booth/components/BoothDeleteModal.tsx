@@ -68,12 +68,21 @@ export function BoothDeleteModal({ booth, onClose, onSuccess }: BoothDeleteModal
 
         <div className="text-center space-y-3 mb-6">
           <p className="text-red-600 font-light text-sm">⚠️ การดำเนินการนี้ไม่สามารถยกเลิกได้!</p>
-          <div className="text-sm text-gray-600 bg-gray-50 border border-gray-200 p-3 rounded-lg text-left">
-            <p className="font-light mb-2 text-gray-700">การลบหน้าร้านจะส่งผลต่อ:</p>
+          <div className="text-sm text-gray-600 bg-red-50 border border-red-200 p-4 rounded-lg text-left">
+            <p className="font-light mb-3 text-red-700">การลบหน้าร้านจะส่งผลต่อ:</p>
             <div className="space-y-1 font-light text-gray-600">
-              <div>• บัญชี Staff ที่เชื่อมกับหน้าร้านนี้จะถูกลบ</div>
-              <div>• ข้อมูลพนักงานทั้งหมดจะถูกลบ</div>
-              <div>• การกำหนดเมนูของหน้าร้านจะถูกลบ</div>
+              <div>• <strong>ประวัติการขาย</strong> ทั้งหมดจะถูกลบ</div>
+              <div>• <strong>วัตถุดิบ</strong> ที่เคยหยิบไปใช้จะถูกคืนกลับ</div>
+              <div>• <strong>บัญชี Staff</strong> ที่เชื่อมกับหน้าร้านจะถูกลบ</div>
+              <div>• <strong>ข้อมูลพนักงาน</strong> ทั้งหมดจะถูกลบ</div>
+              <div>• <strong>ประวัติการเงิน</strong> และรายการบัญชีจะถูกลบ</div>
+              <div>• <strong>ประวัติการใช้อุปกรณ์</strong> จะถูกลบและคืนสถานะ</div>
+              <div>• <strong>การกำหนดเมนู</strong> ของหน้าร้านจะถูกลบ</div>
+            </div>
+            <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded">
+              <p className="text-yellow-700 text-xs font-light">
+                <strong>หมายเหตุ:</strong> การลบจะคืนวัตถุดิบที่เคยหยิบไปใช้กลับสู่คลังอัตโนมัติ
+              </p>
             </div>
           </div>
         </div>
