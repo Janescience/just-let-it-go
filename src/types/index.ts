@@ -18,10 +18,9 @@ export interface Brand {
   logo?: string;
   ownerId: string;
   paymentInfo?: {
-    phone?: string;
-    idCard?: string;
-    eWallet?: string;
-    paotang?: string;
+    type?: 'phone' | 'idCard' | 'eWallet' | 'paotang';
+    value?: string;
+    qrCodeImage?: string;
   };
   createdAt: Date;
   updatedAt: Date;

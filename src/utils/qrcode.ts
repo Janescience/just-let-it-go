@@ -113,51 +113,64 @@ export function generatePaymentQRString(data: PaymentQRData): string | null {
 
   const paymentInfo = brand.paymentInfo;
 
+  // ถ้ามี qrCodeImage ให้ return นั้นไปเลย (สำหรับ uploaded QR)
+  if (paymentInfo.qrCodeImage) {
+    return paymentInfo.qrCodeImage;
+  }
+
+  // ถ้าไม่มี type หรือ value ก็ไม่สามารถสร้าง QR ได้
+  if (!paymentInfo.type || !paymentInfo.value) {
+    console.log('No type or value found');
+    return null;
+  }
+
   try {
     let identifier = '';
 
-    switch (paymentMethod) {
+    // ใช้ type และ value จาก paymentInfo
+    if (paymentMethod !== paymentInfo.type) {
+      console.log('Payment method mismatch:', paymentMethod, 'vs', paymentInfo.type);
+      return null;
+    }
+
+    identifier = paymentInfo.value;
+
+    // Validate identifier based on type
+    switch (paymentInfo.type) {
       case 'phone':
-        if (!paymentInfo.phone) {
-          console.log('No phone found');
+        if (!identifier.match(/^[0-9-]+$/)) {
+          console.log('Invalid phone format');
           return null;
         }
-        identifier = paymentInfo.phone;
         break;
 
       case 'idCard':
-        if (!paymentInfo.idCard) {
-          console.log('No idCard found');
+        if (!identifier.match(/^[0-9-]+$/)) {
+          console.log('Invalid ID card format');
           return null;
         }
-        identifier = paymentInfo.idCard;
-        break;
-
-      case 'paotang':
-        if (!paymentInfo.paotang) {
-          console.log('No paotang found');
-          return null;
-        }
-        identifier = paymentInfo.paotang;
         break;
 
       case 'eWallet':
-        if (!paymentInfo.eWallet) {
-          console.log('No eWallet found');
-          return null;
-        }
         // ลอง PromptPay format ถ้าเป็นตัวเลข
-        if (paymentInfo.eWallet.match(/^[0-9-]+$/)) {
-          identifier = paymentInfo.eWallet;
+        if (identifier.match(/^[0-9-]+$/)) {
+          // ใช้ PromptPay format
         } else {
           // Fallback สำหรับ e-wallet อื่นๆ
           console.log('Using simple format for eWallet');
-          return `${paymentInfo.eWallet}:${amount}`;
+          return `${identifier}:${amount}`;
+        }
+        break;
+
+      case 'paotang':
+        if (!identifier.match(/^[0-9-]+$/)) {
+          console.log('Invalid paotang format');
+          return null;
         }
         break;
 
       default:
-        console.log('Invalid payment method:', paymentMethod);
+        console.log('Invalid payment type:', paymentInfo.type);
         return null;
     }
 
@@ -192,10 +205,11 @@ export function getAvailablePaymentMethods(brand: Brand): string[] {
   const methods: string[] = [];
   const paymentInfo = brand.paymentInfo;
 
-  if (paymentInfo.phone) methods.push('phone');
-  if (paymentInfo.idCard) methods.push('idCard');
-  if (paymentInfo.eWallet) methods.push('eWallet');
-  if (paymentInfo.paotang) methods.push('paotang');
+  // ถ้ามีรูป QR Code ที่อัพโหลดแล้ว หรือมี type และ value ที่กรอกแล้ว
+  if (paymentInfo.qrCodeImage || (paymentInfo.type && paymentInfo.value)) {
+    // ใช้ type ที่ตั้งค่าไว้ หรือ 'transfer' เป็นค่า default
+    methods.push(paymentInfo.type || 'transfer');
+  }
 
   return methods;
 }
@@ -216,16 +230,15 @@ export function getPaymentMethodInfo(brand: Brand, method: string): string | nul
 
   const paymentInfo = brand.paymentInfo;
 
-  switch (method) {
-    case 'phone':
-      return paymentInfo.phone || null;
-    case 'idCard':
-      return paymentInfo.idCard || null;
-    case 'eWallet':
-      return paymentInfo.eWallet || null;
-    case 'paotang':
-      return paymentInfo.paotang || null;
-    default:
-      return null;
+  // ถ้ามี qrCodeImage ให้ return นั้นไปเลย
+  if (paymentInfo.qrCodeImage) {
+    return paymentInfo.qrCodeImage;
   }
+
+  // ถ้า method ตรงกับ type ที่ตั้งค่าไว้ ให้ return value
+  if (method === paymentInfo.type && paymentInfo.value) {
+    return paymentInfo.value;
+  }
+
+  return null;
 }

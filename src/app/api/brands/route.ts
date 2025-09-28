@@ -102,10 +102,9 @@ export async function PUT(request: NextRequest) {
     }
     if (paymentInfo) {
       brand.paymentInfo = {
-        phone: paymentInfo.phone?.trim() || null,
-        idCard: paymentInfo.idCard?.trim() || null,
-        eWallet: paymentInfo.eWallet?.trim() || null,
-        paotang: paymentInfo.paotang?.trim() || null,
+        type: paymentInfo.type || 'phone',
+        value: paymentInfo.value?.trim() || null,
+        qrCodeImage: paymentInfo.qrCodeImage || null,
       };
     }
 

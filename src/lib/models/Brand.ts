@@ -19,19 +19,16 @@ const BrandSchema = new Schema<IBrand>({
     required: true,
   },
   paymentInfo: {
-    phone: {
+    type: {
+      type: String,
+      enum: ['phone', 'idCard', 'eWallet', 'paotang'],
+      default: 'phone',
+    },
+    value: {
       type: String,
       default: null,
     },
-    idCard: {
-      type: String,
-      default: null,
-    },
-    eWallet: {
-      type: String,
-      default: null,
-    },
-    paotang: {
+    qrCodeImage: {
       type: String,
       default: null,
     },

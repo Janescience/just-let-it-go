@@ -14,14 +14,15 @@ export default function BrandPage() {
   const [formData, setFormData] = useState({
     name: '',
     logo: '',
+    paymentMethod: 'manual', // 'manual' or 'upload'
     paymentInfo: {
-      phone: '',
-      idCard: '',
-      eWallet: '',
-      paotang: '',
+      type: 'phone', // 'phone', 'idCard', 'eWallet', 'paotang'
+      value: '',
+      qrCodeImage: '',
     }
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const qrCodeInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (user) {
@@ -38,11 +39,11 @@ export default function BrandPage() {
         setFormData({
           name: data.brand.name || '',
           logo: data.brand.logo || '',
+          paymentMethod: data.brand.paymentInfo?.qrCodeImage ? 'upload' : 'manual',
           paymentInfo: {
-            phone: data.brand.paymentInfo?.phone || '',
-            idCard: data.brand.paymentInfo?.idCard || '',
-            eWallet: data.brand.paymentInfo?.eWallet || '',
-            paotang: data.brand.paymentInfo?.paotang || '',
+            type: data.brand.paymentInfo?.type || 'phone',
+            value: data.brand.paymentInfo?.value || '',
+            qrCodeImage: data.brand.paymentInfo?.qrCodeImage || '',
           }
         });
       }
@@ -80,6 +81,42 @@ export default function BrandPage() {
     }));
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const handleQRCodeUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('ขนาดไฟล์ต้องไม่เกิน 5MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      setFormData(prev => ({
+        ...prev,
+        paymentInfo: {
+          ...prev.paymentInfo,
+          qrCodeImage: result
+        }
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveQRCode = () => {
+    setFormData(prev => ({
+      ...prev,
+      paymentInfo: {
+        ...prev.paymentInfo,
+        qrCodeImage: ''
+      }
+    }));
+    if (qrCodeInputRef.current) {
+      qrCodeInputRef.current.value = '';
     }
   };
 
@@ -241,77 +278,150 @@ export default function BrandPage() {
           <div className="col-span-2 border border-gray-100 p-6">
             <div className="flex items-center gap-2 mb-6">
               <QrCode className="w-5 h-5" />
-              <h3 className="text-lg font-light text-black tracking-wide">ข้อมูลการชำระเงิน (สำหรับสร้าง QR Code)</h3>
+              <h3 className="text-lg font-light text-black tracking-wide">ข้อมูลการชำระเงิน</h3>
             </div>
+
             <div className="space-y-6">
-    
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">
-                    เบอร์โทรศัพท์
+              {/* Payment Method Selection */}
+              <div>
+                <label className="block text-xs font-light text-gray-400 mb-3 tracking-wider uppercase">
+                  เลือกวิธีการตั้งค่า QR Code
+                </label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="manual"
+                      checked={formData.paymentMethod === 'manual'}
+                      onChange={(e) => setFormData(prev => ({ ...prev, paymentMethod: e.target.value }))}
+                      className="text-black focus:ring-black"
+                    />
+                    <span className="text-sm font-light">กรอกข้อมูลเพื่อสร้าง QR Code</span>
                   </label>
-                  <input
-                    type="tel"
-                    value={formData.paymentInfo.phone}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      paymentInfo: { ...prev.paymentInfo, phone: e.target.value }
-                    }))}
-                    placeholder="เช่น 0812345678"
-                    className="w-full border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">
-                    หมายเลขบัตรประชาชน
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="upload"
+                      checked={formData.paymentMethod === 'upload'}
+                      onChange={(e) => setFormData(prev => ({ ...prev, paymentMethod: e.target.value }))}
+                      className="text-black focus:ring-black"
+                    />
+                    <span className="text-sm font-light">อัพโหลดรูป QR Code</span>
                   </label>
-                  <input
-                    type="text"
-                    value={formData.paymentInfo.idCard}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      paymentInfo: { ...prev.paymentInfo, idCard: e.target.value }
-                    }))}
-                    placeholder="เช่น 1234567890123"
-                    maxLength={13}
-                    className="w-full border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">
-                    E-Wallet (เช่น TrueMoney, ShopeePay)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.paymentInfo.eWallet}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      paymentInfo: { ...prev.paymentInfo, eWallet: e.target.value }
-                    }))}
-                    placeholder="เช่น 0812345678"
-                    className="w-full border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">
-                    เป๋าตัง
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.paymentInfo.paotang}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      paymentInfo: { ...prev.paymentInfo, paotang: e.target.value }
-                    }))}
-                    placeholder="เช่น 0812345678"
-                    className="w-full border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none"
-                  />
                 </div>
               </div>
+
+              {/* Manual Input Mode */}
+              {formData.paymentMethod === 'manual' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">
+                        ประเภทการชำระเงิน
+                      </label>
+                      <select
+                        value={formData.paymentInfo.type}
+                        onChange={(e) => setFormData(prev => ({
+                          ...prev,
+                          paymentInfo: { ...prev.paymentInfo, type: e.target.value, value: '' }
+                        }))}
+                        className="w-full border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none"
+                      >
+                        <option value="phone">เบอร์โทรศัพท์</option>
+                        <option value="idCard">หมายเลขบัตรประชาชน</option>
+                        <option value="eWallet">E-Wallet (TrueMoney, ShopeePay)</option>
+                        <option value="paotang">เป๋าตัง</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">
+                        {formData.paymentInfo.type === 'phone' && 'เบอร์โทรศัพท์'}
+                        {formData.paymentInfo.type === 'idCard' && 'หมายเลขบัตรประชาชน'}
+                        {formData.paymentInfo.type === 'eWallet' && 'หมายเลข E-Wallet'}
+                        {formData.paymentInfo.type === 'paotang' && 'หมายเลขเป๋าตัง'}
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.paymentInfo.value}
+                        onChange={(e) => setFormData(prev => ({
+                          ...prev,
+                          paymentInfo: { ...prev.paymentInfo, value: e.target.value }
+                        }))}
+                        placeholder={
+                          formData.paymentInfo.type === 'phone' ? 'เช่น 0812345678' :
+                          formData.paymentInfo.type === 'idCard' ? 'เช่น 1234567890123' :
+                          formData.paymentInfo.type === 'eWallet' ? 'เช่น 0812345678' :
+                          'เช่น 0812345678'
+                        }
+                        maxLength={formData.paymentInfo.type === 'idCard' ? 13 : undefined}
+                        className="w-full border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Upload Mode */}
+              {formData.paymentMethod === 'upload' && (
+                <div className="space-y-4">
+                  <div className="text-center">
+                    {formData.paymentInfo.qrCodeImage ? (
+                      <div className="space-y-4">
+                        <div className="relative w-64 h-64 mx-auto">
+                          <img
+                            src={formData.paymentInfo.qrCodeImage}
+                            alt="QR Code"
+                            className="w-full h-full object-cover border border-gray-200"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleRemoveQRCode}
+                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => qrCodeInputRef.current?.click()}
+                          className="flex items-center gap-2 px-6 py-3 border border-gray-200 text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide mx-auto"
+                        >
+                          <Upload className="w-4 h-4" />
+                          เปลี่ยนรูป QR Code
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div
+                          onClick={() => qrCodeInputRef.current?.click()}
+                          className="w-64 h-64 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 transition-colors mx-auto"
+                        >
+                          <QrCode className="w-16 h-16 text-gray-400 mb-3" />
+                          <p className="text-sm font-light text-gray-600 mb-1">คลิกเพื่ออัพโหลด QR Code</p>
+                          <p className="text-xs font-light text-gray-400">สูงสุด 5MB</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => qrCodeInputRef.current?.click()}
+                          className="flex items-center gap-2 px-6 py-3 border border-gray-200 text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide mx-auto"
+                        >
+                          <Upload className="w-4 h-4" />
+                          อัพโหลด QR Code
+                        </button>
+                      </div>
+                    )}
+                    <input
+                      ref={qrCodeInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleQRCodeUpload}
+                      className="hidden"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="border border-gray-200 p-4">
                 <div className="flex items-start gap-2">
@@ -319,7 +429,17 @@ export default function BrandPage() {
                   <div>
                     <p className="font-light text-gray-700 mb-1">หมายเหตุ:</p>
                     <ul className="text-gray-600 space-y-1 text-sm font-light">
-                      <li>• ข้อมูลที่กรอกต้องถูกต้องและใช้งานได้จริง</li>
+                      {formData.paymentMethod === 'manual' ? (
+                        <>
+                          <li>• ข้อมูลที่กรอกต้องถูกต้องและใช้งานได้จริง</li>
+                          <li>• QR Code จะถูกสร้างอัตโนมัติจากข้อมูลที่กรอก</li>
+                        </>
+                      ) : (
+                        <>
+                          <li>• อัพโหลดรูป QR Code ที่ถูกต้องและใช้งานได้</li>
+                          <li>• รูปต้องมีขนาดไม่เกิน 5MB</li>
+                        </>
+                      )}
                       <li>• QR Code จะแสดงในหน้าชำระเงินของลูกค้า</li>
                     </ul>
                   </div>

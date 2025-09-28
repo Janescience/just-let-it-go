@@ -41,6 +41,12 @@ export function PaymentModal({
 
   const availablePaymentMethods = brand ? getAvailablePaymentMethods(brand) : [];
 
+  // Check if brand has payment info configured
+  const hasPaymentInfo = brand?.paymentInfo && (
+    brand.paymentInfo.qrCodeImage ||
+    (brand.paymentInfo.type && brand.paymentInfo.value)
+  );
+
 
   const quickAmounts = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000, 3000];
 
@@ -65,18 +71,21 @@ export function PaymentModal({
       if (!receivedAmount) {
         setReceivedAmount(totalAmount.toString());
       }
-    } else if (paymentMethod === 'transfer' && availablePaymentMethods.length > 0 && brand) {
-      // Auto-select first available payment method for transfer
-      setSelectedQRMethod(availablePaymentMethods[0]);
-      // Generate QR code immediately when transfer is selected
-      const methodToUse = selectedQRMethod || availablePaymentMethods[0];
-      const qrString = generatePaymentQRString({
-        amount: totalAmount,
-        brand,
-        paymentMethod: methodToUse as any
-      });
-      if (qrString) {
-        setQrCode(qrString);
+    } else if (paymentMethod === 'transfer' && hasPaymentInfo && brand) {
+      // Check if brand has uploaded QR code image
+      if (brand.paymentInfo?.qrCodeImage) {
+        // Use uploaded QR code image
+        setQrCode(brand.paymentInfo.qrCodeImage);
+      } else if (brand.paymentInfo?.type && brand.paymentInfo?.value) {
+        // Generate QR code from manual input
+        const qrString = generatePaymentQRString({
+          amount: totalAmount,
+          brand,
+          paymentMethod: brand.paymentInfo.type as any
+        });
+        if (qrString) {
+          setQrCode(qrString);
+        }
       }
     }
   }, [paymentMethod, availablePaymentMethods, brand, totalAmount]);
@@ -93,8 +102,8 @@ export function PaymentModal({
       return;
     }
 
-    // ตรวจสอบว่ามี payment methods พร้อมใช้งานสำหรับ transfer
-    if (paymentMethod === 'transfer' && availablePaymentMethods.length === 0) {
+    // ตรวจสอบว่ามี payment info พร้อมใช้งานสำหรับ transfer
+    if (paymentMethod === 'transfer' && !hasPaymentInfo) {
       alert('ไม่พบข้อมูลการชำระเงิน กรุณาติดต่อผู้ดูแลระบบ');
       return;
     }
@@ -211,8 +220,8 @@ export function PaymentModal({
     } else {
       setShowCashInput(false);
       setReceivedAmount('');
-      if (availablePaymentMethods.length > 0) {
-        setSelectedQRMethod(availablePaymentMethods[0]);
+      if (hasPaymentInfo) {
+        setSelectedQRMethod('transfer');
       }
     }
   };
@@ -278,27 +287,52 @@ export function PaymentModal({
                   </div>
 
                   <div
-                    className={`p-5 border-2 rounded-xl cursor-pointer transition-all ${
-                      paymentMethod === 'transfer'
-                        ? 'border-black bg-gray-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                    className={`p-5 border-2 rounded-xl transition-all ${
+                      hasPaymentInfo
+                        ? `cursor-pointer ${
+                            paymentMethod === 'transfer'
+                              ? 'border-black bg-gray-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`
+                        : 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-50'
                     }`}
-                    onClick={() => handlePaymentMethodChange('transfer')}
+                    onClick={() => hasPaymentInfo && handlePaymentMethodChange('transfer')}
                   >
                     <div className="flex items-center gap-4">
                       <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                        paymentMethod === 'transfer' ? 'bg-black' : 'bg-gray-100'
+                        paymentMethod === 'transfer' && hasPaymentInfo ? 'bg-black' : 'bg-gray-100'
                       }`}>
                         <CreditCard className={`w-6 h-6 ${
-                          paymentMethod === 'transfer' ? 'text-white' : 'text-gray-600'
+                          paymentMethod === 'transfer' && hasPaymentInfo ? 'text-white' : 'text-gray-600'
                         }`} />
                       </div>
                       <div>
                         <div className="font-light text-gray-900">โอนเงิน</div>
-                        <div className="text-lg text-gray-500">สแกน QR Code</div>
+                        <div className="text-lg text-gray-500">
+                          {hasPaymentInfo ? 'สแกน QR Code' : 'ยังไม่ได้ตั้งค่า'}
+                        </div>
                       </div>
                     </div>
                   </div>
+
+                  {/* Show setup button if no payment info */}
+                  {!hasPaymentInfo && (
+                    <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                      <div className="text-center">
+                        <p className="text-orange-700 text-sm mb-3">
+                          ยังไม่ได้ตั้งค่าข้อมูลการชำระเงิน
+                        </p>
+                        <button
+                          onClick={() => {
+                            window.open('/brand', '_blank');
+                          }}
+                          className="px-4 py-2 bg-orange-500 text-white text-sm rounded-lg hover:bg-orange-600 transition-colors"
+                        >
+                          ไปจัดการแบรนด์
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Order Summary - Always in Same Column */}
@@ -402,12 +436,23 @@ export function PaymentModal({
                         <>
                           <div className="bg-gray-100 p-3 md:p-4 rounded-lg mb-4 md:mb-6">
                             <div className="w-full bg-white rounded-lg flex items-center justify-center p-4 md:p-6">
-                              <QRCode
-                                value={qrCode}
-                                size={window.innerWidth < 768 ? 250 : 300}
-                                bgColor="#ffffff"
-                                fgColor="#000000"
-                              />
+                              {brand?.paymentInfo?.qrCodeImage ? (
+                                // Show uploaded QR code image
+                                <img
+                                  src={brand.paymentInfo.qrCodeImage}
+                                  alt="QR Code"
+                                  className="max-w-[300px] max-h-[300px] object-contain"
+                                  style={{ width: window.innerWidth < 768 ? '250px' : '300px' }}
+                                />
+                              ) : (
+                                // Show generated QR code
+                                <QRCode
+                                  value={qrCode}
+                                  size={window.innerWidth < 768 ? 250 : 300}
+                                  bgColor="#ffffff"
+                                  fgColor="#000000"
+                                />
+                              )}
                             </div>
                           </div>
 
@@ -416,6 +461,15 @@ export function PaymentModal({
                             <div className="text-xl md:text-2xl font-light text-gray-700">
                               จำนวนเงิน: ฿{totalAmount.toLocaleString()}
                             </div>
+                            {brand?.paymentInfo?.type && brand?.paymentInfo?.value && (
+                              <div className="text-sm text-gray-500 mt-2">
+                                {brand.paymentInfo.type === 'phone' && 'เบอร์โทรศัพท์: '}
+                                {brand.paymentInfo.type === 'idCard' && 'หมายเลขบัตรประชาชน: '}
+                                {brand.paymentInfo.type === 'eWallet' && 'E-Wallet: '}
+                                {brand.paymentInfo.type === 'paotang' && 'เป๋าตัง: '}
+                                {brand.paymentInfo.value}
+                              </div>
+                            )}
                           </div>
 
                           <div className="flex items-center justify-center gap-2 text-orange-600 mt-4">
@@ -423,11 +477,18 @@ export function PaymentModal({
                             <span className="text-base md:text-lg">รอการชำระเงิน...</span>
                           </div>
                         </>
-                      ) : (
+                      ) : hasPaymentInfo ? (
                         <div className="flex items-center justify-center py-20">
                           <div className="text-center">
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-                            <p className="text-gray-600">กำลังสร้าง QR Code...</p>
+                            <p className="text-gray-600">กำลังโหลด QR Code...</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center py-20">
+                          <div className="text-center">
+                            <p className="text-gray-600 mb-4">ไม่สามารถแสดง QR Code ได้</p>
+                            <p className="text-sm text-gray-500">กรุณาตั้งค่าข้อมูลการชำระเงินก่อน</p>
                           </div>
                         </div>
                       )}
