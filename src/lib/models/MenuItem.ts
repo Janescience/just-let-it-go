@@ -38,6 +38,11 @@ const MenuItemSchema = new Schema<IMenuItem>({
     ref: 'Brand',
     required: true,
   },
+  categoryId: {
+    type: String,
+    ref: 'Category',
+    default: null,
+  },
   isActive: {
     type: Boolean,
     default: true,
@@ -48,5 +53,6 @@ const MenuItemSchema = new Schema<IMenuItem>({
 
 MenuItemSchema.index({ brandId: 1 });
 MenuItemSchema.index({ brandId: 1, isActive: 1 });
+MenuItemSchema.index({ brandId: 1, categoryId: 1 });
 
 export default mongoose.models.MenuItem || mongoose.model<IMenuItem>('MenuItem', MenuItemSchema);

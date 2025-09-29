@@ -44,26 +44,24 @@ export function SalesHistory({
   };
 
   return (
-    <div className="h-full overflow-y-auto max-w-7xl mx-auto px-6 py-8 space-y-8">
+    <div className="h-full overflow-y-auto max-w-7xl mx-auto px-6 py-4 space-y-6">
       {/* Date Filter */}
-      <div className="mb-12">
-        <div className="flex items-center gap-3 mb-4">
-          <Calendar className="w-4 h-4 text-gray-400" />
-          <h3 className="text-lg font-light text-black tracking-wide">เลือกวันที่</h3>
+      <div className="mb-6">
+        <div className="flex items-center gap-3">
+          <div className="font-light text-black tracking-wide whitespace-nowrap">วันที่</div>
+          <Input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => onDateChange(e.target.value)}
+            className="max-w-xs border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black"
+          />
         </div>
-        <Input
-          type="date"
-          value={selectedDate}
-          onChange={(e) => onDateChange(e.target.value)}
-          className="max-w-xs border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black"
-        />
       </div>
 
       {/* Sales History */}
       <div>
-        <div className="mb-6">
-          <h3 className="text-lg font-light text-black tracking-wide mb-1">ประวัติการขาย</h3>
-          <p className="text-sm font-light text-gray-500">{formatDate(selectedDate)}</p>
+        <div className="mb-4">
+          <div className="text-base font-light text-black tracking-wide">ประวัติการขาย {formatDate(selectedDate)}</div>
         </div>
 
         {salesHistory.length === 0 ? (
@@ -76,20 +74,20 @@ export function SalesHistory({
           </div>
         ) : (
           <>
-            <div className="space-y-6">
+            <div className="space-y-4">
               {salesHistory.map(sale => (
-                <div key={sale._id} className="border-b border-gray-100 pb-6 last:border-b-0">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <div className="text-sm font-light text-gray-400 mb-1">#{sale._id.slice(-8)}</div>
-                      <div className="font-light text-black tracking-wide">
+                <div key={sale._id} className="border-b border-gray-100 pb-4 last:border-b-0">
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-4">
+                      <div className="text-xs font-light text-gray-400">#{sale._id.slice(-8)}</div>
+                      <div className="text-sm font-light text-black">
                         {formatTime(sale.createdAt)}
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xl font-light text-black mb-2">
-                        ฿{sale.totalAmount.toLocaleString()}
+                      <div className="text-sm font-light text-gray-500">
+                        {sale.items.length} รายการ
                       </div>
+                    </div>
+                    <div className="flex items-center gap-3">
                       <div className={`inline-flex items-center px-2 py-0.5 text-xs font-light ${
                         sale.paymentMethod === 'cash'
                           ? 'text-gray-600 border border-gray-300'
@@ -97,17 +95,17 @@ export function SalesHistory({
                       }`}>
                         {sale.paymentMethod === 'cash' ? 'เงินสด' : 'โอนเงิน'}
                       </div>
+                      <div className="text-lg font-light text-black">
+                        ฿{sale.totalAmount.toLocaleString()}
+                      </div>
                     </div>
                   </div>
-                  <div className="space-y-3 pt-4 border-t border-gray-100">
+                  <div className="text-xs font-light text-gray-500 pl-4">
                     {sale.items.map((item, index) => (
-                      <div key={index} className="flex justify-between">
-                        <div className="flex-1">
-                          <div className="font-light text-black">{(item.menuItemId as any)?.name || 'รายการถูกลบ'}</div>
-                          <div className="text-xs font-light text-gray-400">จำนวน {item.quantity} x ฿{item.price.toLocaleString()}</div>
-                        </div>
-                        <div className="font-light text-black">฿{(item.price * item.quantity).toLocaleString()}</div>
-                      </div>
+                      <span key={index}>
+                        {(item.menuItemId as any)?.name || 'รายการถูกลบ'} (฿{item.price.toLocaleString()}) x {item.quantity} = ฿{(item.price * item.quantity).toLocaleString()}
+                        {index < sale.items.length - 1 ? ' | ' : ''}
+                      </span>
                     ))}
                   </div>
                 </div>

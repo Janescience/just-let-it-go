@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Plus, Minus, CreditCard, ShoppingCart, ListOrdered } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Minus, CreditCard, ShoppingCart, ChefHat } from 'lucide-react';
 import { Input } from '@/components/ui';
-import { MenuItem } from '@/types';
+import { MenuItem, Category } from '@/types';
 
 interface CartItem extends MenuItem {
   quantity: number;
@@ -31,37 +31,95 @@ export function SaleTab({
   setShowPaymentModal
 }: SaleTabProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string>('all');
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/categories');
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data.categories);
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
 
   const filteredMenuItems = Array.isArray(menuItems)
-    ? menuItems.filter(item =>
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()))
-      )
+    ? menuItems.filter(item => {
+        // Filter by category
+        const categoryMatch = activeCategory === 'all' || item.categoryId === activeCategory;
+
+        // Filter by search query
+        const searchMatch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()));
+
+        return categoryMatch && searchMatch;
+      })
     : [];
 
   return (
-    <div className="flex flex-col lg:flex-row lg:h-full">
+    <div className="flex flex-col lg:flex-row h-full">
       {/* Menu Items - Mobile: Full width, Desktop: Left Side */}
       <div className="flex-1 flex flex-col">
         {/* Header - Fixed */}
-        <div className="flex-shrink-0 max-w-7xl mx-auto px-6 py-6 w-full">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-light text-black tracking-wide">เมนู ({filteredMenuItems.length} รายการ)</h2>
-            </div>
-            <div className="max-w-md">
+        <div className="flex-shrink-0 max-w-7xl mx-auto px-4 py-3 w-full">
+          <div className="flex flex-col flex-row items-center justify-between gap-3">
+
+            <div className="w-60">
               <Input
                 placeholder="ค้นหาเมนู..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black"
+                className="border-0 border-b border-gray-200 rounded-none bg-transparent  font-light focus:border-black"
               />
             </div>
           </div>
+
+          {/* Category Tabs */}
+          {categories.length > 0 && (
+            <div className="mt-3">
+              <div className="border-b border-gray-100">
+                <nav className="-mb-px flex space-x-4 overflow-x-auto">
+                  <button
+                    onClick={() => setActiveCategory('all')}
+                    className={`py-3 px-4 border-b-2 font-light text-base tracking-wide whitespace-nowrap ${
+                      activeCategory === 'all'
+                        ? 'border-gray-500 text-gray-900'
+                        : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-200'
+                    }`}
+                  >
+                    ทั้งหมด ({menuItems.length})
+                  </button>
+                  {categories.map(category => {
+                    const categoryItemCount = menuItems.filter(item => item.categoryId === category._id).length;
+                    return (
+                      <button
+                        key={category._id}
+                        onClick={() => setActiveCategory(category._id)}
+                        className={`py-3 px-4 border-b-2 font-light text-base tracking-wide whitespace-nowrap ${
+                          activeCategory === category._id
+                            ? 'border-gray-500 text-gray-900'
+                            : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-200'
+                        }`}
+                      >
+                        {category.name} ({categoryItemCount})
+                      </button>
+                    );
+                  })}
+                </nav>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Scrollable Menu Content */}
-        <div className="flex-1 overflow-y-auto max-w-7xl mx-auto px-6 w-full">
+        <div className="flex-1 overflow-y-auto max-w-7xl mx-auto px-4 w-full">
           {filteredMenuItems.length === 0 ? (
             <div className="text-center py-24">
               <div className="w-16 h-16 border border-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -70,7 +128,7 @@ export function SaleTab({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 ) : (
-                  <ListOrdered className="w-6 h-6 text-gray-300" />
+                  <ChefHat className="w-6 h-6 text-gray-300" />
                 )}
               </div>
               <div className="text-lg font-thin text-gray-600 mb-2 tracking-wide">
@@ -81,51 +139,44 @@ export function SaleTab({
               </div>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
               {filteredMenuItems.map((item) => (
-                <div key={item._id} className="border-b border-gray-100 pb-6 last:border-b-0">
-                  <div
-                    className="flex flex-col sm:flex-row gap-4 sm:gap-6 cursor-pointer group"
-                    onClick={() => addToCart(item)}
-                  >
-                    <div className="w-24 h-24 bg-gray-100 overflow-hidden flex-shrink-0">
-                      {item.image ? (
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <ListOrdered className="w-8 h-8 text-gray-300" />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex-1">
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                        <div className="flex-1">
-                          <h3 className="font-light text-black tracking-wide text-lg mb-2">{item.name}</h3>
-                          {item.description && (
-                            <p className="text-sm font-light text-gray-500 mb-4">{item.description}</p>
-                          )}
-                          <div>
-                            <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">ราคา</div>
-                            <div className="font-light text-black">฿{item.price.toLocaleString()}</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              addToCart(item);
-                            }}
-                            className="px-6 py-2 border border-gray-200 text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide"
-                          >
-                            เพิ่มในตะกร้า
-                          </button>
-                        </div>
+                <div
+                  key={item._id}
+                  className="group relative bg-white border border-gray-200 rounded overflow-hidden hover:shadow-lg transition-shadow duration-200 cursor-pointer"
+                  onClick={() => addToCart(item)}
+                >
+                  {/* Image */}
+                  <div className="aspect-square bg-gray-100 overflow-hidden relative">
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <ChefHat className="w-8 h-8 text-gray-300" />
                       </div>
+                    )}
+                    {/* Price overlay */}
+                    <div className="absolute top-2 right-2 bg-black bg-opacity-80 text-white text-sm font-medium px-2 py-1 rounded">
+                      ฿{item.price.toLocaleString()}
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-2">
+                    <h3 className="font-medium text-black text-base leading-tight">{item.name}</h3>
+                    {!item.isActive && (
+                      <span className="text-xs text-gray-400 border border-gray-300 px-1 py-0.5 rounded inline-block mt-1">ปิด</span>
+                    )}
+                  </div>
+
+                  {/* Add to cart overlay */}
+                  <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                    <div className="bg-white rounded-full p-3 text-black hover:bg-gray-100 transition-colors duration-200">
+                      <Plus className="w-6 h-6" />
                     </div>
                   </div>
                 </div>
@@ -137,9 +188,9 @@ export function SaleTab({
 
       {/* Cart - Mobile: Full width, Desktop: Right Side */}
       <div className="w-full lg:w-80 border-l-0 lg:border-l border-gray-100 bg-white">
-        <div className="lg:h-full flex flex-col">
+        <div className="h-full flex flex-col pb-safe-area-inset-bottom lg:pb-0">
           {/* Cart Header - Fixed */}
-          <div className="flex-shrink-0 px-6 py-6 border-b border-gray-100">
+          <div className="flex-shrink-0 px-4 py-4 border-b border-gray-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="relative">
@@ -176,28 +227,24 @@ export function SaleTab({
           ) : (
             <>
               {/* Cart Items - Scrollable */}
-              <div className="lg:flex-1 lg:overflow-y-auto px-6 py-6">
+              <div className="lg:flex-1 lg:overflow-y-auto px-4 py-4">
                 <div className="space-y-6">
                   {cart.map((item) => (
-                    <div key={item._id} className="border-b border-gray-100 pb-6 last:border-b-0">
+                    <div key={item._id} className="border-b border-gray-100 pb-2 last:border-b-0">
                       <div className="flex items-start gap-4">
                         {/* Item Info */}
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-light text-black tracking-wide text-lg mb-2">{item.name}</h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">ราคาต่อหน่วย</div>
-                              <div className="font-light text-gray-600">฿{item.price.toLocaleString()}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">รวม</div>
-                              <div className="font-light text-black">฿{(item.price * item.quantity).toLocaleString()}</div>
-                            </div>
+                          <h4 className="font-light text-black tracking-wide text-lg">{item.name}</h4>
+                          <div>
+                            <div className="text-xs font-light text-gray-400 tracking-wider uppercase">ราคาต่อหน่วย</div>
+                            <div className="font-light text-gray-600">฿{item.price.toLocaleString()}</div>
                           </div>
                         </div>
 
-                        {/* Quantity Controls */}
-                        <div className="flex items-center gap-2">
+                        {/* Quantity Controls and Total */}
+                        <div className="flex flex-col items-end ">
+                          {/* Quantity Controls */}
+                          <div className="flex items-center gap-2">
                           <button
                             onClick={() => removeFromCart(item._id)}
                             className="p-2 text-gray-300 hover:text-gray-600 transition-colors duration-200"
@@ -213,6 +260,13 @@ export function SaleTab({
                           >
                             <Plus className="w-4 h-4" />
                           </button>
+                          </div>
+
+                          {/* Total Price */}
+                          <div className="text-righ mt-1">
+                            <div className="text-xs font-light text-gray-400 tracking-wider uppercase">รวม</div>
+                            <div className="text-black">฿{(item.price * item.quantity).toLocaleString()}</div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -221,18 +275,12 @@ export function SaleTab({
               </div>
 
               {/* Cart Summary - Fixed */}
-              <div className="lg:flex-shrink-0 border-t border-gray-100 px-6 py-6 bg-white">
-                <div className="space-y-6">
-                  {/* Subtotal breakdown */}
-                  <div>
-                    <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">จำนวนรายการ</div>
-                    <div className="font-light text-gray-600">{getTotalItems()} ชิ้น</div>
-                  </div>
-
-                  {/* Total Amount */}
-                  <div className="border-t border-gray-100 pt-4">
-                    <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">ยอดรวมทั้งสิ้น</div>
-                    <div className="text-xl font-light text-black">
+              <div className="lg:flex-shrink-0 border-t border-gray-100 px-4 py-3 bg-white">
+                <div className="space-y-3">
+                  {/* Summary in one line */}
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-light text-gray-600">{cart.length} รายการ {getTotalItems()} ชิ้น</div>
+                    <div className="text-xl font-medium text-black">
                       ฿{getTotalAmount().toLocaleString()}
                     </div>
                   </div>
@@ -240,7 +288,7 @@ export function SaleTab({
                   {/* Checkout Button */}
                   <button
                     onClick={() => setShowPaymentModal(true)}
-                    className="w-full px-6 py-3 bg-black text-white text-sm font-light hover:bg-gray-800 transition-colors duration-200 tracking-wide flex items-center justify-center gap-2"
+                    className="w-full px-6 py-3 mb-20 lg:mb-0 bg-black text-white text-sm font-light hover:bg-gray-800 transition-colors duration-200 tracking-wide flex items-center justify-center gap-2"
                   >
                     <CreditCard className="w-4 h-4" />
                     ดำเนินการชำระเงิน

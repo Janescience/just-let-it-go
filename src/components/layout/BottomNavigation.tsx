@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Store, Beef, UtensilsCrossed, Hammer, Calculator, ChevronUp, Warehouse, LogOut, CircleUserRound, Building2 } from 'lucide-react';
+import { ChartNoAxesCombined, Store, Beef, UtensilsCrossed, Hammer, Calculator, ChevronUp, Settings, LogOut, CircleUserRound, Building2 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/hooks/useAuth';
 import { useBrand } from '@/hooks/useBrand';
@@ -25,8 +25,8 @@ interface SubmenuItem {
 
 const navigationItems: NavigationItem[] = [
   {
-    icon: Home,
-    label: 'หน้าหลัก',
+    icon: ChartNoAxesCombined,
+    label: '',
     href: '/',
     adminOnly: true,
   },
@@ -37,8 +37,8 @@ const navigationItems: NavigationItem[] = [
     adminOnly: true,
   },
   {
-    icon: Warehouse,
-    label: 'หลังร้าน',
+    icon: Settings,
+    label: 'dd',
     adminOnly: true,
     isSubmenu: true,
     submenuItems: [
@@ -73,6 +73,7 @@ export function BottomNavigation() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
   const [showUserMenu, setShowUserMenu] = useState<string | null>(null);
+  const [submenuPosition, setSubmenuPosition] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     // Get user role from cookie or localStorage
@@ -115,8 +116,19 @@ export function BottomNavigation() {
     return null;
   }
 
-  const handleSubmenuToggle = (label: string) => {
-    setActiveSubmenu(activeSubmenu === label ? null : label);
+  const handleSubmenuToggle = (label: string, event: React.MouseEvent<HTMLButtonElement>) => {
+    if (activeSubmenu === label) {
+      setActiveSubmenu(null);
+      setSubmenuPosition(null);
+    } else {
+      // คำนวณตำแหน่งของปุ่มที่กด
+      const buttonRect = event.currentTarget.getBoundingClientRect();
+      const centerX = buttonRect.left + (buttonRect.width / 2);
+      const bottomY = buttonRect.top;
+
+      setSubmenuPosition({ x: centerX, y: bottomY });
+      setActiveSubmenu(label);
+    }
   };
 
   const isBackendRouteActive = () => {
@@ -128,12 +140,23 @@ export function BottomNavigation() {
     <>
       {/* Overlay to close menus */}
       {(activeSubmenu || showUserMenu) && (
-        <div className="fixed inset-0 z-40" onClick={() => { setActiveSubmenu(null); setShowUserMenu(null); }} />
+        <div className="fixed inset-0 z-40" onClick={() => {
+          setActiveSubmenu(null);
+          setShowUserMenu(null);
+          setSubmenuPosition(null);
+        }} />
       )}
 
       {/* Submenu Dropdown */}
-      {activeSubmenu && (
-        <div className="fixed bottom-20 right-8 transform -translate-x-1/2 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 min-w-[200px]">
+      {activeSubmenu && submenuPosition && (
+        <div
+          className="fixed bg-white rounded-md shadow-lg border border-gray-200 py-2 z-50 min-w-[120px]"
+          style={{
+            left: `${submenuPosition.x}px`,
+            top: `${submenuPosition.y - 10}px`, // เว้นระยะ 10px จากด้านบน
+            transform: 'translateX(-50%) translateY(-100%)', // จัดกึ่งกลางแนวนอนและขยับขึ้นด้านบน
+          }}
+        >
           {navigationItems
             .find(item => item.label === activeSubmenu)
             ?.submenuItems?.map((submenuItem) => {
@@ -144,7 +167,10 @@ export function BottomNavigation() {
                 <Link
                   key={submenuItem.href}
                   href={submenuItem.href}
-                  onClick={() => setActiveSubmenu(null)}
+                  onClick={() => {
+                    setActiveSubmenu(null);
+                    setSubmenuPosition(null);
+                  }}
                   className={cn(
                     'flex items-center px-4 py-3 font-light transition-colors',
                     isActive
@@ -152,7 +178,7 @@ export function BottomNavigation() {
                       : 'text-gray-700 hover:text-black hover:bg-gray-50'
                   )}
                 >
-                  <SubmenuIcon className="w-4 h-4 mr-3" />
+                  <SubmenuIcon className="w-4 h-4 mr-2" />
                   {submenuItem.label}
                 </Link>
               );
@@ -211,7 +237,7 @@ export function BottomNavigation() {
 
           {/* Center: Navigation Menu */}
           <div className="flex items-center justify-center">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-8">
               {filteredNavigationItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = item.href ? pathname === item.href : (item.isSubmenu && isBackendRouteActive());
@@ -220,21 +246,20 @@ export function BottomNavigation() {
                   return (
                     <button
                       key={item.label}
-                      onClick={() => handleSubmenuToggle(item.label)}
+                      onClick={(e) => handleSubmenuToggle(item.label, e)}
                       className={cn(
-                        'flex flex-col items-center justify-center p-2 transition-colors duration-200 min-w-[3rem]',
+                        'flex flex-col items-center justify-center p-2 transition-colors duration-200 min-w-[3rem] relative',
                         isActive
-                          ? 'text-black'
+                          ? 'text-black border-b-2 border-black'
                           : 'text-gray-400 hover:text-black'
                       )}
                     >
                       <div className="flex items-center">
-                        <Icon className="w-4 h-4" />
+                        <Icon className="w-6 h-6" />
                         {activeSubmenu === item.label && (
                           <ChevronUp className="w-2 h-2 ml-1" />
                         )}
                       </div>
-                      <span className="text-xs font-light tracking-wide">{item.label}</span>
                     </button>
                   );
                 }
@@ -244,14 +269,13 @@ export function BottomNavigation() {
                     key={item.href}
                     href={item.href!}
                     className={cn(
-                      'flex flex-col items-center justify-center p-2 transition-colors duration-200 min-w-[3rem]',
+                      'flex flex-col items-center justify-center p-3 transition-colors duration-200 min-w-[3rem] relative',
                       isActive
-                        ? 'text-black'
+                        ? 'text-black border-b-2 border-black'
                         : 'text-gray-400 hover:text-black'
                     )}
                   >
-                    <Icon className="w-4 h-4" />
-                    <span className="text-xs font-light">{item.label}</span>
+                    <Icon className="w-6 h-6 font-light" />
                   </Link>
                 );
               })}

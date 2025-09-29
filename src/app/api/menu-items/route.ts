@@ -34,6 +34,11 @@ export async function GET(request: NextRequest) {
     // For staff users, only get menu items for their booth and only active ones
     let query: any = { brandId: payload.user.brandId };
 
+    const categoryId = searchParams.get('categoryId');
+    if (categoryId && categoryId !== 'all') {
+      query.categoryId = categoryId;
+    }
+
     if (payload.user.role === 'staff') {
       query.isActive = true;
 
@@ -116,7 +121,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, description, price, image, ingredients, isActive } = body;
+    const { name, description, price, image, ingredients, categoryId, isActive } = body;
 
     if (!name || price === undefined || !ingredients || ingredients.length === 0) {
       return NextResponse.json(
@@ -176,6 +181,7 @@ export async function POST(request: NextRequest) {
       image: image || '',
       ingredients,
       brandId: payload.user.brandId,
+      categoryId: categoryId || null,
       isActive: isActive !== undefined ? isActive : true
     });
 

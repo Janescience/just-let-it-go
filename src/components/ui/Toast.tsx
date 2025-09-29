@@ -59,28 +59,30 @@ export function Toast({
   };
 
   return (
-    <div className="fixed top-4 right-4 z-50 transition-all duration-300 ease-in-out transform translate-y-0 opacity-100">
-      <div className={`max-w-sm w-full border rounded-lg p-4 shadow-lg ${getColorClasses()}`}>
-        <div className="flex items-start gap-3">
-          <div className="flex-shrink-0">
-            {getIcon()}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-lg ">
-              {title}
-            </p>
-            {message && (
-              <p className="text-lg mt-1 opacity-80">
-                {message}
+    <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+      <div className="pointer-events-auto">
+        <div className={`max-w-md w-full mx-4 border rounded-lg p-6 shadow-xl ${getColorClasses()} transform transition-all duration-300 ease-in-out scale-100`}>
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0">
+              {getIcon()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xl font-medium">
+                {title}
               </p>
-            )}
+              {message && (
+                <p className="text-lg mt-2 opacity-80">
+                  {message}
+                </p>
+              )}
+            </div>
+            <button
+              onClick={onClose}
+              className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <XCircle className="w-5 h-5" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <XCircle className="w-4 h-4" />
-          </button>
         </div>
       </div>
     </div>

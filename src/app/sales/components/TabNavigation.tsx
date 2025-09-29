@@ -10,7 +10,7 @@ interface TabNavigationProps {
 
 export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
   return (
-    <div className="max-w-7xl mx-auto px-6 py-6">
+    <div className="max-w-7xl mx-auto">
       <div className="flex border-b border-gray-100">
         <button
           onClick={() => onTabChange('sale')}

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Store , Clock , MapPin} from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { Toast } from '@/components/ui';
+import { Toast, PageLoading } from '@/components/ui';
 import { MenuItem, Booth, Sale, Brand } from '@/types';
 import {
   SaleTab,
@@ -245,7 +245,18 @@ export default function SalesPageContent() {
 
 
   const removeFromCart = (menuItemId: string) => {
-    setCart(prevCart => prevCart.filter(item => item._id !== menuItemId));
+    setCart(prevCart => {
+      return prevCart.map(item => {
+        if (item._id === menuItemId) {
+          if (item.quantity > 1) {
+            return { ...item, quantity: item.quantity - 1 };
+          } else {
+            return null;
+          }
+        }
+        return item;
+      }).filter(item => item !== null);
+    });
   };
 
   const getTotalAmount = () => {
@@ -265,14 +276,7 @@ export default function SalesPageContent() {
   };
 
   if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-xl font-medium text-gray-900 mb-2">กรุณาเข้าสู่ระบบ</h2>
-          <p className="text-gray-600">คุณต้องเข้าสู่ระบบเพื่อใช้งานหน้าขาย</p>
-        </div>
-      </div>
-    );
+    return <PageLoading title="ขายสินค้า" />;
   }
 
   // Get booth ID
@@ -286,48 +290,38 @@ export default function SalesPageContent() {
     <div className={`min-h-screen bg-white ${user?.role === 'staff' ? 'pb-20' : ''}`}>
       {/* Header */}
       <div className="border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               {brand?.logo && (
                 <img
                   src={brand.logo}
                   alt="Brand Logo"
-                  className="w-12 h-12 rounded-full object-cover mr-4"
+                  className="w-8 h-8 rounded-full object-cover mr-3"
                 />
               )}
               <div>
-                <h1 className="text-2xl font-thin text-black tracking-wider">{brand?.name || 'ร้านค้า'}</h1>
-                <p className="text-sm font-light text-gray-500 mt-1">ขายสินค้า</p>
+                <h1 className="text-lg font-light text-black tracking-wide">{brand?.name || 'ร้านค้า'}</h1>
+                <p className="text-xs font-light text-gray-500">ขายสินค้า</p>
               </div>
             </div>
             {/* Booth Info */}
             {salesData?.boothDetails && (
-              <div className="text-right">
-                <div className="flex items-center justify-end gap-2 mb-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3  font-light">
+                <div className="flex items-center gap-1 justify-end">
                   <Store className="w-4 h-4 text-gray-400" />
-                  <span className="font-light text-black tracking-wide">{salesData.boothDetails.name}</span>
+                  <span className="text-black">{salesData.boothDetails.name}</span>
                   {selectedBoothId && user?.role === 'admin' && (
-                    <span className="px-2 py-0.5 text-xs font-light text-black border border-black">
+                    <span className="ml-1 px-1.5 py-0.5 text-xs text-black border border-black">
                       ขายแทน
                     </span>
                   )}
                 </div>
-                <div className="flex items-center justify-end gap-4 text-sm font-light text-gray-500 mb-3">
-                  <div className="flex items-center gap-1">
-                    <MapPin className="w-3 h-3" />
-                    <span>{salesData.boothDetails.location}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    <span>{salesData.boothDetails.openingHours?.start} - {salesData.boothDetails.openingHours?.end}</span>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">ยอดขายวันนี้</div>
-                  <div className="text-xl font-light text-black">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">ยอดขายวันนี้:</span>
+                  <span className="text-xl font-medium text-black">
                     ฿{salesData.summary?.totalSales?.toLocaleString() || '0'}
-                  </div>
+                  </span>
                 </div>
               </div>
             )}
@@ -342,7 +336,7 @@ export default function SalesPageContent() {
       />
 
       {/* Content */}
-      <div className="lg:h-[calc(100vh-320px)] lg:overflow-hidden bg-white">
+      <div className="lg:h-[calc(100vh-220px)] overflow-hidden bg-white">
         {activeTab === 'sale' && (
           <SaleTab
             menuItems={Array.isArray(menuItems) ? menuItems : []}

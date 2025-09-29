@@ -55,9 +55,16 @@ export default function InventoryPage() {
     }
   };
 
-  const filteredIngredients = ingredients.filter(ingredient =>
-    ingredient.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredIngredients = ingredients
+    .filter(ingredient =>
+      ingredient.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      // เรียงตามมูลค่ารวม (stock * costPerUnit) จากมากไปน้อย
+      const valueA = a.stock * a.costPerUnit;
+      const valueB = b.stock * b.costPerUnit;
+      return valueB - valueA;
+    });
 
   const lowStockIngredients = ingredients.filter(ingredient =>
     ingredient.stock <= ingredient.minimumStock
@@ -71,15 +78,14 @@ export default function InventoryPage() {
     <div className="min-h-screen bg-white">
       {/* Header */}
       <div className="border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-thin text-black tracking-wider">วัตถุดิบ</h1>
-              <p className="text-sm font-light text-gray-500 mt-1">จัดการคลังวัตถุดิบ</p>
+              <h1 className="text-xl font-thin text-black tracking-wider">วัตถุดิบ</h1>
             </div>
             <button
               onClick={() => setShowAddModal(true)}
-              className="px-6 py-2 border border-gray-200 text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide"
+              className="px-4 py-2 border border-gray-200 text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide"
             >
               เพิ่มวัตถุดิบ
             </button>
@@ -87,9 +93,9 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
         {/* Navigation and Search */}
-        <div className="space-y-6 sm:space-y-0 sm:flex sm:items-center sm:justify-between mb-12">
+        <div className="space-y-4 sm:space-y-0 sm:flex sm:items-center sm:justify-between mb-6">
           <div className="flex gap-6 sm:gap-8 border-b border-gray-100 pb-4 sm:pb-0 sm:border-b-0">
             <button
               onClick={() => setView('list')}
@@ -147,112 +153,82 @@ export default function InventoryPage() {
         )}
 
         {view === 'list' ? (
-          <div className="space-y-6">
-            {filteredIngredients.map(ingredient => (
-              <div key={ingredient._id} className="border-b border-gray-100 pb-6 last:border-b-0">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between mb-4">
-                      <h3 className="font-light text-black tracking-wide text-lg">{ingredient.name}</h3>
-                      <div className="flex items-center gap-2 sm:hidden">
-                        <button
-                          onClick={() => { setSelectedIngredient(ingredient); setShowStockModal(true); }}
-                          className="p-2 text-gray-300 hover:text-gray-600 transition-colors duration-200"
-                        >
-                          <Package className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => { setSelectedIngredient(ingredient); setShowEditModal(true); }}
-                          className="p-2 text-gray-300 hover:text-gray-600 transition-colors duration-200"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-                      <div>
-                        <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">หน่วย</div>
-                        <div className="font-light text-gray-600">{ingredient.unit}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">ต้นทุนต่อหน่วย</div>
-                        <div className="font-light text-gray-600">฿{ingredient.costPerUnit.toLocaleString()}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">จำนวนในสต็อก</div>
-                        <div className={`font-light ${
-                          ingredient.stock <= ingredient.minimumStock ? 'text-black' : 'text-black'
-                        }`}>
-                          {Number(ingredient.stock).toFixed(2)} {ingredient.unit}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="text-left py-3 text-xs font-light text-gray-400 tracking-wider uppercase">ชื่อวัตถุดิบ</th>
+                  <th className="text-right py-3 text-xs font-light text-gray-400 tracking-wider uppercase">สต็อก</th>
+                  <th className="text-right py-3 text-xs font-light text-gray-400 tracking-wider uppercase">ต้นทุน/หน่วย</th>
+                  <th className="text-right py-3 text-xs font-light text-gray-400 tracking-wider uppercase">มูลค่ารวม</th>
+                  <th className="text-right py-3 text-xs font-light text-gray-400 tracking-wider uppercase">ขั้นต่ำ</th>
+                  <th className="text-center py-3 text-xs font-light text-gray-400 tracking-wider uppercase">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredIngredients.map(ingredient => {
+                  const totalValue = ingredient.stock * ingredient.costPerUnit;
+                  const isLowStock = ingredient.stock <= ingredient.minimumStock;
+
+                  return (
+                    <tr key={ingredient._id} className="border-b border-gray-50 hover:bg-gray-25 transition-colors">
+                      <td className="py-4">
+                        <div className="flex items-center gap-3">
+                          <div>
+                            <div className="font-light text-black tracking-wide">{ingredient.name}</div>
+                            <div className="text-xs font-light text-gray-400">{ingredient.unit}</div>
+                          </div>
+                          {isLowStock && (
+                            <div className="w-2 h-2 bg-orange-400 rounded-full" title="สต็อกใกล้หมด"></div>
+                          )}
                         </div>
-                        <div className="text-xs font-light text-gray-400">
-                          ขั้นต่ำ: {ingredient.minimumStock}
+                      </td>
+                      <td className="py-4 text-right">
+                        <div className={`font-light ${isLowStock ? 'text-orange-600' : 'text-black'}`}>
+                          {Number(ingredient.stock).toFixed(2)}
                         </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="hidden sm:flex items-center gap-2">
-                    <button
-                      onClick={() => { setSelectedIngredient(ingredient); setShowStockModal(true); }}
-                      className="p-2 text-gray-300 hover:text-gray-600 transition-colors duration-200"
-                    >
-                      <Package className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => { setSelectedIngredient(ingredient); setShowEditModal(true); }}
-                      className="p-2 text-gray-300 hover:text-gray-600 transition-colors duration-200"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+                      </td>
+                      <td className="py-4 text-right">
+                        <div className="font-light text-gray-600">
+                          ฿{ingredient.costPerUnit.toLocaleString()}
+                        </div>
+                      </td>
+                      <td className="py-4 text-right">
+                        <div className="font-light text-black">
+                          ฿{totalValue.toLocaleString()}
+                        </div>
+                      </td>
+                      <td className="py-4 text-right">
+                        <div className="font-light text-gray-400">
+                          {ingredient.minimumStock}
+                        </div>
+                      </td>
+                      <td className="py-4">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => { setSelectedIngredient(ingredient); setShowStockModal(true); }}
+                            className="p-1 text-gray-500 hover:text-gray-600 transition-colors duration-200"
+                            title="จัดการสต็อก"
+                          >
+                            <Package className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => { setSelectedIngredient(ingredient); setShowEditModal(true); }}
+                            className="p-1 text-gray-500 hover:text-gray-600 transition-colors duration-200"
+                            title="แก้ไข"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         ) : (
-          <div className="space-y-6">
-            {stockMovements.map(movement => (
-              <div key={movement._id} className="border-b border-gray-100 pb-6 last:border-b-0">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div className="flex-1">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-2">
-                      <span className="font-light text-black tracking-wide">
-                        {movement.type === 'purchase' && 'ซื้อเข้า'}
-                        {movement.type === 'use' && 'ใช้ไป'}
-                        {movement.type === 'waste' && 'สูญเสีย'}
-                        {movement.type === 'adjustment' && 'ปรับปรุง'}
-                      </span>
-                      <span className="text-xs font-light text-gray-400">
-                        {new Date(movement.createdAt).toLocaleDateString('th-TH', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </span>
-                    </div>
-                    {movement.reason && (
-                      <div className="text-sm font-light text-gray-500">
-                        {movement.reason}
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-left sm:text-right">
-                    <div className="font-light text-black">
-                      {movement.type === 'purchase' || movement.type === 'adjustment' ? '+' : '-'}
-                      {Math.abs(movement.quantity)}
-                    </div>
-                    {movement.cost && (
-                      <div className="text-xs font-light text-gray-400">
-                        ฿{movement.cost.toLocaleString()}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <StockMovementsView stockMovements={stockMovements} ingredients={ingredients} />
         )}
       </div>
 
@@ -580,6 +556,138 @@ function EditIngredientModal({ ingredient, onClose, onSuccess }: {
         </form>
       </div>
     </Modal>
+  );
+}
+
+// Stock Movements View Component
+function StockMovementsView({ stockMovements, ingredients }: {
+  stockMovements: StockMovement[];
+  ingredients: Ingredient[];
+}) {
+  // จัดกลุ่ม movements ตาม saleId และ timestamp ใกล้เคียงกัน
+  const groupedMovements = React.useMemo(() => {
+    const groups: { [key: string]: StockMovement[] } = {};
+
+    stockMovements.forEach(movement => {
+      let groupKey = '';
+
+      if (movement.saleId) {
+        // จัดกลุ่มตาม saleId
+        groupKey = `sale_${movement.saleId}`;
+      } else {
+        // สำหรับ movement ที่ไม่มี saleId ให้ใช้ timestamp และ type
+        const date = new Date(movement.createdAt).toISOString().split('T')[0];
+        const hour = new Date(movement.createdAt).getHours();
+        groupKey = `${movement.type}_${date}_${hour}_${movement.reason || 'no_reason'}`;
+      }
+
+      if (!groups[groupKey]) {
+        groups[groupKey] = [];
+      }
+      groups[groupKey].push(movement);
+    });
+
+    // เรียงลำดับกลุ่มตามเวลาล่าสุด
+    return Object.entries(groups)
+      .map(([key, movements]) => ({
+        key,
+        movements: movements.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+        latestTime: movements.reduce((latest, m) =>
+          new Date(m.createdAt) > new Date(latest) ? m.createdAt : latest, movements[0].createdAt
+        )
+      }))
+      .sort((a, b) => new Date(b.latestTime).getTime() - new Date(a.latestTime).getTime());
+  }, [stockMovements]);
+
+  const getIngredientName = (ingredientId: string) => {
+    const ingredient = ingredients.find(ing => ing._id === ingredientId);
+    return ingredient?.name || 'วัตถุดิบที่ถูกลบ';
+  };
+
+  const getIngredientUnit = (ingredientId: string) => {
+    const ingredient = ingredients.find(ing => ing._id === ingredientId);
+    return ingredient?.unit || '';
+  };
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-gray-100">
+            <th className="text-left py-3 text-xs font-light text-gray-400 tracking-wider uppercase">ประเภท/เหตุผล</th>
+            <th className="text-left py-3 text-xs font-light text-gray-400 tracking-wider uppercase">วัตถุดิบที่เกี่ยวข้อง</th>
+            <th className="text-right py-3 text-xs font-light text-gray-400 tracking-wider uppercase">จำนวนรวม</th>
+            <th className="text-right py-3 text-xs font-light text-gray-400 tracking-wider uppercase">วัน/เวลา</th>
+          </tr>
+        </thead>
+        <tbody>
+          {groupedMovements.map(({ key, movements }) => {
+            const firstMovement = movements[0];
+            const totalCost = movements.reduce((sum, m) => sum + (m.cost || 0), 0);
+            const totalItems = movements.length;
+
+            return (
+              <tr key={key} className="border-b border-gray-50 hover:bg-gray-25 transition-colors">
+                <td className="py-4">
+                  <div>
+                    <div className="font-light text-black tracking-wide">
+                      {firstMovement.type === 'purchase' && '🛒 ซื้อเข้า'}
+                      {firstMovement.type === 'use' && '🍳 ใช้ไป'}
+                      {firstMovement.type === 'waste' && '🗑️ สูญเสีย'}
+                      {firstMovement.type === 'adjustment' && '⚖️ ปรับปรุง'}
+                    </div>
+                    {firstMovement.reason && (
+                      <div className="text-xs font-light text-gray-500 mt-1">
+                        {firstMovement.reason}
+                      </div>
+                    )}
+                    {firstMovement.saleId && (
+                      <div className="text-xs font-light text-blue-500 mt-1">
+                        การขาย
+                      </div>
+                    )}
+                  </div>
+                </td>
+                <td className="py-4">
+                  <div className="space-y-1">
+                    {movements.slice(0, 3).map((movement, idx) => (
+                      <div key={idx} className="text-sm font-light text-gray-600">
+                        {getIngredientName(movement.ingredientId)}: {Math.abs(movement.quantity)} {getIngredientUnit(movement.ingredientId)}
+                      </div>
+                    ))}
+                    {movements.length > 3 && (
+                      <div className="text-xs font-light text-gray-400">
+                        และอีก {movements.length - 3} รายการ
+                      </div>
+                    )}
+                  </div>
+                </td>
+                <td className="py-4 text-right">
+                  <div className="font-light text-black">
+                    {totalItems} รายการ
+                  </div>
+                  {totalCost > 0 && (
+                    <div className="text-xs font-light text-gray-400">
+                      ฿{totalCost.toLocaleString()}
+                    </div>
+                  )}
+                </td>
+                <td className="py-4 text-right">
+                  <div className="text-sm font-light text-gray-600">
+                    {new Date(firstMovement.createdAt).toLocaleDateString('th-TH', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

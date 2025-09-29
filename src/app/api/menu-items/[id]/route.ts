@@ -33,7 +33,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, description, price, image, ingredients, isActive } = body;
+    const { name, description, price, image, ingredients, categoryId, isActive } = body;
 
     if (!name || price === undefined || !ingredients || ingredients.length === 0) {
       return NextResponse.json(
@@ -107,6 +107,7 @@ export async function PUT(
     menuItem.price = price;
     menuItem.image = image !== undefined ? image : menuItem.image;
     menuItem.ingredients = ingredients;
+    menuItem.categoryId = categoryId !== undefined ? categoryId : menuItem.categoryId;
     menuItem.isActive = isActive !== undefined ? isActive : true;
 
     await menuItem.save();

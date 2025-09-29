@@ -49,6 +49,17 @@ export interface MenuItem {
     quantity: number;
   }[];
   brandId: string;
+  categoryId?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Category {
+  _id: string;
+  name: string;
+  brandId: string;
+  order: number;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

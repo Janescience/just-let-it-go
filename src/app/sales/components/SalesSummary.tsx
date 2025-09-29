@@ -42,7 +42,7 @@ export function SalesSummaryTab({ summary, selectedDate, onDateChange }: SalesSu
       <div className="mb-12">
         <div className="flex items-center gap-3 mb-8">
           <BarChart3 className="w-4 h-4 text-gray-400" />
-          <h3 className="text-lg font-light text-black tracking-wide">สรุปยอดขายวันนี้</h3>
+          <h3 className="text-lg font-light text-black tracking-wide">สรุปยอดขาย</h3>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
