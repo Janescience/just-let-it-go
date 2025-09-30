@@ -288,45 +288,68 @@ export function Step3Summary({
                 <th className="text-right py-2 px-2 whitespace-nowrap font-light">เงินทุนรวม</th>
                 <th className="text-right py-2 px-2 whitespace-nowrap font-light">กำไรที่ได้</th>
                 <th className="text-right py-2 px-2 whitespace-nowrap font-light">ขายได้</th>
-                <th className="text-center py-2 px-2 whitespace-nowrap font-light">ขายทั้งหมด (จาน)</th>
-                <th className="text-center py-2 px-2 whitespace-nowrap font-light">วันล่ะ (จาน)</th>
+                <th className="text-right py-2 px-2 whitespace-nowrap font-light">ยอดขายรวม</th>
+                <th className="text-right py-2 px-2 whitespace-nowrap font-light">ต้องขายต่อวัน</th>
                 <th className="text-right py-2 px-2 whitespace-nowrap font-light">ขายได้วันล่ะ</th>
               </tr>
             </thead>
             <tbody>
-              {[10, 20, 30, 40, 50, 60, 70].map(profit => {
+              {[0, 10, 20, 30, 40, 50, 60, 70].map(profit => {
                 const targetProfitDecimal = profit / 100;
                 const fixedCosts = businessPlan.fixedCosts.total;
                 const averagePrice = businessPlan.selectedMenuItems.reduce((sum, item) => sum + item.price, 0) / businessPlan.selectedMenuItems.length;
 
-                // Iterative calculation
                 let totalCapital = fixedCosts;
                 let requiredRevenue = 0;
                 let ingredientCost = 0;
 
-                // Iterate until convergence
-                for (let i = 0; i < 10; i++) {
-                  const reserveFund = totalCapital * 0.1;
-                  const totalCapitalWithReserve = totalCapital + reserveFund;
-                  requiredRevenue = totalCapitalWithReserve / (1 - targetProfitDecimal);
+                if (profit === 0) {
+                  // Break-even calculation: revenue = total capital (no profit)
+                  requiredRevenue = fixedCosts; // Start with fixed costs
 
-                  const unitsNeeded = Math.ceil(requiredRevenue / averagePrice);
-                  const ingredientsForTarget = calculateIngredientsNeeded(unitsNeeded);
-                  ingredientCost = ingredientsForTarget.reduce((sum, ing) => sum + ing.cost, 0);
+                  // Iterate to find the correct break-even point
+                  for (let i = 0; i < 10; i++) {
+                    const unitsNeeded = Math.ceil(requiredRevenue / averagePrice);
+                    const ingredientsForTarget = calculateIngredientsNeeded(unitsNeeded);
+                    ingredientCost = ingredientsForTarget.reduce((sum, ing) => sum + ing.cost, 0);
 
-                  const newTotalCapital = fixedCosts + ingredientCost;
+                    const baseCapital = fixedCosts + ingredientCost;
+                    const reserveFund = baseCapital * 0.1;
+                    totalCapital = baseCapital + reserveFund;
 
-                  // Check for convergence
-                  if (Math.abs(newTotalCapital - totalCapital) < 1) break;
-                  totalCapital = newTotalCapital;
+                    // For break-even: revenue should equal total capital
+                    const newRequiredRevenue = totalCapital;
+
+                    // Check for convergence
+                    if (Math.abs(newRequiredRevenue - requiredRevenue) < 100) {
+                      requiredRevenue = newRequiredRevenue;
+                      break;
+                    }
+                    requiredRevenue = newRequiredRevenue;
+                  }
+                } else {
+                  // Profit calculation: iterate until convergence
+                  for (let i = 0; i < 10; i++) {
+                    const reserveFund = totalCapital * 0.1;
+                    const totalCapitalWithReserve = totalCapital + reserveFund;
+                    requiredRevenue = totalCapitalWithReserve / (1 - targetProfitDecimal);
+
+                    const unitsNeeded = Math.ceil(requiredRevenue / averagePrice);
+                    const ingredientsForTarget = calculateIngredientsNeeded(unitsNeeded);
+                    ingredientCost = ingredientsForTarget.reduce((sum, ing) => sum + ing.cost, 0);
+
+                    const newTotalCapital = fixedCosts + ingredientCost;
+
+                    // Check for convergence
+                    if (Math.abs(newTotalCapital - totalCapital) < 1) break;
+                    totalCapital = newTotalCapital;
+                  }
                 }
 
                 const finalReserveFund = totalCapital * 0.1;
                 const finalTotalCapital = totalCapital + finalReserveFund;
                 const totalProfit = requiredRevenue - finalTotalCapital;
 
-                const finalUnitsNeeded = Math.ceil(requiredRevenue / averagePrice);
-                const dailyUnitsNeeded = Math.ceil(finalUnitsNeeded / businessPlan.numberOfDays);
                 const dailyRevenue = Math.round(requiredRevenue / businessPlan.numberOfDays);
 
                 return (
@@ -337,8 +360,6 @@ export function Step3Summary({
                     <td className="text-right py-2 font-light">฿{Math.round(finalTotalCapital).toLocaleString()}</td>
                     <td className="text-right py-2 font-light text-black">฿{Math.round(totalProfit).toLocaleString()}</td>
                     <td className="text-right py-2 font-light">฿{Math.round(requiredRevenue).toLocaleString()}</td>
-                    <td className="text-center py-2 font-light">{finalUnitsNeeded.toLocaleString()}</td>
-                    <td className="text-center py-2 font-light">{dailyUnitsNeeded.toLocaleString()}</td>
                     <td className="text-right py-2 font-light">฿{dailyRevenue.toLocaleString()}</td>
                   </tr>
                 );

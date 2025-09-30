@@ -12,7 +12,10 @@ export default function InventoryPage() {
   const { user } = useAuth();
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState({
+    ingredients: false,
+    stockMovements: false
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -21,13 +24,23 @@ export default function InventoryPage() {
   const [view, setView] = useState<'list' | 'movements' | 'analysis'>('list');
 
   useEffect(() => {
-    if (user) {
+    if (user && ingredients.length === 0 && !loading.ingredients) {
+      // Load ingredients first
       fetchIngredients();
-      fetchStockMovements();
     }
-  }, [user]);
+  }, [user, ingredients.length, loading.ingredients]);
+
+  useEffect(() => {
+    if (user && ingredients.length > 0 && stockMovements.length === 0 && !loading.stockMovements) {
+      // Load stock movements after ingredients are loaded
+      setTimeout(() => {
+        fetchStockMovements();
+      }, 100);
+    }
+  }, [user, ingredients.length, stockMovements.length, loading.stockMovements]);
 
   const fetchIngredients = async () => {
+    setLoading(prev => ({ ...prev, ingredients: true }));
     try {
       const response = await fetch('/api/ingredients');
       if (response.ok) {
@@ -37,11 +50,12 @@ export default function InventoryPage() {
     } catch (error) {
       console.error('Error fetching ingredients:', error);
     } finally {
-      setLoading(false);
+      setLoading(prev => ({ ...prev, ingredients: false }));
     }
   };
 
   const fetchStockMovements = async () => {
+    setLoading(prev => ({ ...prev, stockMovements: true }));
     try {
       const response = await fetch('/api/stock-movements');
       if (response.ok) {
@@ -50,6 +64,8 @@ export default function InventoryPage() {
       }
     } catch (error) {
       console.error('Error fetching stock movements:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, stockMovements: false }));
     }
   };
 
@@ -214,7 +230,8 @@ export default function InventoryPage() {
     };
   };
 
-  if (loading) {
+  // Show loading only if ingredients are loading and we have no ingredients yet
+  if (loading.ingredients && ingredients.length === 0) {
     return <TablePageLoading title="คลังสินค้า" />;
   }
 
@@ -317,90 +334,139 @@ export default function InventoryPage() {
         )}
 
         {view === 'list' ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left py-3 text-xs font-light text-gray-400 tracking-wider uppercase">ชื่อวัตถุดิบ</th>
-                  <th className="text-right py-3 text-xs font-light text-gray-400 tracking-wider uppercase">สต็อก</th>
-                  <th className="text-right py-3 text-xs font-light text-gray-400 tracking-wider uppercase">ต้นทุน/หน่วย</th>
-                  <th className="text-right py-3 text-xs font-light text-gray-400 tracking-wider uppercase">มูลค่ารวม</th>
-                  <th className="text-right py-3 text-xs font-light text-gray-400 tracking-wider uppercase">ขั้นต่ำ</th>
-                  <th className="text-right py-3 text-xs font-light text-gray-400 tracking-wider uppercase">จุดสั่งซื้อ</th>
-                  <th className="text-center py-3 text-xs font-light text-gray-400 tracking-wider uppercase">จัดการ</th>
-                </tr>
-              </thead>
+          <div className="overflow-x-auto -mx-4 sm:-mx-6">
+            <div className="min-w-max px-4 sm:px-6">
+              <table className="w-full min-w-[800px]">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="text-left py-3 px-2 text-xs font-light text-gray-400 tracking-wider uppercase min-w-[160px]">ชื่อวัตถุดิบ</th>
+                    <th className="text-right py-3 px-2 text-xs font-light text-gray-400 tracking-wider uppercase min-w-[80px]">สต็อก</th>
+                    <th className="text-right py-3 px-2 text-xs font-light text-gray-400 tracking-wider uppercase min-w-[100px]">ต้นทุน/หน่วย</th>
+                    <th className="text-right py-3 px-2 text-xs font-light text-gray-400 tracking-wider uppercase min-w-[100px]">มูลค่ารวม</th>
+                    <th className="text-right py-3 px-2 text-xs font-light text-gray-400 tracking-wider uppercase min-w-[80px]">ขั้นต่ำ</th>
+                    <th className="text-right py-3 px-2 text-xs font-light text-gray-400 tracking-wider uppercase min-w-[100px]">จุดสั่งซื้อ</th>
+                    <th className="text-center py-3 px-2 text-xs font-light text-gray-400 tracking-wider uppercase min-w-[80px]">จัดการ</th>
+                  </tr>
+                </thead>
               <tbody>
-                {filteredIngredients.map(ingredient => {
-                  const totalValue = ingredient.stock * ingredient.costPerUnit;
-                  const isLowStock = ingredient.stock <= ingredient.minimumStock;
-
-                  return (
-                    <tr key={ingredient._id} className="border-b border-gray-50 hover:bg-gray-25 transition-colors">
-                      <td className="py-4">
-                        <div className="flex items-center gap-3">
-                          <div>
-                            <div className="font-light text-black tracking-wide">{ingredient.name}</div>
-                            <div className="text-xs font-light text-gray-400">{ingredient.unit}</div>
+                {loading.ingredients && filteredIngredients.length === 0 ? (
+                  // Skeleton for ingredients table
+                  <>
+                    {[1, 2, 3, 4, 5].map(i => (
+                      <tr key={i} className="border-b border-gray-50">
+                        <td className="py-4 px-2">
+                          <div className="flex items-center gap-3 min-w-[140px]">
+                            <div>
+                              <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-1"></div>
+                              <div className="h-3 w-12 bg-gray-200 rounded animate-pulse"></div>
+                            </div>
                           </div>
-                          {isLowStock && (
-                            <div className="w-2 h-2 bg-orange-400 rounded-full" title="สต็อกใกล้หมด"></div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-4 text-right">
-                        <div className={`font-light ${isLowStock ? 'text-orange-600' : 'text-black'}`}>
-                          {Number(ingredient.stock).toFixed(2)}
-                        </div>
-                      </td>
-                      <td className="py-4 text-right">
-                        <div className="font-light text-gray-600">
-                          ฿{ingredient.costPerUnit.toLocaleString()}
-                        </div>
-                      </td>
-                      <td className="py-4 text-right">
-                        <div className="font-light text-black">
-                          ฿{totalValue.toLocaleString()}
-                        </div>
-                      </td>
-                      <td className="py-4 text-right">
-                        <div className="font-light text-gray-400">
-                          {ingredient.minimumStock}
-                        </div>
-                      </td>
-                      <td className="py-4 text-right">
-                        <div className="font-light text-blue-600">
-                          {getReorderPoint(ingredient).toFixed(2)}
-                        </div>
-                      </td>
-                      <td className="py-4">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => { setSelectedIngredient(ingredient); setShowStockModal(true); }}
-                            className="p-1 text-gray-500 hover:text-gray-600 transition-colors duration-200"
-                            title="จัดการสต็อก"
-                          >
-                            <Package className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => { setSelectedIngredient(ingredient); setShowEditModal(true); }}
-                            className="p-1 text-gray-500 hover:text-gray-600 transition-colors duration-200"
-                            title="แก้ไข"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                        </td>
+                        <td className="py-4 px-2 text-right">
+                          <div className="h-4 w-16 bg-gray-200 rounded animate-pulse ml-auto"></div>
+                        </td>
+                        <td className="py-4 px-2 text-right">
+                          <div className="h-4 w-20 bg-gray-200 rounded animate-pulse ml-auto"></div>
+                        </td>
+                        <td className="py-4 px-2 text-right">
+                          <div className="h-4 w-24 bg-gray-200 rounded animate-pulse ml-auto"></div>
+                        </td>
+                        <td className="py-4 px-2 text-right">
+                          <div className="h-4 w-12 bg-gray-200 rounded animate-pulse ml-auto"></div>
+                        </td>
+                        <td className="py-4 px-2 text-right">
+                          <div className="h-4 w-16 bg-gray-200 rounded animate-pulse ml-auto"></div>
+                        </td>
+                        <td className="py-4 px-2">
+                          <div className="flex items-center justify-center gap-1">
+                            <div className="w-7 h-7 bg-gray-200 rounded animate-pulse"></div>
+                            <div className="w-7 h-7 bg-gray-200 rounded animate-pulse"></div>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </>
+                ) : (
+                  filteredIngredients.map(ingredient => {
+                    const totalValue = ingredient.stock * ingredient.costPerUnit;
+                    const isLowStock = ingredient.stock <= ingredient.minimumStock;
+
+                    return (
+                      <tr key={ingredient._id} className="border-b border-gray-50 hover:bg-gray-25 transition-colors">
+                        <td className="py-4 px-2">
+                          <div className="flex items-center gap-3 min-w-[140px]">
+                            <div>
+                              <div className="font-light text-black tracking-wide text-sm whitespace-nowrap">{ingredient.name}</div>
+                              <div className="text-xs font-light text-gray-400">{ingredient.unit}</div>
+                            </div>
+                            {isLowStock && (
+                              <div className="w-2 h-2 bg-orange-400 rounded-full flex-shrink-0" title="สต็อกใกล้หมด"></div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-4 px-2 text-right">
+                          <div className={`font-light text-sm whitespace-nowrap ${isLowStock ? 'text-orange-600' : 'text-black'}`}>
+                            {Number(ingredient.stock).toFixed(2)}
+                          </div>
+                        </td>
+                        <td className="py-4 px-2 text-right">
+                          <div className="font-light text-gray-600 text-sm whitespace-nowrap">
+                            ฿{ingredient.costPerUnit.toLocaleString()}
+                          </div>
+                        </td>
+                        <td className="py-4 px-2 text-right">
+                          <div className="font-light text-black text-sm whitespace-nowrap">
+                            ฿{totalValue.toLocaleString()}
+                          </div>
+                        </td>
+                        <td className="py-4 px-2 text-right">
+                          <div className="font-light text-gray-400 text-sm whitespace-nowrap">
+                            {ingredient.minimumStock}
+                          </div>
+                        </td>
+                        <td className="py-4 px-2 text-right">
+                          <div className="font-light text-blue-600 text-sm whitespace-nowrap">
+                            {loading.stockMovements ? '...' : getReorderPoint(ingredient).toFixed(2)}
+                          </div>
+                        </td>
+                        <td className="py-4 px-2">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => { setSelectedIngredient(ingredient); setShowStockModal(true); }}
+                              className="p-1.5 text-gray-500 hover:text-gray-600 transition-colors duration-200"
+                              title="จัดการสต็อก"
+                            >
+                              <Package className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => { setSelectedIngredient(ingredient); setShowEditModal(true); }}
+                              className="p-1.5 text-gray-500 hover:text-gray-600 transition-colors duration-200"
+                              title="แก้ไข"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
+            </div>
           </div>
         ) : view === 'movements' ? (
-          <StockMovementsView stockMovements={stockMovements} ingredients={ingredients} />
+          loading.stockMovements && stockMovements.length === 0 ? (
+            <StockMovementsLoadingSkeleton />
+          ) : (
+            <StockMovementsView stockMovements={stockMovements} ingredients={ingredients} />
+          )
         ) : (
-          <ABCAnalysisView ingredients={ingredients} stockMovements={stockMovements} getABCAnalysis={getABCAnalysis} />
+          loading.stockMovements && stockMovements.length === 0 ? (
+            <ABCAnalysisLoadingSkeleton />
+          ) : (
+            <ABCAnalysisView ingredients={ingredients} stockMovements={stockMovements} getABCAnalysis={getABCAnalysis} />
+          )
         )}
       </div>
 
@@ -447,6 +513,103 @@ export default function InventoryPage() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+// Loading Skeleton Components
+function StockMovementsLoadingSkeleton() {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-gray-100">
+            <th className="text-left py-3 text-xs font-light text-gray-400 tracking-wider uppercase">วัน/เวลา</th>
+            <th className="text-left py-3 text-xs font-light text-gray-400 tracking-wider uppercase">ประเภท/เหตุผล</th>
+            <th className="text-left py-3 text-xs font-light text-gray-400 tracking-wider uppercase">วัตถุดิบที่เกี่ยวข้อง</th>
+            <th className="text-right py-3 text-xs font-light text-gray-400 tracking-wider uppercase">ต้นทุนรวม</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[1, 2, 3, 4, 5].map(i => (
+            <tr key={i} className="border-b border-gray-50">
+              <td className="py-4">
+                <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+              </td>
+              <td className="py-4">
+                <div className="h-4 w-16 bg-gray-200 rounded animate-pulse mb-1"></div>
+                <div className="h-3 w-24 bg-gray-200 rounded animate-pulse"></div>
+              </td>
+              <td className="py-4">
+                <div className="space-y-1">
+                  <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 w-28 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              </td>
+              <td className="py-4 text-right">
+                <div className="h-4 w-20 bg-gray-200 rounded animate-pulse ml-auto"></div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ABCAnalysisLoadingSkeleton() {
+  return (
+    <div className="space-y-6">
+      {/* Summary Cards Skeleton */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="border-b border-gray-100 pb-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="h-5 w-16 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-6 w-8 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+            <div className="h-8 w-20 bg-gray-200 rounded animate-pulse mb-1"></div>
+            <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+        ))}
+      </div>
+
+      {/* Table Skeleton */}
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr>
+              <th className="text-left py-3 px-4 text-xs font-light text-gray-400 tracking-wider uppercase">วัตถุดิบ</th>
+              <th className="text-right py-3 px-4 text-xs font-light text-gray-400 tracking-wider uppercase">การใช้/เดือน</th>
+              <th className="text-right py-3 px-4 text-xs font-light text-gray-400 tracking-wider uppercase">มูลค่าใช้/ปี</th>
+              <th className="text-right py-3 px-4 text-xs font-light text-gray-400 tracking-wider uppercase">สะสม %</th>
+              <th className="text-center py-3 px-4 text-xs font-light text-gray-400 tracking-wider uppercase">กลุ่ม</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[1, 2, 3, 4, 5].map(i => (
+              <tr key={i} className="border-b border-gray-100">
+                <td className="py-3 px-4">
+                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-1"></div>
+                  <div className="h-3 w-12 bg-gray-200 rounded animate-pulse"></div>
+                </td>
+                <td className="py-3 px-4 text-right">
+                  <div className="h-4 w-20 bg-gray-200 rounded animate-pulse ml-auto"></div>
+                </td>
+                <td className="py-3 px-4 text-right">
+                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse ml-auto"></div>
+                </td>
+                <td className="py-3 px-4 text-right">
+                  <div className="h-4 w-16 bg-gray-200 rounded animate-pulse ml-auto"></div>
+                </td>
+                <td className="py-3 px-4 text-center">
+                  <div className="h-6 w-8 bg-gray-200 rounded animate-pulse mx-auto"></div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

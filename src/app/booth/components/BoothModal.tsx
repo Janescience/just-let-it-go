@@ -363,33 +363,48 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
       total: businessPlan.rentCost + totalStaffCost + equipmentCost + totalAdditionalExpenses
     };
 
-    // Calculate average profit per item
-    const averageProfit = businessPlan.selectedMenuItems.reduce((sum, item) => {
-      const ingredientCost = item.ingredients.reduce((cost, ing) => {
-        const ingredient = availableIngredients.find(avail => avail._id === ing.ingredientId);
-        return cost + (ingredient ? ingredient.costPerUnit * ing.quantity : 0);
-      }, 0);
-      return sum + (item.price - ingredientCost);
-    }, 0) / businessPlan.selectedMenuItems.length;
-
-    // Break-even calculation (true break-even = 0% profit)
-    const trueBreakEvenUnits = Math.ceil(fixedCosts.total / averageProfit);
+    // Calculate average price per item
     const averagePrice = businessPlan.selectedMenuItems.reduce((sum, item) => sum + item.price, 0) / businessPlan.selectedMenuItems.length;
-    const trueBreakEvenRevenue = trueBreakEvenUnits * averagePrice;
-    const trueDailyTarget = Math.ceil(trueBreakEvenUnits / daysDiff);
 
-    // 20% profit break-even (for Step 3+)
-    const requiredProfit = fixedCosts.total * 0.20;
-    const profitBreakEvenUnits = Math.ceil((fixedCosts.total + requiredProfit) / averageProfit);
-    const profitBreakEvenRevenue = profitBreakEvenUnits * averagePrice;
+    // Break-even calculation using iterative approach to match totalCapital
+    let breakEvenRevenue = fixedCosts.total; // Start with fixed costs
+    let breakEvenUnits = 0;
+    let ingredientCost = 0;
+    let totalCapital = 0;
+
+    // Iterate to find the correct break-even point where revenue = total capital
+    for (let i = 0; i < 10; i++) {
+      breakEvenUnits = Math.ceil(breakEvenRevenue / averagePrice);
+      const ingredientsNeeded = calculateIngredientsNeeded(breakEvenUnits);
+      ingredientCost = ingredientsNeeded.reduce((sum, ing) => sum + ing.cost, 0);
+
+      const baseCapital = fixedCosts.total + ingredientCost;
+      const reserveFund = baseCapital * 0.1;
+      totalCapital = baseCapital + reserveFund;
+
+      // For true break-even: revenue should equal total capital invested
+      const newBreakEvenRevenue = totalCapital;
+
+      // Check for convergence
+      if (Math.abs(newBreakEvenRevenue - breakEvenRevenue) < 100) {
+        breakEvenRevenue = newBreakEvenRevenue;
+        break;
+      }
+      breakEvenRevenue = newBreakEvenRevenue;
+    }
+
+    const finalBreakEvenUnits = Math.ceil(breakEvenRevenue / averagePrice);
+    const finalIngredientsNeeded = calculateIngredientsNeeded(finalBreakEvenUnits);
+    const finalIngredientCost = finalIngredientsNeeded.reduce((sum, ing) => sum + ing.cost, 0);
+    const finalBaseCapital = fixedCosts.total + finalIngredientCost;
+    const finalReserveFund = finalBaseCapital * 0.1;
+    const finalTotalCapital = finalBaseCapital + finalReserveFund;
+    const trueDailyTarget = Math.ceil(finalBreakEvenUnits / daysDiff);
+
+    // 20% profit break-even (for Step 3+) - simplified version
+    const profitBreakEvenRevenue = finalTotalCapital * 1.2; // 20% more than break-even
+    const profitBreakEvenUnits = Math.ceil(profitBreakEvenRevenue / averagePrice);
     const profitDailyTarget = Math.ceil(profitBreakEvenUnits / daysDiff);
-
-    // Ingredients needed for true break-even
-    const trueIngredientsNeeded = calculateIngredientsNeeded(trueBreakEvenUnits);
-    const trueTotalIngredientCost = trueIngredientsNeeded.reduce((sum, ing) => sum + ing.cost, 0);
-    const trueBaseCapital = fixedCosts.total + trueTotalIngredientCost;
-    const trueReserveFund = trueBaseCapital * 0.1; // 10% reserve fund
-    const trueTotalCapital = trueBaseCapital + trueReserveFund;
 
     // Target profit calculation (uses profit break-even as baseline)
     const targetProfit = calculateTargetProfit(fixedCosts.total, profitBreakEvenRevenue);
@@ -398,8 +413,8 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
       ...prev,
       fixedCosts,
       breakEven: {
-        unitsNeeded: trueBreakEvenUnits,
-        revenueNeeded: trueBreakEvenRevenue,
+        unitsNeeded: finalBreakEvenUnits,
+        revenueNeeded: breakEvenRevenue,
         dailyTarget: trueDailyTarget
       },
       profitBreakEven: {
@@ -407,9 +422,9 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
         revenueNeeded: profitBreakEvenRevenue,
         dailyTarget: profitDailyTarget
       },
-      ingredients: trueIngredientsNeeded,
-      totalCapital: trueTotalCapital,
-      reserveFund: trueReserveFund,
+      ingredients: finalIngredientsNeeded,
+      totalCapital: finalTotalCapital,
+      reserveFund: finalReserveFund,
       targetProfit: {
         ...prev.targetProfit,
         ...targetProfit

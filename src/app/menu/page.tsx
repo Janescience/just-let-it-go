@@ -17,7 +17,13 @@ export default function MenuPage() {
   const [menuItems, setMenuItems] = useState<MenuItemWithCost[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState({
+    menuItems: false,
+    allMenuItems: false,
+    ingredients: false,
+    categories: false
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -30,10 +36,15 @@ export default function MenuPage() {
 
   useEffect(() => {
     if (user) {
+      // Load data progressively - menu items first, then others
       fetchMenuItems();
-      fetchAllMenuItems();
-      fetchIngredients();
-      fetchCategories();
+
+      // Defer other data loading
+      setTimeout(() => {
+        fetchAllMenuItems();
+        fetchIngredients();
+        fetchCategories();
+      }, 100);
     }
   }, [user]);
 
@@ -44,6 +55,7 @@ export default function MenuPage() {
   }, [activeMainTab, activeCategory]);
 
   const fetchMenuItems = async () => {
+    setDataLoading(prev => ({ ...prev, menuItems: true }));
     try {
       const params = new URLSearchParams();
       if (activeCategory !== 'all') {
@@ -57,11 +69,12 @@ export default function MenuPage() {
     } catch (error) {
       console.error('Error fetching menu items:', error);
     } finally {
-      setLoading(false);
+      setDataLoading(prev => ({ ...prev, menuItems: false }));
     }
   };
 
   const fetchIngredients = async () => {
+    setDataLoading(prev => ({ ...prev, ingredients: true }));
     try {
       const response = await fetch('/api/ingredients');
       if (response.ok) {
@@ -70,10 +83,13 @@ export default function MenuPage() {
       }
     } catch (error) {
       console.error('Error fetching ingredients:', error);
+    } finally {
+      setDataLoading(prev => ({ ...prev, ingredients: false }));
     }
   };
 
   const fetchCategories = async () => {
+    setDataLoading(prev => ({ ...prev, categories: true }));
     try {
       const response = await fetch('/api/categories');
       if (response.ok) {
@@ -82,10 +98,13 @@ export default function MenuPage() {
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
+    } finally {
+      setDataLoading(prev => ({ ...prev, categories: false }));
     }
   };
 
   const fetchAllMenuItems = async () => {
+    setDataLoading(prev => ({ ...prev, allMenuItems: true }));
     try {
       const response = await fetch('/api/menu-items');
       if (response.ok) {
@@ -94,6 +113,8 @@ export default function MenuPage() {
       }
     } catch (error) {
       console.error('Error fetching all menu items:', error);
+    } finally {
+      setDataLoading(prev => ({ ...prev, allMenuItems: false }));
     }
   };
 
@@ -122,7 +143,8 @@ export default function MenuPage() {
     }
   };
 
-  if (loading) {
+  // Show MenuLoading only if this is the initial load and menu items are loading
+  if (dataLoading.menuItems && menuItems.length === 0) {
     return <MenuLoading />;
   }
 
@@ -181,7 +203,7 @@ export default function MenuPage() {
         {activeMainTab === 'menu' ? (
           <>
             {/* Category Sub-tabs */}
-            {categories.length > 0 && (
+            {(categories.length > 0 || dataLoading.categories) && (
               <div className="mb-6">
                 <div className="border-b border-gray-100">
                   <nav className="-mb-px flex space-x-6 overflow-x-auto">
@@ -193,34 +215,45 @@ export default function MenuPage() {
                           : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-200'
                       }`}
                     >
-                      ทั้งหมด ({allMenuItems.length})
+                      ทั้งหมด ({dataLoading.allMenuItems ? '...' : allMenuItems.length})
                     </button>
-                    {categories.map(category => (
-                      <div key={category._id} className="flex items-center space-x-2">
-                        <button
-                          onClick={() => setActiveCategory(category._id)}
-                          className={`py-2 px-1 border-b-2 font-light text-sm tracking-wide whitespace-nowrap ${
-                            activeCategory === category._id
-                              ? 'border-gray-500 text-gray-900'
-                              : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-200'
-                          }`}
-                        >
-                          {category.name} ({getCategoryCount(category._id)})
-                        </button>
-                        {activeCategory === category._id && (
-                          <button
-                            onClick={() => {
-                              setSelectedCategoryForAdd(category._id);
-                              setShowAddModal(true);
-                            }}
-                            className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
-                            title="เพิ่มเมนูในหมวดนี้"
-                          >
-                            <Plus className="w-4 h-4" />
-                          </button>
-                        )}
+                    {dataLoading.categories ? (
+                      // Skeleton for loading categories
+                      <div className="flex space-x-4">
+                        {[1, 2, 3].map(i => (
+                          <div key={i} className="py-2 px-1">
+                            <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    ) : (
+                      categories.map(category => (
+                        <div key={category._id} className="flex items-center space-x-2">
+                          <button
+                            onClick={() => setActiveCategory(category._id)}
+                            className={`py-2 px-1 border-b-2 font-light text-sm tracking-wide whitespace-nowrap ${
+                              activeCategory === category._id
+                                ? 'border-gray-500 text-gray-900'
+                                : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-200'
+                            }`}
+                          >
+                            {category.name} ({getCategoryCount(category._id)})
+                          </button>
+                          {activeCategory === category._id && (
+                            <button
+                              onClick={() => {
+                                setSelectedCategoryForAdd(category._id);
+                                setShowAddModal(true);
+                              }}
+                              className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                              title="เพิ่มเมนูในหมวดนี้"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))
+                    )}
                   </nav>
                 </div>
               </div>
@@ -236,7 +269,41 @@ export default function MenuPage() {
               />
             </div>
 
-            {filteredMenuItems.length === 0 ? (
+            {dataLoading.menuItems && filteredMenuItems.length === 0 ? (
+              // Skeleton loading for menu items
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                  <div key={i} className="group relative bg-white border border-gray-200 rounded-lg overflow-hidden">
+                    {/* Image skeleton */}
+                    <div className="aspect-square bg-gray-200 animate-pulse relative">
+                      {/* Price overlay skeleton */}
+                      <div className="absolute top-2 right-2 bg-gray-300 animate-pulse rounded px-2 py-1">
+                        <div className="h-4 w-8 bg-gray-400 rounded"></div>
+                      </div>
+                    </div>
+
+                    {/* Content skeleton */}
+                    <div className="p-2">
+                      {/* Menu name skeleton */}
+                      <div className="h-4 bg-gray-200 rounded animate-pulse mb-2"></div>
+
+                      {/* Action buttons skeleton */}
+                      <div className="flex items-center gap-1 mt-2">
+                        <div className="p-1.5 bg-gray-200 rounded animate-pulse">
+                          <div className="w-3.5 h-3.5 bg-gray-300 rounded"></div>
+                        </div>
+                        <div className="p-1.5 bg-gray-200 rounded animate-pulse">
+                          <div className="w-3.5 h-3.5 bg-gray-300 rounded"></div>
+                        </div>
+                        <div className="p-1.5 bg-gray-200 rounded animate-pulse">
+                          <div className="w-3.5 h-3.5 bg-gray-300 rounded"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredMenuItems.length === 0 ? (
               <div className="text-center py-24">
                 <div className="w-16 h-16 border border-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
                   <ChefHat className="w-6 h-6 text-gray-300" />
@@ -249,6 +316,7 @@ export default function MenuPage() {
                     setShowAddModal(true);
                   }}
                   className="px-8 py-3 bg-black text-white text-sm font-light hover:bg-gray-800 transition-colors duration-200 tracking-wide"
+                  disabled={dataLoading.categories}
                 >
                   เริ่มต้น
                 </button>
@@ -289,12 +357,14 @@ export default function MenuPage() {
                           onClick={() => { setCopyingMenuItem(item); setSelectedCategoryForAdd(null); setShowAddModal(true); }}
                           className="p-1.5 bg-gray-100 rounded text-gray-600 hover:bg-gray-200 hover:text-gray-800 transition-colors duration-200"
                           title="คัดลอกเมนู"
+                          disabled={dataLoading.ingredients}
                         >
                           <Copy className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => { setSelectedMenuItem(item); setShowEditModal(true); }}
                           className="p-1.5 bg-gray-100 rounded text-gray-600 hover:bg-gray-200 hover:text-gray-800 transition-colors duration-200"
+                          disabled={dataLoading.ingredients}
                         >
                           <Edit className="w-3.5 h-3.5" />
                         </button>

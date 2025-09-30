@@ -96,18 +96,34 @@ export function BoothBusinessPlanTab({ businessPlan, booth, preloadedStats }: Bo
           <Target className="w-8 h-8 text-gray-700" />
           <h4 className="text-lg font-light text-black tracking-wide">จุดคุ้มทุน</h4>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <div className="border border-gray-100 p-6 text-center bg-white">
-            <div className="text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">เป้าหมาย</div>
-            <div className="text-3xl font-light text-black mb-2">{businessPlan.breakEven?.unitsNeeded || 0} จาน</div>
-            <div className="text-xl font-light text-gray-600">฿{businessPlan.breakEven?.revenueNeeded?.toLocaleString() || '0'}</div>
+            <div className="text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">เป้าหมายยอดขาย</div>
+            <div className="text-3xl font-light text-black mb-2">฿{businessPlan.breakEven?.revenueNeeded?.toLocaleString() || '0'}</div>
+            <div className="text-sm font-light text-gray-600">เพื่อให้คุ้มทุน</div>
           </div>
           <div className="border border-gray-100 p-6 text-center bg-gray-50">
-            <div className="text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">ความเป็นจริง</div>
-            <div className="text-3xl font-light text-black mb-2">{totalSoldUnits} จาน</div>
-            <div className="text-xl font-light text-gray-600 mb-3">฿{totalSales.toLocaleString()}</div>
-            <div className={`text-2xl font-light ${breakEvenProgress >= 100 ? 'text-black' : 'text-gray-500'}`}>
-              {Math.round(breakEvenProgress)}%
+            <div className="text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">ยอดขายปัจจุบัน</div>
+            <div className="text-3xl font-light text-black mb-2">฿{totalSales.toLocaleString()}</div>
+            <div className={`text-lg font-light ${breakEvenProgress >= 100 ? 'text-green-600' : 'text-gray-500'}`}>
+              {Math.round(breakEvenProgress)}% ของเป้าหมาย
+            </div>
+          </div>
+          <div className="border border-gray-100 p-6 text-center bg-white">
+            <div className="text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">ต้องขายอีก</div>
+            <div className="text-3xl font-light text-black mb-2">
+              ฿{Math.max(0, (businessPlan.breakEven?.revenueNeeded || 0) - totalSales).toLocaleString()}
+            </div>
+            <div className="text-sm font-light text-gray-600">
+              {(() => {
+                const remaining = Math.max(0, (businessPlan.breakEven?.revenueNeeded || 0) - totalSales);
+                const endDate = new Date(booth.endDate);
+                const today = new Date();
+                const daysLeft = Math.max(0, Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
+                const dailyTarget = daysLeft > 0 ? Math.ceil(remaining / daysLeft) : 0;
+                return daysLeft > 0 && remaining > 0 ? `วันละ ฿${dailyTarget.toLocaleString()}` : 'คุ้มทุนแล้ว!';
+              })()
+            }
             </div>
           </div>
         </div>
@@ -122,22 +138,32 @@ export function BoothBusinessPlanTab({ businessPlan, booth, preloadedStats }: Bo
           </div>
           <div className="grid grid-cols-3 gap-8">
             <div className="border border-gray-100 p-6 text-center bg-white">
-              <div className="text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">เป้าหมาย</div>
-              <div className="text-3xl font-light text-black mb-2">{businessPlan.targetProfit.unitsNeeded} จาน</div>
-              <div className="text-xl font-light text-gray-600">฿{businessPlan.targetProfit.revenueNeeded.toLocaleString()}</div>
+              <div className="text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">เป้าหมายยอดขาย</div>
+              <div className="text-3xl font-light text-black mb-2">฿{businessPlan.targetProfit.revenueNeeded.toLocaleString()}</div>
+              <div className="text-sm font-light text-gray-600">สำหรับกำไร {businessPlan.targetProfit.value}%</div>
             </div>
             <div className="border border-gray-100 p-6 text-center bg-gray-50">
-              <div className="text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">ความเป็นจริง</div>
-              <div className="text-3xl font-light text-black mb-2">{totalSoldUnits} จาน</div>
-              <div className="text-xl font-light text-gray-600">฿{totalSales.toLocaleString()}</div>
+              <div className="text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">ยอดขายปัจจุบัน</div>
+              <div className="text-3xl font-light text-black mb-2">฿{totalSales.toLocaleString()}</div>
+              <div className={`text-lg font-light ${targetProfitProgress >= 100 ? 'text-green-600' : 'text-gray-500'}`}>
+                {Math.round(targetProfitProgress)}% ของเป้าหมาย
+              </div>
             </div>
             <div className="border border-gray-100 p-6 text-center bg-white">
-              <div className="text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">ความคืบหน้า</div>
-              <div className={`text-3xl font-light mb-2 ${targetProfitProgress >= 100 ? 'text-black' : 'text-gray-500'}`}>
-                {Math.round(targetProfitProgress)}%
+              <div className="text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">ต้องขายอีก</div>
+              <div className="text-3xl font-light text-black mb-2">
+                ฿{Math.max(0, businessPlan.targetProfit.revenueNeeded - totalSales).toLocaleString()}
               </div>
-              <div className="text-xl font-light text-gray-600">
-                {targetProfitProgress >= 100 ? 'บรรลุเป้าหมาย!' : `เหลืออีก ${businessPlan.targetProfit.unitsNeeded - totalSoldUnits} จาน`}
+              <div className="text-sm font-light text-gray-600">
+                {(() => {
+                  const remaining = Math.max(0, businessPlan.targetProfit.revenueNeeded - totalSales);
+                  const endDate = new Date(booth.endDate);
+                  const today = new Date();
+                  const daysLeft = Math.max(0, Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
+                  const dailyTarget = daysLeft > 0 ? Math.ceil(remaining / daysLeft) : 0;
+                  return daysLeft > 0 && remaining > 0 ? `วันละ ฿${dailyTarget.toLocaleString()}` : 'บรรลุเป้าหมายแล้ว!';
+                })()
+              }
               </div>
             </div>
           </div>
@@ -254,10 +280,6 @@ export function BoothBusinessPlanTab({ businessPlan, booth, preloadedStats }: Bo
               <div className="flex justify-between text-sm">
                 <span className="font-light text-gray-300">ยอดขายปัจจุบัน:</span>
                 <span className="font-light text-white">฿{totalSales.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="font-light text-gray-300">จานที่ขายได้:</span>
-                <span className="font-light text-white">{totalSoldUnits} จาน</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="font-light text-gray-300">ความคืบหน้าคุ้มทุน:</span>

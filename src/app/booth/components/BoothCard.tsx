@@ -36,11 +36,12 @@ interface BoothStats {
 interface BoothCardProps {
   booth: Booth;
   stats?: BoothStats;
+  isLoadingStats?: boolean;
   onClick: () => void;
   onSaleClick?: () => void;
 }
 
-export function BoothCard({ booth, stats, onClick, onSaleClick }: BoothCardProps) {
+export function BoothCard({ booth, stats, isLoadingStats = false, onClick, onSaleClick }: BoothCardProps) {
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString('th-TH', {
       day: 'numeric',
@@ -51,21 +52,35 @@ export function BoothCard({ booth, stats, onClick, onSaleClick }: BoothCardProps
   const isExpired = new Date(booth.endDate) < new Date();
   const isUpcoming = new Date(booth.startDate) > new Date();
 
-  const plannedBreakEven = stats?.booth.plannedBreakEven;
-  const breakEvenPercentage =
-    (plannedBreakEven?.revenue ?? 0) > 0
-      ? (plannedBreakEven?.progress ?? 0)
-      : (stats?.booth.breakEvenPercentage || 0);
+  // Recalculate break-even using the new method (same as BoothDetailModal)
+  const { breakEvenPercentage, remaining, isBreakEven } = (() => {
+    if (!booth.businessPlan?.fixedCosts?.total || !booth.businessPlan?.ingredients) {
+      return {
+        breakEvenPercentage: 0,
+        remaining: 0,
+        isBreakEven: false
+      };
+    }
+
+    const fixedCosts = booth.businessPlan.fixedCosts.total;
+    const ingredientCost = booth.businessPlan.ingredients.reduce((sum, ing) => sum + ing.cost, 0);
+    const baseCapital = fixedCosts + ingredientCost;
+    const reserveFund = baseCapital * 0.1;
+    const correctBreakEvenRevenue = baseCapital + reserveFund;
+
+    const totalSales = stats?.booth.totalSales || 0;
+    const breakEvenPercentage = correctBreakEvenRevenue > 0 ? (totalSales / correctBreakEvenRevenue) * 100 : 0;
+    const remaining = Math.max(0, correctBreakEvenRevenue - totalSales);
+    const isBreakEven = breakEvenPercentage >= 100;
+
+    return {
+      breakEvenPercentage,
+      remaining,
+      isBreakEven
+    };
+  })();
 
   const profit = stats?.booth.profit || 0;
-  const isBreakEven =
-    (plannedBreakEven?.revenue ?? 0) > 0
-      ? (plannedBreakEven?.isAchieved ?? false)
-      : (stats?.booth.isBreakEven || false);
-
-  const remaining = (plannedBreakEven?.revenue ?? 0) > 0
-    ? (stats?.booth.remainingToPlannedBreakEven || 0)
-    : (stats?.booth.remainingToBreakEven || 0);
 
   const daysLeft = Math.max(
     0,
@@ -172,38 +187,50 @@ export function BoothCard({ booth, stats, onClick, onSaleClick }: BoothCardProps
         {/* Progress */}
         <div className="space-y-2">
           <div className="flex justify-between text-xs font-light text-gray-600">
-            <span>
-              {(plannedBreakEven?.revenue ?? 0) > 0
-                ? `ความคืบหน้า ${Math.round(breakEvenPercentage)}%`
-                : `จุดคุ้มทุน ${Math.round(breakEvenPercentage)}%`}
-            </span>
-            <span className="text-gray-800 font-medium">
-              {(plannedBreakEven?.revenue ?? 0) > 0
-                ? isBreakEven
-                  ? 'บรรลุแผน'
-                  : 'ยังไม่ถึงเป้า'
-                : isBreakEven
-                  ? 'กำไร'
-                  : 'ยังไม่คุ้มทุน'}
-            </span>
+            {isLoadingStats && !stats ? (
+              <>
+                <div className="h-3 w-24 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-3 w-20 bg-gray-200 rounded animate-pulse"></div>
+              </>
+            ) : (
+              <>
+                <span>ขายได้แล้ว</span>
+                <span className="text-gray-800 font-medium">
+                  {isBreakEven ? 'กำไรแล้ว' : 'ยังไม่กำไร'}
+                </span>
+              </>
+            )}
           </div>
 
           <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-            <div
-              className="h-2 bg-gray-800 transition-all duration-500"
-              style={{ width: `${Math.min(breakEvenPercentage, 100)}%` }}
-            />
+            {isLoadingStats && !stats ? (
+              <div className="h-2 w-1/4 bg-gray-300 animate-pulse"></div>
+            ) : (
+              <div
+                className="h-2 bg-gray-800 transition-all duration-500"
+                style={{ width: `${Math.min(breakEvenPercentage, 100)}%` }}
+              />
+            )}
           </div>
 
           <div className="flex justify-between text-sm mt-1 text-gray-600">
-            {isBreakEven ? (
-              <span className="font-medium text-gray-900">
-                ฿{profit.toLocaleString()}
-              </span>
+            {isLoadingStats && !stats ? (
+              <>
+                <div className="h-3 w-28 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-3 w-20 bg-gray-200 rounded animate-pulse"></div>
+              </>
             ) : (
               <>
-                <span>ยอดขาย ฿{(stats?.booth.totalSales || 0).toLocaleString()}</span>
-                <span>เหลือ ฿{remaining.toLocaleString()}</span>
+                <span>฿{(stats?.booth.totalSales || 0).toLocaleString()}</span>
+                {isBreakEven ? (
+                  <span className="font-medium text-green-600">
+                    +฿{profit.toLocaleString()}
+                  </span>
+                ) : (
+                  <span className="text-gray-500">
+                    อีก ฿{remaining.toLocaleString()}
+                  </span>
+                )}
               </>
             )}
           </div>
@@ -213,12 +240,16 @@ export function BoothCard({ booth, stats, onClick, onSaleClick }: BoothCardProps
         <div className="grid grid-cols-3 gap-2 text-sm">
           <div className="flex flex-col border border-gray-200 bg-gray-50 px-2 py-1">
             <div className="flex items-center gap-2 ">
-              <Calendar className="w-4 h-4 text-blue-500" />
-              <span className="text-gray-500 text-xs">วันนี้</span>
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <span className="text-gray-500 text-xs">ยอดขายวันนี้</span>
             </div>
-            <span className="font-light text-right text-gray-800">
-              ฿{(stats?.booth.todaySales || 0).toLocaleString()}
-            </span>
+            {isLoadingStats && !stats ? (
+              <div className="h-4 w-12 bg-gray-200 rounded animate-pulse ml-auto mt-1"></div>
+            ) : (
+              <span className="font-light text-right text-gray-800">
+                ฿{(stats?.booth.todaySales || 0).toLocaleString()}
+              </span>
+            )}
           </div>
 
           <div className="flex flex-col border border-gray-200 bg-gray-50 px-2 py-1">
@@ -226,39 +257,55 @@ export function BoothCard({ booth, stats, onClick, onSaleClick }: BoothCardProps
               <TrendingUp className="w-4 h-4 text-gray-500" />
               <span className="text-gray-500 text-xs">เฉลี่ย/วัน</span>
             </div>
-            <span className="font-light text-right text-gray-800">
-              ฿{Math.round(stats?.booth.dailyAverage || 0).toLocaleString()}
-            </span>
+            {isLoadingStats && !stats ? (
+              <div className="h-4 w-16 bg-gray-200 rounded animate-pulse ml-auto mt-1"></div>
+            ) : (
+              <span className="font-light text-right text-gray-800">
+                ฿{Math.round(stats?.booth.dailyAverage || 0).toLocaleString()}
+              </span>
+            )}
           </div>
 
-          {dailyTargetToBreakEven > 0 && (
+          {(dailyTargetToBreakEven > 0 || (isLoadingStats && !stats)) && (
             <div className="flex flex-col border border-gray-200 bg-gray-50 px-2 py-1">
               <div className="flex items-center gap-2 ">
                 <Calendar className="w-4 h-4 text-gray-500" />
                 <span className="text-gray-500 text-xs">เป้า/วัน</span>
               </div>
-              <span className="font-light text-right text-gray-800">
-                ฿{dailyTargetToBreakEven.toLocaleString()}
-              </span>
+              {isLoadingStats && !stats ? (
+                <div className="h-4 w-14 bg-gray-200 rounded animate-pulse ml-auto mt-1"></div>
+              ) : (
+                <span className="font-light text-right text-gray-800">
+                  ฿{dailyTargetToBreakEven.toLocaleString()}
+                </span>
+              )}
             </div>
           )}
         </div>
 
         {/* Alerts */}
-        {(stats?.booth.topSellingItem && (
+        {isLoadingStats && !stats ? (
           <div className="space-y-2">
-              <div className="flex items-center gap-2 border border-gray-200 px-3 py-2 bg-gray-50">
-                <Flame className="w-4 h-4 text-gray-500" />
-                <span className="text-xs text-gray-700">
-                  ขายดี:{' '}
-                  <span className="font-medium text-gray-900">
-                    {stats.booth.topSellingItem.name}
-                  </span>{' '}
-                  ({stats.booth.topSellingItem.quantity} ชิ้น)
-                </span>
-              </div>
+            <div className="flex items-center gap-2 border border-gray-200 px-3 py-2 bg-gray-50">
+              <Flame className="w-4 h-4 text-gray-500" />
+              <div className="h-3 w-32 bg-gray-200 rounded animate-pulse"></div>
+            </div>
           </div>
-        )
+        ) : (
+          stats?.booth.topSellingItem && (
+            <div className="space-y-2">
+                <div className="flex items-center gap-2 border border-gray-200 px-3 py-2 bg-gray-50">
+                  <Flame className="w-4 h-4 text-gray-500" />
+                  <span className="text-xs text-gray-700">
+                    ขายดี:{' '}
+                    <span className="font-medium text-gray-900">
+                      {stats.booth.topSellingItem.name}
+                    </span>{' '}
+                    ({stats.booth.topSellingItem.quantity} ชิ้น)
+                  </span>
+                </div>
+            </div>
+          )
         )}
       </div>
 
