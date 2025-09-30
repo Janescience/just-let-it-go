@@ -98,10 +98,12 @@ export async function PUT(
       // Record stock movement for cost adjustment
       const stockMovement = new StockMovement({
         ingredientId: ingredient._id,
+        ingredientName: name.trim(),
+        unit: unit.trim(),
         type: 'adjustment',
-        quantity: 0, // No quantity change, just cost adjustment
+        quantity: ingredient.stock, // Show affected stock quantity
         cost: Math.abs(costDifference),
-        reason: `ปรับปรุงต้นทุน: ${name.trim()} จาก ฿${oldCostPerUnit.toFixed(2)} เป็น ฿${costPerUnit.toFixed(2)} ต่อหน่วย`
+        reason: `ปรับปรุงต้นทุน จาก ฿${oldCostPerUnit.toFixed(2)} เป็น ฿${costPerUnit.toFixed(2)}`
       });
       await stockMovement.save();
 

@@ -11,6 +11,20 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, label, error, helperText, ...props }, ref) => {
+    const handleWheel = (e: React.WheelEvent<HTMLInputElement>) => {
+      // Prevent scroll wheel from changing number inputs
+      if (type === 'number') {
+        e.currentTarget.blur();
+      }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      // Prevent up/down arrow keys from changing number inputs
+      if (type === 'number' && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+        e.preventDefault();
+      }
+    };
+
     return (
       <div className="w-full">
         {label && (
@@ -25,6 +39,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             error && 'border-red-500 focus:border-red-500',
             className
           )}
+          onWheel={handleWheel}
+          onKeyDown={handleKeyDown}
           ref={ref}
           {...props}
         />

@@ -728,6 +728,12 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
                                         min="0"
                                         value={item.quantity}
                                         onChange={(e) => updateItemQuantity(saleIndex, itemIndex, parseInt(e.target.value) || 0)}
+                                        onWheel={(e) => e.currentTarget.blur()}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                                            e.preventDefault();
+                                          }
+                                        }}
                                         className="w-16 px-2 py-1 border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none text-center"
                                       />
                                     ) : (

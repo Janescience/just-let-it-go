@@ -138,6 +138,8 @@ export async function POST(request: NextRequest) {
     // Create stock movement record
     const movement = new StockMovement({
       ingredientId,
+      ingredientName: ingredient.name,
+      unit: ingredient.unit,
       type,
       quantity: type === 'purchase' || type === 'adjustment' ? Math.abs(quantity) : -Math.abs(quantity),
       cost: cost || undefined,

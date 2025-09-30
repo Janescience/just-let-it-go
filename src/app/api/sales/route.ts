@@ -132,6 +132,10 @@ export async function POST(request: NextRequest) {
 
     await sale.save();
 
+    // Calculate total quantities for sale summary
+    const totalSaleQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+    let firstMovementInSale = true;
+
     for (const item of items) {
       const menuItem = await MenuItem.findById(item.menuItemId);
       if (menuItem && menuItem.ingredients.length > 0) {
@@ -144,12 +148,19 @@ export async function POST(request: NextRequest) {
           // Record stock movement
           const stockMovement = new StockMovement({
             ingredientId,
+            ingredientName: ingredient?.name,
+            unit: ingredient?.unit,
             type: 'use',
             quantity: -totalUsed,
-            reason: `ขาย ${menuItem.name} หักวัตถุดิบ ${ingredient.name} จำนวน ${totalUsed} ${ingredient.unit}`,
+            reason: `ขาย ${menuItem.name} x ${item.quantity}`,
             boothId,
-            saleId: sale._id
+            saleId: sale._id,
+            // Add sale summary only to first movement for this sale
+            saleQuantity: firstMovementInSale ? totalSaleQuantity : undefined,
+            saleAmount: firstMovementInSale ? calculatedTotal : undefined
           });
+
+          firstMovementInSale = false;
 
           await stockMovement.save();
 

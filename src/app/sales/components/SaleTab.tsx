@@ -288,7 +288,7 @@ export function SaleTab({
                   {/* Checkout Button */}
                   <button
                     onClick={() => setShowPaymentModal(true)}
-                    className="w-full px-6 py-3 mb-20 lg:mb-0 bg-black text-white text-sm font-light hover:bg-gray-800 transition-colors duration-200 tracking-wide flex items-center justify-center gap-2"
+                    className="w-full px-6 py-3 bg-black text-white text-sm font-light hover:bg-gray-800 transition-colors duration-200 tracking-wide flex items-center justify-center gap-2"
                   >
                     <CreditCard className="w-4 h-4" />
                     ดำเนินการชำระเงิน

@@ -115,7 +115,7 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header */}
       <div className="border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -128,7 +128,7 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <div className="p-4 tablet:p-6 pb-20">
+      <div className="p-4 tablet:p-6">
         {/* Filters */}
         <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
           <div className="flex items-center gap-2 mb-4">

@@ -221,7 +221,7 @@ export function BottomNavigation() {
       )}
 
       {/* Single Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 md:px-6 safe-area-pb">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 md:px-6 pb-safe-area-inset-bottom">
         <div className="flex items-center justify-between">
           {/* Left: System Logo & Brand */}
           <div className="flex items-center gap-3">

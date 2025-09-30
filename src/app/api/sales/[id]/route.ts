@@ -177,9 +177,11 @@ export async function PUT(
           // Create stock movement record
           const stockMovement = new StockMovement({
             ingredientId,
+            ingredientName: changeData.ingredient.name,
+            unit: changeData.ingredient.unit,
             type: 'adjustment',
             quantity: changeData.change,
-            reason: `แก้ไขรายการขาย ${originalSale._id} - ${changeData.ingredient.name} (${changeData.change > 0 ? 'เพิ่ม' : 'ลด'})`,
+            reason: `แก้ไขรายการขาย ${originalSale._id}`,
             boothId: originalSale.boothId,
             saleId: originalSale._id
           });
@@ -340,9 +342,11 @@ export async function DELETE(
             // Create stock movement record
             const stockMovement = new StockMovement({
               ingredientId,
+              ingredientName: ingredient.name,
+              unit: ingredient.unit,
               type: 'adjustment',
               quantity: totalUsed,
-              reason: `ลบรายการขาย ${sale._id} - คืนวัตถุดิบ ${ingredient.name}`,
+              reason: `ลบรายการขาย ${sale._id}`,
               boothId: sale.boothId,
               saleId: sale._id
             });

@@ -372,6 +372,12 @@ export function PaymentModal({
                           type="number"
                           value={receivedAmount}
                           onChange={(e) => setReceivedAmount(e.target.value)}
+                          onWheel={(e) => e.currentTarget.blur()}
+                          onKeyDown={(e) => {
+                            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                              e.preventDefault();
+                            }
+                          }}
                           placeholder="0"
                           min={totalAmount}
                           className="w-full text-3xl md:text-4xl text-center font-light border border-gray-300  py-4 md:py-6 px-4 focus:border-black focus:outline-none transition-colors"

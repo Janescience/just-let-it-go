@@ -120,7 +120,7 @@ export function BoothCard({ booth, stats, onClick, onSaleClick }: BoothCardProps
 
   return (
     <div
-      className="cursor-pointer transition-all duration-300 border border-gray-100 bg-white hover:border-gray-200 flex flex-col h-full"
+      className="cursor-pointer transition-all duration-300 border border-gray-200 bg-white hover:border-gray-300 flex flex-col h-full"
       onClick={handleCardClick}
     >
       {/* Header */}

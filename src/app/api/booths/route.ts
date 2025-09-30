@@ -212,14 +212,17 @@ export async function POST(request: NextRequest) {
     try {
       const accountingTransactions = [];
 
+      // Use current date for accounting transaction (when booth is actually created)
+      const transactionDate = new Date();
+
       // 1. Booth rent cost
       if (rentCost > 0) {
         const rentTransaction = new AccountingTransaction({
-          date: new Date(startDate),
+          date: transactionDate,
           type: 'expense',
           category: 'booth_rent',
           amount: rentCost,
-          description: `ค่าเช่าหน้าร้าน ${name} - ${location}`,
+          description: `ค่าเช่าหน้าร้าน ${name} - ${location} (ระยะเวลา: ${new Date(startDate).toLocaleDateString('th-TH')} - ${new Date(endDate).toLocaleDateString('th-TH')})`,
           boothId: booth._id,
           relatedId: booth._id,
           relatedType: 'booth_setup',
@@ -241,11 +244,11 @@ export async function POST(request: NextRequest) {
             const totalSalary = employee.salary * numberOfDays;
 
             const salaryTransaction = new AccountingTransaction({
-              date: new Date(startDate),
+              date: transactionDate,
               type: 'expense',
               category: 'staff_salary',
               amount: totalSalary,
-              description: `เงินเดือนพนักงาน ${employee.name} - ${employee.position || 'พนักงาน'} (฿${employee.salary}/วัน × ${numberOfDays} วัน)`,
+              description: `เงินเดือนพนักงาน ${employee.name} - ${employee.position || 'พนักงาน'} (฿${employee.salary}/วัน × ${numberOfDays} วัน) หน้าร้าน ${name}`,
               boothId: booth._id,
               relatedId: booth._id,
               relatedType: 'booth_setup',
@@ -261,7 +264,7 @@ export async function POST(request: NextRequest) {
         for (const expense of businessPlan.additionalExpenses) {
           if (expense.amount > 0) {
             const expenseTransaction = new AccountingTransaction({
-              date: new Date(startDate),
+              date: transactionDate,
               type: 'expense',
               category: 'additional_expense',
               amount: expense.amount,
@@ -280,7 +283,7 @@ export async function POST(request: NextRequest) {
       if (businessPlan?.equipmentId && businessPlan?.fixedCosts?.equipment > 0) {
         // Create accounting transaction
         const equipmentTransaction = new AccountingTransaction({
-          date: new Date(startDate),
+          date: transactionDate,
           type: 'expense',
           category: 'equipment_cost',
           amount: businessPlan.fixedCosts.equipment,

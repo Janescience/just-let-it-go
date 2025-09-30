@@ -12,7 +12,7 @@ import { Header } from '@/components/layout/Header';
 
 export function SalesLoading() {
   return (
-    <div className="min-h-screen bg-gray-25 pb-20">
+    <div className="min-h-screen bg-gray-25 pb-24">
       <Header title="ขายสินค้า" />
 
       {/* Booth Info Skeleton */}

@@ -194,6 +194,12 @@ export function Step2MenuSelection({
                             min="1"
                             max="100"
                             value={proportion}
+                            onWheel={(e) => e.currentTarget.blur()}
+                            onKeyDown={(e) => {
+                              if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                                e.preventDefault();
+                              }
+                            }}
                             onChange={(e) => {
                               const value = parseInt(e.target.value) || 0;
                               if (value <= 100) {

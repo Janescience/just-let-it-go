@@ -119,10 +119,12 @@ export async function POST(request: NextRequest) {
     if (stock > 0) {
       const stockMovement = new StockMovement({
         ingredientId: ingredient._id,
+        ingredientName: name.trim(),
+        unit: unit.trim(),
         type: 'purchase',
         quantity: stock,
-        cost: costPerUnit * stock,
-        reason: `เพิ่มวัตถุดิบเริ่มต้น: ${name.trim()}`
+        cost: costPerUnit,
+        reason: `เพิ่มวัตถุดิบเริ่มต้น`
       });
       await stockMovement.save();
 

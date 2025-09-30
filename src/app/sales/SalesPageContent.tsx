@@ -287,7 +287,7 @@ export default function SalesPageContent() {
   }
 
   return (
-    <div className={`min-h-screen bg-white ${user?.role === 'staff' ? 'pb-20' : ''}`}>
+    <div className="min-h-screen bg-white pb-24">
       {/* Header */}
       <div className="border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 py-4">

@@ -34,7 +34,10 @@ export const EXPENSE_CATEGORIES = {
   'booth_rent': 'ค่าเช่าหน้าร้าน',
   'staff_salary': 'ค่าแรงพนักงาน',
   'equipment_cost': 'ค่าอุปกรณ์',
-  'other_expense': 'ค่าใช้จ่ายอื่นๆ'
+  'other_expense': 'ค่าใช้จ่ายอื่นๆ',
+  'additional_expense': 'ค่าใช้จ่ายเพิ่มเติม',
+  'manual_expense': 'ค่าใช้จ่ายที่บันทึกด้วยตนเอง',
+  'sale_cost': 'ต้นทุนขาย',
 } as const;
 
 export type IncomeCategory = keyof typeof INCOME_CATEGORIES;

@@ -244,12 +244,16 @@ export interface MonthlySummary {
 export interface StockMovement {
   _id: string;
   ingredientId: string;
+  ingredientName?: string; // Store original name in case ingredient is deleted
+  unit?: string; // Store original unit
   type: 'purchase' | 'use' | 'waste' | 'adjustment';
   quantity: number;
   cost?: number;
   reason?: string;
   boothId?: string;
   saleId?: string;
+  saleQuantity?: number; // Number of dishes sold
+  saleAmount?: number; // Total revenue from sale
   createdAt: Date;
 }
 

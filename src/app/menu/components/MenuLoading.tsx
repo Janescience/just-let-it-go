@@ -20,7 +20,7 @@ export function MenuLoading() {
           </div>
         </div>
       </div>
-      <div className="p-6 tablet:p-8 pb-20 max-w-7xl mx-auto">
+      <div className="p-6 tablet:p-8 pb-24 max-w-7xl mx-auto">
         {/* Header Actions */}
         <div className="flex flex-row items-center justify-between gap-4 mb-8">
           <div className="flex-1 space-y-2">

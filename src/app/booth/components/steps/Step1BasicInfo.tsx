@@ -119,6 +119,12 @@ export function Step1BasicInfo({
             type="number"
             value={businessPlan.numberOfDays}
             onChange={(e) => onUpdateBasicInfo('numberOfDays', parseInt(e.target.value) || 10)}
+            onWheel={(e) => e.currentTarget.blur()}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault();
+              }
+            }}
             placeholder="10"
             min="1"
             className="border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none w-full px-3 py-2"
@@ -143,6 +149,12 @@ export function Step1BasicInfo({
             type="number"
             value={businessPlan.rentCost}
             onChange={(e) => onUpdateBasicInfo('rentCost', parseFloat(e.target.value) || 0)}
+            onWheel={(e) => e.currentTarget.blur()}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault();
+              }
+            }}
             placeholder="0"
             className="border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none w-full px-3 py-2"
           />
@@ -268,6 +280,12 @@ export function Step1BasicInfo({
                     type="number"
                     value={employee.salary}
                     onChange={(e) => onUpdateEmployee(index, 'salary', e.target.value)}
+                    onWheel={(e) => e.currentTarget.blur()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                        e.preventDefault();
+                      }
+                    }}
                     placeholder="300"
                     className="border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none w-full px-3 py-2"
                   />
@@ -330,6 +348,12 @@ export function Step1BasicInfo({
                       type="number"
                       value={expense.amount || ''}
                       onChange={(e) => onUpdateExpense(index, 'amount', parseFloat(e.target.value) || 0)}
+                      onWheel={(e) => e.currentTarget.blur()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                          e.preventDefault();
+                        }
+                      }}
                       placeholder="0"
                       className="border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none w-full px-3 py-2"
                     />

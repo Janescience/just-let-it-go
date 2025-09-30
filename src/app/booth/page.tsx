@@ -297,7 +297,7 @@ export default function BoothPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8 pb-20">
+      <div className="max-w-7xl mx-auto px-6 py-8 pb-24">
         {/* Header Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4  mb-6">
           <div className="flex gap-4 items-center">

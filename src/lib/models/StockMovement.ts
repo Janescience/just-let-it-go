@@ -9,6 +9,14 @@ const StockMovementSchema = new Schema<IStockMovement>({
     ref: 'Ingredient',
     required: true,
   },
+  ingredientName: {
+    type: String,
+    trim: true,
+  },
+  unit: {
+    type: String,
+    trim: true,
+  },
   type: {
     type: String,
     enum: ['purchase', 'use', 'waste', 'adjustment'],
@@ -33,6 +41,14 @@ const StockMovementSchema = new Schema<IStockMovement>({
   saleId: {
     type: String,
     ref: 'Sale',
+  },
+  saleQuantity: {
+    type: Number,
+    min: 0,
+  },
+  saleAmount: {
+    type: Number,
+    min: 0,
   },
 }, {
   timestamps: { createdAt: true, updatedAt: false },
