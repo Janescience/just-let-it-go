@@ -31,7 +31,8 @@ export function SalesHistory({
   const formatTime = (date: string | Date) => {
     return new Date(date).toLocaleTimeString('th-TH', {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: 'UTC'
     });
   };
 

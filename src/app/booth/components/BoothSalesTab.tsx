@@ -632,10 +632,10 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
                 <React.Fragment key={day.date}>
                   <div className="grid grid-cols-6 gap-4 py-3 border-b border-gray-100">
                     <div className="font-light text-black">{day.displayDate}</div>
-                    <div className="font-light text-green-600 text-right">
+                    <div className="font-light text-right">
                       ฿{day.cash?.toLocaleString() || '0'}
                     </div>
-                    <div className="font-light text-blue-600 text-right">
+                    <div className="font-light text-right">
                       ฿{day.transfer?.toLocaleString() || '0'}
                     </div>
                     <div className="font-light text-black text-right">
@@ -699,7 +699,7 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
                           <div key={sale._id} className="border border-gray-100 p-4">
                             <div className="flex items-center justify-between mb-2">
                               <span className="font-light text-gray-600">
-                                ออเดอร์ #{sale._id.slice(-6)} - {sale.paymentMethod === 'cash' ? 'เงินสด' : 'เงินโอน'} - {new Date(sale.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+                                ออเดอร์ #{sale._id.slice(-6)} - {sale.paymentMethod === 'cash' ? 'เงินสด' : 'เงินโอน'} - {new Date(sale.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })}
                               </span>
                               <div className="flex items-center gap-2">
                                 <span className="font-light text-black">
