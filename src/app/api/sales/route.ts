@@ -1,18 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { verifyToken } from '@/utils/auth';
+// Import User first to ensure it's registered before other models that might reference it
+import User from '@/lib/models/User';
 import Sale from '@/lib/models/Sale';
 import QRPayment from '@/lib/models/QRPayment';
 import StockMovement from '@/lib/models/StockMovement';
 import MenuItem from '@/lib/models/MenuItem';
 import Ingredient from '@/lib/models/Ingredient';
 import Booth from '@/lib/models/Booth';
-import User from '@/lib/models/User';
 import AccountingTransaction from '@/lib/models/AccountingTransaction';
 import { RealtimeBroadcaster, createNewSaleEvent, createStockUpdateEvent, createLowStockAlert } from '@/utils/realtime';
 
 export async function POST(request: NextRequest) {
   try {
+    // Ensure User model is registered (fix for Vercel serverless)
+    if (!(global as any).mongoose?.models?.User) {
+      require('@/lib/models/User');
+    }
     const token = request.cookies.get('auth-token')?.value;
     if (!token) {
       return NextResponse.json(
@@ -251,6 +256,10 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    // Ensure User model is registered (fix for Vercel serverless)
+    if (!(global as any).mongoose?.models?.User) {
+      require('@/lib/models/User');
+    }
     const token = request.cookies.get('auth-token')?.value;
     if (!token) {
       return NextResponse.json(
