@@ -96,14 +96,6 @@ export async function POST(request: NextRequest) {
     const token = generateToken(session);
     const isProduction = process.env.NODE_ENV === 'production';
 
-    console.log('Setting cookie with token:', token.substring(0, 20) + '...');
-    console.log('Cookie settings:', {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60,
-      path: '/'
-    });
 
     response.cookies.set('auth-token', token, {
       httpOnly: true,

@@ -108,9 +108,10 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
     const allSales = salesData.sales || [];
 
     // Filter sales for this booth
-    const boothSales = allSales.filter((sale: any) =>
-      sale.boothId._id === booth._id || sale.boothId === booth._id
-    );
+    const boothSales = allSales.filter((sale: any) => {
+      const saleBoothId = sale.boothId?._id || sale.boothId;
+      return saleBoothId === booth._id;
+    });
 
     // Group sales by date
     const salesByDate: { [key: string]: any[] } = {};
@@ -264,7 +265,6 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
       setEditingSales([]);
       setShowSalesDetail(null);
 
-      console.log('✅ Sales updated successfully');
 
     } catch (error) {
       console.error('❌ Error saving sales changes:', error);
@@ -316,7 +316,6 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
         setEditingSales(remainingSales);
       }
 
-      console.log('✅ Sale deleted successfully');
 
     } catch (error) {
       console.error('❌ Error deleting sale:', error);
@@ -700,7 +699,7 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
                           <div key={sale._id} className="border border-gray-100 p-4">
                             <div className="flex items-center justify-between mb-2">
                               <span className="font-light text-gray-600">
-                                ออเดอร์ #{sale._id.slice(-6)} - {sale.paymentMethod === 'cash' ? 'เงินสด' : 'เงินโอน'}
+                                ออเดอร์ #{sale._id.slice(-6)} - {sale.paymentMethod === 'cash' ? 'เงินสด' : 'เงินโอน'} - {new Date(sale.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
                               </span>
                               <div className="flex items-center gap-2">
                                 <span className="font-light text-black">
@@ -756,7 +755,12 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
             </>
           ) : (
             <div className="text-center py-8">
-              <div className="font-light text-gray-500">ไม่มีข้อมูลการขาย</div>
+              <div className="font-light text-gray-500">
+                ยังไม่มีการขายในบูธนี้
+              </div>
+              <div className="text-xs font-light text-gray-400 mt-2">
+                เมื่อมีการขาย ข้อมูลจะแสดงที่นี่
+              </div>
             </div>
           )}
         </div>

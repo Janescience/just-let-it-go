@@ -38,11 +38,9 @@ export function generateToken(payload: any): string {
 
 export function verifyToken(token: string): any {
   try {
-    console.log('Verifying token with secret:', JWT_SECRET.substring(0, 10) + '...');
 
     const parts = token.split('.');
     if (parts.length !== 3) {
-      console.log('Invalid token format');
       return null;
     }
 
@@ -50,7 +48,6 @@ export function verifyToken(token: string): any {
     const expectedSignature = safeBase64Encode(`${header}.${payload}.${JWT_SECRET}`);
 
     if (signature !== expectedSignature) {
-      console.log('Invalid signature');
       return null;
     }
 
@@ -58,14 +55,11 @@ export function verifyToken(token: string): any {
     const now = Math.floor(Date.now() / 1000);
 
     if (decodedPayload.exp && decodedPayload.exp < now) {
-      console.log('Token expired');
       return null;
     }
 
-    console.log('Token verification successful');
     return decodedPayload;
   } catch (error) {
-    console.log('Token verification failed:', error instanceof Error ? error.message : error);
     return null;
   }
 }

@@ -65,7 +65,7 @@ export function BoothDetailModal({
         const statsResponse = await fetch(`/api/booths/${booth._id}/stats`);
         const statsData = statsResponse.ok ? await statsResponse.json() : null;
 
-        // Fetch daily sales data (for SalesTab)
+        // Fetch daily sales data (for SalesTab) - get all sales and filter in component
         const salesResponse = await fetch(`/api/sales`);
         const salesData = salesResponse.ok ? await salesResponse.json() : null;
 
@@ -273,155 +273,107 @@ export function BoothDetailModal({
                   <label className="text-lg font-light text-black tracking-wide">สรุปทางการเงิน</label>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Left Column: Fixed Costs */}
-                  <div className="space-y-4">
-                    <div className="border border-gray-100 p-4">
-                      <h4 className="font-light text-black mb-3 text-sm tracking-wide">ต้นทุนคงที่</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="font-light text-gray-600">ค่าเช่าบูธ:</span>
-                          <span className="font-light text-black">฿{booth.businessPlan.fixedCosts?.rent?.toLocaleString() || booth.rentCost.toLocaleString()}</span>
-                        </div>
-                        {booth.businessPlan.fixedCosts?.staff && (
-                          <div className="flex justify-between text-sm">
-                            <span className="font-light text-gray-600">ค่าแรงพนักงาน:</span>
-                            <span className="font-light text-black">฿{booth.businessPlan.fixedCosts.staff.toLocaleString()}</span>
-                          </div>
-                        )}
-                        {(() => {
-                          const hasEquipment = booth.businessPlan.equipmentId;
-                          const rent = booth.businessPlan.fixedCosts?.rent || 0;
-                          const staff = booth.businessPlan.fixedCosts?.staff || 0;
-                          const total = booth.businessPlan.fixedCosts?.total || 0;
-                          const additionalExpenses = booth.businessPlan.fixedCosts?.additionalExpenses || 0;
-                          const equipmentFromCalc = total - rent - staff - additionalExpenses;
-                          const equipmentCost = booth.businessPlan.fixedCosts?.equipment || equipmentFromCalc;
+                {(() => {
+                  const fixedCosts = booth.businessPlan?.fixedCosts?.total || 0;
+                  const ingredientCost = booth.businessPlan?.ingredients?.reduce((sum, ing) => sum + ing.cost, 0) || 0;
+                  const baseCapital = fixedCosts + ingredientCost;
+                  const reserveFund = baseCapital * 0.1;
+                  const totalCapital = baseCapital + reserveFund;
 
-                          return (hasEquipment || equipmentCost > 0) && (
-                            <div className="flex justify-between text-sm">
-                              <span className="font-light text-gray-600">ค่าอุปกรณ์:</span>
-                              <span className="font-light text-black">฿{Math.max(equipmentCost, 0).toLocaleString()}</span>
+                  return (
+                    <div className="space-y-4">
+                      {/* Summary Cards */}
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="text-center border border-gray-100 p-4">
+                          <div className="text-xs font-light text-gray-600 mb-1">ต้นทุนคงที่</div>
+                          <div className="text-xl font-light text-black">฿{fixedCosts.toLocaleString()}</div>
+                        </div>
+                        <div className="text-center border border-gray-100 p-4">
+                          <div className="text-xs font-light text-gray-600 mb-1">ต้นทุนผันแปร</div>
+                          <div className="text-xl font-light text-black">฿{ingredientCost.toLocaleString()}</div>
+                        </div>
+                        <div className="text-center border border-gray-100 p-4">
+                          <div className="text-xs font-light text-gray-600 mb-1">เงินสำรอง (10%)</div>
+                          <div className="text-xl font-light text-black">฿{reserveFund.toLocaleString()}</div>
+                        </div>
+                        <div className="text-center border border-gray-200 p-4 bg-gray-50">
+                          <div className="text-xs font-light text-gray-600 mb-1">เงินทุนรวม</div>
+                          <div className="text-2xl font-light text-black">฿{totalCapital.toLocaleString()}</div>
+                        </div>
+                      </div>
+
+                      {/* Break-even Target */}
+                      <div className="text-center border border-gray-200 p-6 bg-gray-50">
+                        <div className="text-sm font-light text-gray-600 mb-2">เป้าหมายยอดขายคุ้มทุน</div>
+                        <div className="text-3xl font-light text-black mb-3">฿{totalCapital.toLocaleString()}</div>
+                        <div className="text-sm font-light text-gray-600">
+                          ต้องขายต่อวัน: ฿{(() => {
+                            const endDate = new Date(booth.endDate);
+                            const today = new Date();
+                            const daysLeft = Math.max(0, Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
+                            const dailyTarget = daysLeft > 0 ? Math.ceil(totalCapital / daysLeft) : 0;
+                            return dailyTarget.toLocaleString();
+                          })()}
+                        </div>
+                      </div>
+
+                      {/* Detailed Breakdown */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Fixed Costs Detail */}
+                        <div>
+                          <h4 className="font-light text-black mb-3 text-sm tracking-wide border-b pb-2">รายละเอียดต้นทุนคงที่</h4>
+                          <div className="space-y-1 text-sm">
+                            <div className="flex justify-between">
+                              <span className="font-light text-gray-600">ค่าเช่าบูธ:</span>
+                              <span className="font-light text-black">฿{(booth.businessPlan.fixedCosts?.rent || booth.rentCost).toLocaleString()}</span>
                             </div>
-                          );
-                        })()}
-                        {booth.businessPlan.additionalExpenses && booth.businessPlan.additionalExpenses.length > 0 && (
-                          <div className="space-y-1">
-                            {booth.businessPlan.additionalExpenses.map((expense, index) => (
-                              <div key={index} className="flex justify-between text-sm">
+                            {booth.businessPlan.fixedCosts?.staff && (
+                              <div className="flex justify-between">
+                                <span className="font-light text-gray-600">ค่าแรงพนักงาน:</span>
+                                <span className="font-light text-black">฿{booth.businessPlan.fixedCosts.staff.toLocaleString()}</span>
+                              </div>
+                            )}
+                            {(() => {
+                              const hasEquipment = booth.businessPlan.equipmentId;
+                              const rent = booth.businessPlan.fixedCosts?.rent || 0;
+                              const staff = booth.businessPlan.fixedCosts?.staff || 0;
+                              const total = booth.businessPlan.fixedCosts?.total || 0;
+                              const additionalExpenses = booth.businessPlan.fixedCosts?.additionalExpenses || 0;
+                              const equipmentCost = booth.businessPlan.fixedCosts?.equipment || (total - rent - staff - additionalExpenses);
+                              return (hasEquipment || equipmentCost > 0) && (
+                                <div className="flex justify-between">
+                                  <span className="font-light text-gray-600">ค่าอุปกรณ์:</span>
+                                  <span className="font-light text-black">฿{Math.max(equipmentCost, 0).toLocaleString()}</span>
+                                </div>
+                              );
+                            })()}
+                            {booth.businessPlan.additionalExpenses?.map((expense, index) => (
+                              <div key={index} className="flex justify-between">
                                 <span className="font-light text-gray-600">{expense.description}:</span>
                                 <span className="font-light text-black">฿{expense.amount.toLocaleString()}</span>
                               </div>
                             ))}
                           </div>
-                        )}
-                        {!booth.businessPlan.additionalExpenses && booth.businessPlan.fixedCosts?.additionalExpenses && (
-                          <div className="flex justify-between text-sm">
-                            <span className="font-light text-gray-600">ค่าใช้จ่ายเพิ่มเติม:</span>
-                            <span className="font-light text-black">฿{booth.businessPlan.fixedCosts.additionalExpenses.toLocaleString()}</span>
-                          </div>
-                        )}
-                        <div className="border-t border-gray-200 pt-2 mt-3">
-                          <div className="flex justify-between">
-                            <span className="font-light text-black">รวม:</span>
-                            <span className="font-light text-black">฿{booth.businessPlan.fixedCosts?.total?.toLocaleString() || '0'}</span>
-                          </div>
                         </div>
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Middle Column: Variable Costs */}
-                  <div className="space-y-4">
-                    {booth.businessPlan.ingredients && (
-                      <div className="border border-gray-100 p-4">
-                        <h4 className="font-light text-black mb-3 text-sm tracking-wide">ต้นทุนผันแปร</h4>
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="font-light text-gray-600">ค่าวัตถุดิบ:</span>
-                            <span className="font-light text-black">฿{booth.businessPlan.ingredients.reduce((sum: number, ing: any) => sum + (ing.cost || 0), 0).toLocaleString()}</span>
-                          </div>
-                          <div className="border-t border-gray-200 pt-2 mt-3">
+                        {/* Variable Costs Detail */}
+                        <div>
+                          <h4 className="font-light text-black mb-3 text-sm tracking-wide border-b pb-2">รายละเอียดต้นทุนผันแปร</h4>
+                          <div className="space-y-1 text-sm">
                             <div className="flex justify-between">
-                              <span className="font-light text-black">รวม:</span>
-                              <span className="font-light text-black">฿{booth.businessPlan.ingredients.reduce((sum: number, ing: any) => sum + (ing.cost || 0), 0).toLocaleString()}</span>
+                              <span className="font-light text-gray-600">ค่าวัตถุดิบ:</span>
+                              <span className="font-light text-black">฿{ingredientCost.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between border-t pt-1 mt-2">
+                              <span className="font-light text-gray-600">เงินสำรอง (10%):</span>
+                              <span className="font-light text-black">฿{reserveFund.toLocaleString()}</span>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    )}
-
-                    {booth.businessPlan.fixedCosts?.total && booth.businessPlan.ingredients && (
-                      <div className="border border-gray-100 p-4">
-                        <h4 className="font-light text-black mb-3 text-sm tracking-wide">เงินสำรอง</h4>
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="font-light text-gray-600">10% ของต้นทุนรวม:</span>
-                            <span className="font-light text-black">฿{((booth.businessPlan.fixedCosts.total + booth.businessPlan.ingredients.reduce((sum: number, ing: any) => sum + (ing.cost || 0), 0)) * 0.1).toLocaleString()}</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Right Column: Summary & Break-even */}
-                  <div className="space-y-4">
-                    <div className="border border-gray-100 p-4">
-                      <h4 className="font-light text-black mb-3 text-sm tracking-wide">เงินทุนที่ใช้ทั้งหมด</h4>
-                      <div className="text-center">
-                        <div className="text-2xl font-light text-black mb-1">
-                          {(() => {
-                            const fixedCosts = booth.businessPlan?.fixedCosts?.total || 0;
-                            const ingredientCost = booth.businessPlan?.ingredients?.reduce((sum, ing) => sum + ing.cost, 0) || 0;
-                            const baseCapital = fixedCosts + ingredientCost;
-                            const reserveFund = baseCapital * 0.1;
-                            const correctTotalCapital = baseCapital + reserveFund;
-                            return `฿${correctTotalCapital.toLocaleString()}`;
-                          })()
-                          }
-                        </div>
-                        <div className="text-xs font-light text-gray-600">รวมทั้งหมด + สำรอง</div>
                       </div>
                     </div>
-
-                    {booth.businessPlan.breakEven && (
-                      <div className="border border-gray-100 p-4">
-                        <h4 className="font-light text-black mb-3 text-sm tracking-wide">จุดคุ้มทุน</h4>
-                        {(() => {
-                          const fixedCosts = booth.businessPlan.fixedCosts.total;
-                          const ingredientCost = booth.businessPlan.ingredients?.reduce((sum, ing) => sum + ing.cost, 0) || 0;
-                          const baseCapital = fixedCosts + ingredientCost;
-                          const reserveFund = baseCapital * 0.1;
-                          const correctBreakEvenRevenue = baseCapital + reserveFund;
-
-                          return (
-                            <div className="space-y-2">
-                              <div className="text-center">
-                                <div className="text-xl font-light text-black mb-1">฿{correctBreakEvenRevenue.toLocaleString()}</div>
-                                <div className="text-xs font-light text-gray-600">ยอดขายที่ต้องทำ</div>
-                              </div>
-                              <div className="border-t border-gray-200 pt-2">
-                                <div className="flex justify-between text-sm">
-                                  <span className="font-light text-gray-600">ต้องขายต่อวัน:</span>
-                                  <span className="font-light text-black">
-                                    {(() => {
-                                      const endDate = new Date(booth.endDate);
-                                      const today = new Date();
-                                      const daysLeft = Math.max(0, Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
-                                      const dailyTarget = daysLeft > 0 ? Math.ceil(correctBreakEvenRevenue / daysLeft) : 0;
-                                      return `฿${dailyTarget.toLocaleString()}`;
-                                    })()
-                                    }
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                  );
+                })()}
               </div>
             )}
 

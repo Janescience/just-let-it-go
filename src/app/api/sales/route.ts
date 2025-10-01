@@ -7,6 +7,7 @@ import StockMovement from '@/lib/models/StockMovement';
 import MenuItem from '@/lib/models/MenuItem';
 import Ingredient from '@/lib/models/Ingredient';
 import Booth from '@/lib/models/Booth';
+import User from '@/lib/models/User';
 import AccountingTransaction from '@/lib/models/AccountingTransaction';
 import { RealtimeBroadcaster, createNewSaleEvent, createStockUpdateEvent, createLowStockAlert } from '@/utils/realtime';
 
@@ -120,14 +121,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create sale record
+    // Create sale record with proper timezone handling
+    const now = new Date();
+    const serverTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    // If server is already in Thailand timezone, use current time
+    // If server is in UTC (like Vercel), add 7 hours
+    let thailandTime;
+    if (serverTimezone === 'Asia/Bangkok') {
+      thailandTime = now;
+    } else {
+      // Assume server is UTC, add 7 hours for Thailand
+      const thailandOffset = 7 * 60 * 60 * 1000;
+      thailandTime = new Date(now.getTime() + thailandOffset);
+    }
+
+
     const sale = new Sale({
       boothId,
       items: validatedItems,
       totalAmount: calculatedTotal,
       paymentMethod,
       paymentStatus: 'completed',
-      employeeId: payload.user.id
+      employeeId: payload.user.id,
+      createdAt: thailandTime,
+      updatedAt: thailandTime
     });
 
     await sale.save();
@@ -259,8 +277,10 @@ export async function GET(request: NextRequest) {
     } else if (payload.user.role === 'admin') {
       // Admin can see all sales for their brand's booths
       const { default: Booth } = await import('@/lib/models/Booth');
-      const booths = await Booth.find({ brandId: payload.user.brandId }).select('_id');
+      const booths = await Booth.find({ brandId: payload.user.brandId }).select('_id name isActive');
       const boothIds = booths.map(booth => booth._id);
+
+
       query.boothId = { $in: boothIds };
     }
 
@@ -270,6 +290,7 @@ export async function GET(request: NextRequest) {
       .populate('items.menuItemId', 'name price')
       .sort({ createdAt: -1 })
       .limit(50); // Latest 50 sales
+
 
     return NextResponse.json({
       sales

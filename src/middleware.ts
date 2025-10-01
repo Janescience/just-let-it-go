@@ -14,11 +14,9 @@ const staffOnlyRoutes = ['/sales'];
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  console.log('Middleware processing:', pathname);
 
   // Allow public routes
   if (publicRoutes.includes(pathname)) {
-    console.log('Public route, allowing access:', pathname);
     return NextResponse.next();
   }
 
@@ -34,26 +32,21 @@ export function middleware(request: NextRequest) {
 
   // Check authentication
   const token = request.cookies.get('auth-token')?.value;
-  console.log('Token from cookie:', token ? `${token.substring(0, 20)}...` : 'No token');
 
   if (!token) {
-    console.log('No token found, redirecting to login');
     // Not authenticated - redirect to login
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
   // Verify token
   const payload = verifyToken(token);
-  console.log('Token verification result:', payload ? 'Valid' : 'Invalid');
   if (!payload || !payload.user) {
-    console.log('Invalid token, redirecting to login');
     // Invalid token - redirect to login
     const response = NextResponse.redirect(new URL('/login', request.url));
     response.cookies.delete('auth-token');
     return response;
   }
 
-  console.log('Token verified, user:', payload.user);
 
   const userRole = payload.user.role;
 

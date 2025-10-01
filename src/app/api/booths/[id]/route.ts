@@ -103,22 +103,17 @@ export async function PUT(
       }
 
       // Update staff user
-      console.log('Finding staff user with ID:', booth.staff.userId);
       const staffUser = await User.findById(booth.staff.userId);
       if (staffUser) {
-        console.log('Found staff user:', staffUser.username);
         staffUser.username = staff.username.trim().toLowerCase(); // Convert to lowercase for consistency
 
         // Only update password if it's different from stored plain text
         if (booth.staff.password !== staff.password) {
-          console.log('Updating password from', booth.staff.password, 'to', staff.password);
           staffUser.password = staff.password; // Let User model handle password hashing
         }
 
-        console.log('Saving updated staff user...');
         try {
           await staffUser.save();
-          console.log('Staff user updated successfully');
         } catch (updateError) {
           console.error('Error updating staff user:', updateError);
           throw updateError;
@@ -285,14 +280,12 @@ export async function DELETE(
     const { default: DailySummary } = await import('@/lib/models/DailySummary');
     const { default: Ingredient } = await import('@/lib/models/Ingredient');
 
-    console.log(`Starting deletion process for booth: ${booth._id}`);
 
     // 1. คืน stock จาก StockMovement ที่เป็น type 'use' ก่อนลบ
     const stockMovements = await StockMovement.find({
       boothId: booth._id,
       type: 'use'
     });
-    console.log(`Found ${stockMovements.length} stock movements to restore`);
 
     let totalRestoredItems = 0;
     for (const movement of stockMovements) {
@@ -305,7 +298,6 @@ export async function DELETE(
           ingredientDoc.stock += quantityToRestore;
           await ingredientDoc.save();
           totalRestoredItems++;
-          console.log(`✓ Restored ${quantityToRestore} ${ingredientDoc.unit} to ingredient: ${ingredientDoc.name} (${stockBefore} → ${ingredientDoc.stock})`);
         } else {
           console.warn(`⚠ Ingredient not found for movement ${movement._id}`);
         }
@@ -313,25 +305,19 @@ export async function DELETE(
         console.warn(`❌ Error restoring stock for movement ${movement._id}:`, error);
       }
     }
-    console.log(`📦 Total restored: ${totalRestoredItems} stock movements`);
 
     // 2. ลบข้อมูลการขาย (Sales)
     const sales = await Sale.find({ boothId: booth._id });
-    console.log(`Found ${sales.length} sales records to delete`);
     await Sale.deleteMany({ boothId: booth._id });
-    console.log(`🗑️ Deleted ${sales.length} sales records`);
 
     // 3. ลบข้อมูลการเคลื่อนไหวของ stock (หลังจากคืน stock แล้ว)
     const deletedStockMovements = await StockMovement.deleteMany({ boothId: booth._id });
-    console.log(`🗑️ Deleted ${deletedStockMovements.deletedCount} stock movement records`);
 
     // 4. ลบข้อมูลบัญชี (Accounting Transactions)
     const accountingTransactions = await AccountingTransaction.deleteMany({ boothId: booth._id });
-    console.log(`🗑️ Deleted ${accountingTransactions.deletedCount} accounting transaction records`);
 
     // 5. ลบข้อมูล Daily Summary
     const dailySummaries = await DailySummary.deleteMany({ boothId: booth._id });
-    console.log(`🗑️ Deleted ${dailySummaries.deletedCount} daily summary records`);
 
     // 6. ลบประวัติการใช้อุปกรณ์และคืนสถานะอุปกรณ์
     const equipments = await Equipment.find({
@@ -347,7 +333,6 @@ export async function DELETE(
         equipment.status = 'available';
         equipment.currentBoothId = null;
         equipment.currentBoothName = '';
-        console.log(`🔧 Set equipment ${equipment.name} as available`);
       }
 
       // ลบประวัติการใช้งานที่เกี่ยวข้องกับ booth นี้
@@ -364,20 +349,16 @@ export async function DELETE(
         );
         // คำนวณค่าเสื่อมใหม่
         equipment.calculateDepreciation();
-        console.log(`🔧 Removed usage history and recalculated depreciation for equipment: ${equipment.name}`);
       }
 
       await equipment.save();
     }
-    console.log(`🔧 Updated ${equipments.length} equipment records`);
 
     // 7. ลบพนักงาน staff ทั้งหมดที่เกี่ยวข้องกับ booth
     const deletedUsers = await User.deleteMany({ boothId: booth._id });
-    console.log(`👥 Deleted ${deletedUsers.deletedCount} staff user accounts`);
 
     // 8. ลบ booth
     await Booth.findByIdAndDelete(id);
-    console.log(`🏪 Deleted booth: ${booth.name}`);
 
     return NextResponse.json({
       message: 'ลบหน้าร้านเรียบร้อยแล้ว'

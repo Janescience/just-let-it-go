@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
             (booth.businessPlan as any).equipmentId = equipment;
           }
         } catch (error) {
-          console.log('Equipment not found or model not available');
+          // Equipment not found or model not available
         }
       }
     }

@@ -46,12 +46,6 @@ export async function GET(request: NextRequest) {
       const startDateObj = new Date(startDate);
       const endDateObj = new Date(new Date(endDate).getTime() + 24 * 60 * 60 * 1000 - 1);
 
-      console.log('🔍 Date range filter:', {
-        startDate,
-        endDate,
-        startDateObj,
-        endDateObj
-      });
 
       matchQuery.createdAt = {
         $gte: startDateObj,
@@ -63,8 +57,6 @@ export async function GET(request: NextRequest) {
     const booths = await Booth.find({ brandId: payload.user.brandId }).select('_id name');
     const boothIds = booths.map(booth => (booth._id as any).toString()); // Convert to strings
 
-    console.log('🔍 Booths found:', booths.length);
-    console.log('🔍 Booth IDs (as strings):', boothIds);
 
     if (boothId && boothId !== 'all') {
       matchQuery.boothId = boothId;
@@ -73,29 +65,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Debug: Check what sales exist first
-    console.log('🔍 Debug matchQuery before paymentStatus:', JSON.stringify(matchQuery));
 
     const allSales = await Sale.find({
       boothId: { $in: boothIds }
     }).select('paymentStatus createdAt totalAmount boothId items').limit(10);
 
-    console.log('🔍 Found sales in database:', allSales.length);
-    console.log('🔍 Sample sales:', allSales.map(s => ({
-      paymentStatus: s.paymentStatus,
-      createdAt: s.createdAt,
-      totalAmount: s.totalAmount,
-      boothId: s.boothId,
-      items: s.items
-    })));
 
     // Debug items structure
     if (allSales.length > 0 && allSales[0].items) {
-      console.log('🔍 First sale items structure:', JSON.stringify(allSales[0].items, null, 2));
     }
 
     // Include all sales regardless of payment status
 
-    console.log('🔍 Final matchQuery:', JSON.stringify(matchQuery));
 
     // Aggregate sales data
     const salesAggregation = await Sale.aggregate([
@@ -110,7 +91,6 @@ export async function GET(request: NextRequest) {
       }
     ]);
 
-    console.log('🔍 Sales aggregation result:', salesAggregation);
 
     const salesSummary = salesAggregation[0] || {
       totalSales: 0,
@@ -118,12 +98,10 @@ export async function GET(request: NextRequest) {
       averageOrderValue: 0
     };
 
-    console.log('🔍 Sales summary:', salesSummary);
 
     // Top selling items
     let topSellingItems = [];
     try {
-      console.log('🔍 Starting top selling items aggregation...');
 
       // First, test basic aggregation without lookup
       const basicItems = await Sale.aggregate([
@@ -138,7 +116,6 @@ export async function GET(request: NextRequest) {
         }
       ]);
 
-      console.log('🔍 Basic items aggregation (before lookup):', basicItems);
 
       topSellingItems = await Sale.aggregate([
         { $match: matchQuery },
@@ -175,7 +152,6 @@ export async function GET(request: NextRequest) {
         { $limit: 10 }
       ]);
 
-      console.log('🔍 Top selling items result:', topSellingItems);
     } catch (error) {
       console.error('🔍 Error in top selling items aggregation:', error);
     }
@@ -183,7 +159,6 @@ export async function GET(request: NextRequest) {
     // Sales by booth
     let salesByBooth = [];
     try {
-      console.log('🔍 Starting sales by booth aggregation...');
       salesByBooth = await Sale.aggregate([
         { $match: matchQuery },
         {
@@ -218,7 +193,6 @@ export async function GET(request: NextRequest) {
         { $sort: { sales: -1 } }
       ]);
 
-      console.log('🔍 Sales by booth result:', salesByBooth);
     } catch (error) {
       console.error('🔍 Error in sales by booth aggregation:', error);
     }

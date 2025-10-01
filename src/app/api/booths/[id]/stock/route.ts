@@ -104,7 +104,6 @@ export async function PATCH(
             console.error('Error creating accounting transaction for stock purchase:', accountingError);
           }
 
-          console.log(`Auto-purchased ${purchaseAmount} ${ingredient.unit} of ${ingredient.name} for booth allocation`);
         } else {
           return NextResponse.json(
             {
