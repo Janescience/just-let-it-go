@@ -69,7 +69,15 @@ export async function GET(request: NextRequest) {
     const endDate = new Date(boothInfo.endDate);
 
     for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-      const dateString = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+      let dateString: string;
+      if (process.env.NODE_ENV === 'production') {
+        // Vercel: Use Thailand timezone
+        const thailandDate = new Date(date.getTime() + (7 * 60 * 60 * 1000));
+        dateString = thailandDate.toISOString().split('T')[0];
+      } else {
+        // Local: Use local timezone
+        dateString = date.toISOString().split('T')[0];
+      }
       allBoothDates.push(dateString);
     }
 
