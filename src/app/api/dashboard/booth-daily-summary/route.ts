@@ -69,15 +69,7 @@ export async function GET(request: NextRequest) {
     const endDate = new Date(boothInfo.endDate);
 
     for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-      let dateString: string;
-      if (process.env.NODE_ENV === 'production') {
-        // Vercel: Use Thailand timezone
-        const thailandDate = new Date(date.getTime() + (7 * 60 * 60 * 1000));
-        dateString = thailandDate.toISOString().split('T')[0];
-      } else {
-        // Local: Use local timezone
-        dateString = date.toISOString().split('T')[0];
-      }
+      const dateString = date.toISOString().split('T')[0]; // YYYY-MM-DD format
       allBoothDates.push(dateString);
     }
 
@@ -94,9 +86,7 @@ export async function GET(request: NextRequest) {
           date: {
             $dateToString: {
               format: "%Y-%m-%d",
-              date: process.env.NODE_ENV === 'production'
-                ? { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: 7 } }
-                : "$createdAt"
+              date: "$createdAt"
             }
           }
         }
