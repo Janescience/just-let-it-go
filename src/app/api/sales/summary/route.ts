@@ -92,8 +92,8 @@ export async function GET(request: NextRequest) {
     const salesHistory = await Sale.find(salesQuery)
       .populate('items.menuItemId', 'name price')
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+      .skip(skip);
+      // .limit(limit);
 
     // Get total count for pagination
     const totalSales = await Sale.countDocuments(salesQuery);

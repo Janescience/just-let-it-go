@@ -33,6 +33,13 @@ export async function GET(request: NextRequest) {
     // Get all brands with statistics
     const brands = await Brand.find({}).sort({ createdAt: -1 });
 
+    // Debug: Check booth and sale data
+    console.log('=== DEBUGGING SUPER ADMIN BRANDS ===');
+    const totalBooths = await Booth.countDocuments({});
+    const totalSales = await Sale.countDocuments({});
+    console.log(`Total booths in system: ${totalBooths}`);
+    console.log(`Total sales in system: ${totalSales}`);
+
     const brandsWithStats = await Promise.all(
       brands.map(async (brand) => {
         // Get booth statistics
@@ -41,6 +48,14 @@ export async function GET(request: NextRequest) {
           brandId: brand._id,
           isActive: true
         });
+
+        // Debug booth data for this brand
+        const boothsForBrand = await Booth.find({ brandId: brand._id }).select('_id name brandId');
+        console.log(`\nBooths for brand ${brand.name}:`, boothsForBrand.map(b => ({
+          id: b._id,
+          name: b.name,
+          brandId: b.brandId
+        })));
 
         // Get user count
         const totalUsers = await User.countDocuments({
@@ -51,12 +66,20 @@ export async function GET(request: NextRequest) {
         // Get total sales amount
         const salesPipeline = [
           {
+            $addFields: {
+              boothObjectId: { $toObjectId: '$boothId' }
+            }
+          },
+          {
             $lookup: {
               from: 'booths',
-              localField: 'boothId',
+              localField: 'boothObjectId',
               foreignField: '_id',
               as: 'booth'
             }
+          },
+          {
+            $unwind: '$booth'
           },
           {
             $match: {
@@ -72,17 +95,39 @@ export async function GET(request: NextRequest) {
         ];
 
         const salesResult = await Sale.aggregate(salesPipeline);
+
+        // Debug: Check sales for this brand's booths
+        const boothIds = boothsForBrand.map(b => (b._id as any).toString());
+        const salesForBooths = await Sale.find({ boothId: { $in: boothIds } }).select('boothId totalAmount');
+        console.log(`Sales for brand ${brand.name} booths:`, salesForBooths.map(s => ({
+          boothId: s.boothId,
+          totalAmount: s.totalAmount
+        })));
+
+        // Debug logging
+        console.log(`Brand: ${brand.name} (${brand._id})`);
+        console.log('Sales pipeline result:', salesResult);
+
         const totalSales = salesResult.length > 0 ? salesResult[0].totalSales : 0;
+        console.log(`Total sales for ${brand.name}: ${totalSales}`);
 
         // Get last activity (most recent sale)
         const lastSalePipeline = [
           {
+            $addFields: {
+              boothObjectId: { $toObjectId: '$boothId' }
+            }
+          },
+          {
             $lookup: {
               from: 'booths',
-              localField: 'boothId',
+              localField: 'boothObjectId',
               foreignField: '_id',
               as: 'booth'
             }
+          },
+          {
+            $unwind: '$booth'
           },
           {
             $match: {

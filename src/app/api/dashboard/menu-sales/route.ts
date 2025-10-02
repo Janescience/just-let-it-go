@@ -61,34 +61,17 @@ export async function GET(request: NextRequest) {
     // Build date filter (skip date filter for operational data)
     let dateFilter = {};
     if (dateParam && dateParam !== 'all' && allBooths !== 'true') {
-      if (dateParam === 'today') {
-        const today = new Date();
-        const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
-        const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+      // Use same logic as menu-profits for consistency
+      const startDate = new Date(dateParam);
+      const endDate = new Date(dateParam);
+      endDate.setDate(endDate.getDate() + 1);
 
-        dateFilter = {
-          createdAt: {
-            $gte: startOfDay,
-            $lte: endOfDay
-          }
-        };
-      } else {
-        // Parse date as UTC and create full day range in UTC
-        const dateParts = dateParam.split('-');
-        const year = parseInt(dateParts[0]);
-        const month = parseInt(dateParts[1]) - 1;
-        const day = parseInt(dateParts[2]);
-
-        const startOfDay = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
-        const endOfDay = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
-
-        dateFilter = {
-          createdAt: {
-            $gte: startOfDay,
-            $lte: endOfDay
-          }
-        };
-      }
+      dateFilter = {
+        createdAt: {
+          $gte: startDate,
+          $lt: endDate
+        }
+      };
     }
 
 

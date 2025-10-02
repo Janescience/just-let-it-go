@@ -37,6 +37,9 @@ export async function GET(request: NextRequest) {
 
 
     // Use Thailand timezone for final result
+    const serverTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const isProduction = process.env.NODE_ENV === 'production';
+
     const boothDates = await SaleModel.aggregate([
       {
         $match: {
@@ -50,7 +53,9 @@ export async function GET(request: NextRequest) {
             date: {
               $dateToString: {
                 format: "%Y-%m-%d",
-                date: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: 7 } }
+                date: serverTimezone === 'Asia/Bangkok' && !isProduction
+                  ? "$createdAt"  // Local: use original time
+                  : { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: 7 } } // Vercel: add 7 hours
               }
             }
           }

@@ -43,13 +43,30 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
   // Calculate daily ingredient usage for a specific date
   const calculateDailyIngredientUsage = (date: string) => {
     const dayData = dailySalesData.find(d => d.date === date);
-    if (!dayData || !booth.businessPlan?.ingredients) {
+    if (!dayData || !booth.businessPlan?.ingredients || !dayData.sales) {
+      console.log('❌ Daily ingredient calculation failed - missing data:', {
+        dayData: !!dayData,
+        ingredients: !!booth.businessPlan?.ingredients,
+        sales: !!dayData?.sales,
+        date
+      });
       return [];
     }
 
-    // Use orders as number of units sold (assuming each order is one unit)
-    // This should ideally come from actual menu item quantities sold
-    const unitsSoldThatDay = dayData.orders;
+    // Calculate actual total quantity sold that day from sales data
+    const unitsSoldThatDay = dayData.sales.reduce((total: number, sale: any) => {
+      return total + sale.items.reduce((saleTotal: number, item: any) => {
+        return saleTotal + item.quantity;
+      }, 0);
+    }, 0);
+
+    console.log('🔍 Daily ingredient calculation:', {
+      date,
+      unitsSoldThatDay,
+      salesCount: dayData.sales.length,
+      ordersFromData: dayData.orders
+    });
+
     const breakEvenUnits = booth.businessPlan?.breakEven?.unitsNeeded || 1;
 
     return booth.businessPlan.ingredients.map((ingredient: any) => ({
@@ -96,13 +113,25 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
   // Get daily menu stats for selected date
   const dailyMenuStats = calculateDailyMenuStats(selectedDate);
 
-  // Calculate total ingredient usage (existing logic)
+  // Calculate total ingredient usage from actual sales data
   const calculateTotalIngredientUsage = () => {
-    if (!statsData?.menuStats || !booth.businessPlan?.ingredients) {
+    if (!dailySalesData || !booth.businessPlan?.ingredients) {
       return [];
     }
 
-    const totalSoldUnits = statsData.menuStats.reduce((sum: number, item: any) => sum + item.quantity, 0);
+    // Calculate total sold units from all daily sales data (actual usage)
+    const totalSoldUnits = dailySalesData.reduce((grandTotal: number, dayData: any) => {
+      if (!dayData.sales) return grandTotal;
+
+      const dayTotal = dayData.sales.reduce((daySum: number, sale: any) => {
+        return daySum + sale.items.reduce((saleSum: number, item: any) => {
+          return saleSum + item.quantity;
+        }, 0);
+      }, 0);
+
+      return grandTotal + dayTotal;
+    }, 0);
+
     const breakEvenUnits = booth.businessPlan?.breakEven?.unitsNeeded || 1;
 
     return booth.businessPlan.ingredients.map((ingredient: any) => ({
@@ -430,14 +459,36 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
           <div>
             <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">จำนวนที่ขายได้</div>
             <div className="font-light text-black">
-              {statsData?.menuStats?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0} จาน
+              {(() => {
+                // Calculate total quantity from all daily sales data
+                const totalQuantity = dailySalesData.reduce((grandTotal: number, dayData: any) => {
+                  if (!dayData.sales) return grandTotal;
+
+                  const dayTotal = dayData.sales.reduce((daySum: number, sale: any) => {
+                    return daySum + sale.items.reduce((saleSum: number, item: any) => {
+                      return saleSum + item.quantity;
+                    }, 0);
+                  }, 0);
+
+                  return grandTotal + dayTotal;
+                }, 0);
+
+                return totalQuantity;
+              })()} จาน
             </div>
           </div>
 
           <div>
             <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">ยอดขายรวม</div>
             <div className="font-light text-black">
-              ฿{statsData?.totalSales?.toLocaleString() || '0'}
+              ฿{(() => {
+                // Calculate total sales from all daily sales data
+                const totalSales = dailySalesData.reduce((grandTotal: number, dayData: any) => {
+                  return grandTotal + (dayData.total || 0);
+                }, 0);
+
+                return totalSales.toLocaleString();
+              })()}
             </div>
           </div>
 
@@ -485,292 +536,7 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
         </div>
       </div>
 
-      {/* Daily Targets vs Reality */}
-      {/* <div className="border-2 border-gray-300 p-4">
-        <div className="flex items-center gap-4 mb-2">
-          <Target className="w-8 h-8" />
-          <h4 className=" text-black text-2xl">เป้าหมายต่อวัน</h4>
-        </div>
-        <div className="grid grid-cols-3 gap-8">
-          <div className="border-2 border-black p-6 text-center bg-white">
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <Target className="w-5 h-5 text-gray-700" />
-              <div className="text-lg text-gray-700 ">เป้าหมายคุ้มทุน/วัน</div>
-            </div>
-            <div className="text-3xl  text-black">
-              {booth.businessPlan?.breakEven?.dailyTarget || 0} จาน
-            </div>
-          </div>
-
-          <div className="border-2 border-black p-6 text-center bg-white">
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <TrendingUp className="w-5 h-5 text-gray-700" />
-              <div className="text-lg text-gray-700 ">เป้าหมายกำไร/วัน</div>
-            </div>
-            <div className="text-3xl  text-black">
-              {booth.businessPlan?.targetProfit?.unitsNeeded ?
-                Math.ceil((booth.businessPlan.targetProfit.unitsNeeded || 0) / Math.ceil((new Date(booth.endDate).getTime() - new Date(booth.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1) : 0} จาน
-            </div>
-          </div>
-
-          <div className="border-2 border-black p-6 text-center bg-gray-100">
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <Calendar className="w-5 h-5 text-gray-700" />
-              <div className="text-lg text-gray-700 ">เฉลี่ยต่อวันปัจจุบัน</div>
-            </div>
-            <div className="text-3xl  text-black">
-              {statsData?.daysRunning > 0 ?
-                Math.round((statsData?.menuStats?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0) / statsData.daysRunning)
-                : 0} จาน
-            </div>
-          </div>
-        </div>
-      </div> */}
-
-      {/* Ingredients Usage Table */}
-      <div className="border border-gray-100 p-6">
-        <div className="flex flex-col gap-4 mb-6">
-          <div className="flex items-center gap-2">
-            <Package className="w-4 h-4 text-gray-600" />
-            <label className="text-lg font-light text-black tracking-wide">การใช้วัตถุดิบ</label>
-          </div>
-
-          {/* View Mode Toggle */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setIngredientViewMode('total')}
-                className={`px-4 py-2 text-sm font-light tracking-wide transition-all duration-200 ${
-                  ingredientViewMode === 'total'
-                    ? 'text-black border-b-2 border-black'
-                    : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                ยอดรวม
-              </button>
-              <button
-                onClick={() => setIngredientViewMode('daily')}
-                className={`px-4 py-2 text-sm font-light tracking-wide transition-all duration-200 ${
-                  ingredientViewMode === 'daily'
-                    ? 'text-black border-b-2 border-black'
-                    : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                รายวัน
-              </button>
-            </div>
-
-            {/* Date Picker - Only show when in daily mode */}
-            {ingredientViewMode === 'daily' && (
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-600" />
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  min={getBoothDateRange().min}
-                  max={getBoothDateRange().max}
-                  className="border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none px-3 py-1"
-                />
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="space-y-3">
-          {(() => {
-            const ingredientsData = ingredientViewMode === 'total'
-              ? calculateTotalIngredientUsage()
-              : calculateDailyIngredientUsage(selectedDate);
-
-            return ingredientsData.length > 0 ? (
-              <>
-                <div className="grid grid-cols-3 gap-4 pb-2 border-b border-gray-200">
-                  <div className="text-xs font-light text-gray-400 tracking-wider uppercase">วัตถุดิบ</div>
-                  <div className="text-xs font-light text-gray-400 tracking-wider uppercase text-center">ใช้ไปแล้ว</div>
-                  <div className="text-xs font-light text-gray-400 tracking-wider uppercase text-right">มูลค่าที่ใช้</div>
-                </div>
-                {ingredientsData.map((ingredient: any, index: number) => (
-                  <div key={index} className="grid grid-cols-3 gap-4 py-3 border-b border-gray-100">
-                    <div className="font-light text-black">{ingredient.name}</div>
-                    <div className="font-light text-gray-700 text-center">
-                      {ingredient.usedQuantity.toFixed(2)} {ingredient.unit}
-                    </div>
-                    <div className="font-light text-black text-right">
-                      ฿{ingredient.usedValue.toFixed(2)}
-                    </div>
-                  </div>
-                ))}
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <div className="font-light text-gray-500">
-                  {ingredientViewMode === 'daily'
-                    ? 'ไม่มีข้อมูลการขายในวันที่เลือก'
-                    : 'ไม่มีข้อมูลวัตถุดิบ'
-                  }
-                </div>
-              </div>
-            );
-          })()}
-        </div>
-
-        {/* Total */}
-        <div className="border-t border-gray-200 pt-4 mt-4">
-          <div className="flex justify-between bg-gray-50 p-3 rounded">
-            <div className="font-medium text-black">
-              รวมมูลค่าวัตถุดิบที่ใช้{ingredientViewMode === 'daily' ? ' (วันนี้)' : ' (รวมทั้งหมด)'}:
-            </div>
-            <div className="font-medium text-black">
-              ฿{(() => {
-                const ingredientsData = ingredientViewMode === 'total'
-                  ? calculateTotalIngredientUsage()
-                  : calculateDailyIngredientUsage(selectedDate);
-
-                const totalValue = ingredientsData.reduce((sum: number, ingredient: any) => sum + ingredient.usedValue, 0);
-                return totalValue.toFixed(2);
-              })()}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Menu Sales Summary */}
-      <div className="border border-gray-100 p-6">
-        <div className="flex flex-col gap-4 mb-6">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-gray-600" />
-            <label className="text-lg font-light text-black tracking-wide">สรุปยอดขายแต่ละเมนู</label>
-          </div>
-
-          {/* View Mode Toggle */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setMenuViewMode('total')}
-                className={`px-4 py-2 text-sm font-light tracking-wide transition-all duration-200 ${
-                  menuViewMode === 'total'
-                    ? 'text-black border-b-2 border-black'
-                    : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                ยอดรวม
-              </button>
-              <button
-                onClick={() => setMenuViewMode('daily')}
-                className={`px-4 py-2 text-sm font-light tracking-wide transition-all duration-200 ${
-                  menuViewMode === 'daily'
-                    ? 'text-black border-b-2 border-black'
-                    : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                รายวัน
-              </button>
-            </div>
-
-            {/* Date Picker - Only show when in daily mode */}
-            {menuViewMode === 'daily' && (
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-600" />
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  min={getBoothDateRange().min}
-                  max={getBoothDateRange().max}
-                  className="border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none px-3 py-1"
-                />
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          {menuViewMode === 'total' ? (
-            // Total View
-            statsData?.menuStats && statsData.menuStats.length > 0 ? (
-              <>
-                <div className="grid grid-cols-3 gap-4 pb-2 border-b border-gray-200">
-                  <div className="text-xs font-light text-gray-400 tracking-wider uppercase">เมนู</div>
-                  <div className="text-xs font-light text-gray-400 tracking-wider uppercase text-center">จำนวนที่ขาย</div>
-                  <div className="text-xs font-light text-gray-400 tracking-wider uppercase text-right">ยอดขาย</div>
-                </div>
-                {statsData.menuStats
-                  .sort((a: any, b: any) => b.quantity - a.quantity)
-                  .map((menuItem: any, index: number) => (
-                    <div key={index} className="grid grid-cols-3 gap-4 py-3 border-b border-gray-100">
-                      <div className="font-light text-black">{menuItem.name}</div>
-                      <div className="font-light text-gray-700 text-center">
-                        {menuItem.quantity.toLocaleString()} จาน
-                      </div>
-                      <div className="font-light text-black text-right">
-                        ฿{menuItem.revenue.toLocaleString()}
-                      </div>
-                    </div>
-                  ))}
-
-                {/* Total Summary */}
-                <div className="border-t border-gray-200 pt-4 mt-4">
-                  <div className="grid grid-cols-3 gap-4 bg-gray-50 p-3 rounded">
-                    <div className="font-medium text-black">รวมทั้งหมด:</div>
-                    <div className="font-medium text-black text-center">
-                      {statsData.menuStats.reduce((sum: number, item: any) => sum + item.quantity, 0).toLocaleString()} จาน
-                    </div>
-                    <div className="font-medium text-black text-right">
-                      ฿{statsData?.totalSales?.toLocaleString() || '0'}
-                    </div>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <div className="font-light text-gray-500">ไม่มีข้อมูลการขาย</div>
-              </div>
-            )
-          ) : (
-            // Daily View
-            dailyMenuStats && dailyMenuStats.length > 0 ? (
-              <>
-                <div className="grid grid-cols-3 gap-4 pb-2 border-b border-gray-200">
-                  <div className="text-xs font-light text-gray-400 tracking-wider uppercase">เมนู</div>
-                  <div className="text-xs font-light text-gray-400 tracking-wider uppercase text-center">จำนวนที่ขาย</div>
-                  <div className="text-xs font-light text-gray-400 tracking-wider uppercase text-right">ยอดขาย</div>
-                </div>
-                {dailyMenuStats
-                  .sort((a: any, b: any) => b.quantity - a.quantity)
-                  .map((menuItem: any, index: number) => (
-                    <div key={index} className="grid grid-cols-3 gap-4 py-3 border-b border-gray-100">
-                      <div className="font-light text-black">{menuItem.name}</div>
-                      <div className="font-light text-gray-700 text-center">
-                        {menuItem.quantity.toLocaleString()} จาน
-                      </div>
-                      <div className="font-light text-black text-right">
-                        ฿{menuItem.revenue.toLocaleString()}
-                      </div>
-                    </div>
-                  ))}
-
-                {/* Daily Summary */}
-                <div className="border-t border-gray-200 pt-4 mt-4">
-                  <div className="grid grid-cols-3 gap-4 bg-gray-50 p-3 rounded">
-                    <div className="font-medium text-black">รวมในวันนี้:</div>
-                    <div className="font-medium text-black text-center">
-                      {dailyMenuStats.reduce((sum: number, item: any) => sum + item.quantity, 0).toLocaleString()} จาน
-                    </div>
-                    <div className="font-medium text-black text-right">
-                      ฿{dailyMenuStats.reduce((sum: number, item: any) => sum + item.revenue, 0).toLocaleString()}
-                    </div>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <div className="font-light text-gray-500">ไม่มีข้อมูลการขายในวันที่เลือก</div>
-              </div>
-            )
-          )}
-        </div>
-      </div>
-
+      {/* INSERT_DAILY_SALES_HERE */}
       {/* Daily Sales Table */}
       <div className="border border-gray-100 p-6">
         <div className="flex items-center gap-2 mb-6">
@@ -948,6 +714,327 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
           )}
         </div>
       </div>
+
+      {/* Daily Targets vs Reality */}
+      {/* <div className="border-2 border-gray-300 p-4">
+        <div className="flex items-center gap-4 mb-2">
+          <Target className="w-8 h-8" />
+          <h4 className=" text-black text-2xl">เป้าหมายต่อวัน</h4>
+        </div>
+        <div className="grid grid-cols-3 gap-8">
+          <div className="border-2 border-black p-6 text-center bg-white">
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <Target className="w-5 h-5 text-gray-700" />
+              <div className="text-lg text-gray-700 ">เป้าหมายคุ้มทุน/วัน</div>
+            </div>
+            <div className="text-3xl  text-black">
+              {booth.businessPlan?.breakEven?.dailyTarget || 0} จาน
+            </div>
+          </div>
+
+          <div className="border-2 border-black p-6 text-center bg-white">
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <TrendingUp className="w-5 h-5 text-gray-700" />
+              <div className="text-lg text-gray-700 ">เป้าหมายกำไร/วัน</div>
+            </div>
+            <div className="text-3xl  text-black">
+              {booth.businessPlan?.targetProfit?.unitsNeeded ?
+                Math.ceil((booth.businessPlan.targetProfit.unitsNeeded || 0) / Math.ceil((new Date(booth.endDate).getTime() - new Date(booth.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1) : 0} จาน
+            </div>
+          </div>
+
+          <div className="border-2 border-black p-6 text-center bg-gray-100">
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <Calendar className="w-5 h-5 text-gray-700" />
+              <div className="text-lg text-gray-700 ">เฉลี่ยต่อวันปัจจุบัน</div>
+            </div>
+            <div className="text-3xl  text-black">
+              {statsData?.daysRunning > 0 ?
+                Math.round((statsData?.menuStats?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0) / statsData.daysRunning)
+                : 0} จาน
+            </div>
+          </div>
+        </div>
+      </div> */}
+
+      
+
+      {/* Menu Sales Summary */}
+      <div className="border border-gray-100 p-6">
+        <div className="flex flex-col gap-4 mb-6">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-gray-600" />
+            <label className="text-lg font-light text-black tracking-wide">สรุปยอดขายแต่ละเมนู</label>
+          </div>
+
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setMenuViewMode('total')}
+                className={`px-4 py-2 text-sm font-light tracking-wide transition-all duration-200 ${
+                  menuViewMode === 'total'
+                    ? 'text-black border-b-2 border-black'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                ยอดรวม
+              </button>
+              <button
+                onClick={() => setMenuViewMode('daily')}
+                className={`px-4 py-2 text-sm font-light tracking-wide transition-all duration-200 ${
+                  menuViewMode === 'daily'
+                    ? 'text-black border-b-2 border-black'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                รายวัน
+              </button>
+            </div>
+
+            {/* Date Picker - Only show when in daily mode */}
+            {menuViewMode === 'daily' && (
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-gray-600" />
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  min={getBoothDateRange().min}
+                  max={getBoothDateRange().max}
+                  className="border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none px-3 py-1"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {menuViewMode === 'total' ? (
+            // Total View - Calculate from all daily sales data
+            (() => {
+              // Calculate total menu stats from all daily sales data
+              const totalMenuMap = new Map();
+
+              dailySalesData.forEach((dayData: any) => {
+                if (dayData.sales) {
+                  dayData.sales.forEach((sale: any) => {
+                    sale.items.forEach((item: any) => {
+                      const menuItemId = item.menuItemId._id || item.menuItemId;
+                      const menuName = item.menuItemId.name || 'Unknown Menu';
+                      const key = menuItemId;
+
+                      if (totalMenuMap.has(key)) {
+                        const existing = totalMenuMap.get(key);
+                        existing.quantity += item.quantity;
+                        existing.revenue += item.price * item.quantity;
+                      } else {
+                        totalMenuMap.set(key, {
+                          name: menuName,
+                          quantity: item.quantity,
+                          revenue: item.price * item.quantity
+                        });
+                      }
+                    });
+                  });
+                }
+              });
+
+              const totalMenuStats = Array.from(totalMenuMap.values());
+              return totalMenuStats && totalMenuStats.length > 0 ? (
+              <>
+                <div className="grid grid-cols-3 gap-4 pb-2 border-b border-gray-200">
+                  <div className="text-xs font-light text-gray-400 tracking-wider uppercase">เมนู</div>
+                  <div className="text-xs font-light text-gray-400 tracking-wider uppercase text-center">จำนวนที่ขาย</div>
+                  <div className="text-xs font-light text-gray-400 tracking-wider uppercase text-right">ยอดขาย</div>
+                </div>
+                {totalMenuStats
+                  .sort((a: any, b: any) => b.quantity - a.quantity)
+                  .map((menuItem: any, index: number) => (
+                    <div key={index} className="grid grid-cols-3 gap-4 py-3 border-b border-gray-100">
+                      <div className="font-light text-black">{menuItem.name}</div>
+                      <div className="font-light text-gray-700 text-center">
+                        {menuItem.quantity.toLocaleString()} จาน
+                      </div>
+                      <div className="font-light text-black text-right">
+                        ฿{menuItem.revenue.toLocaleString()}
+                      </div>
+                    </div>
+                  ))}
+
+                {/* Total Summary */}
+                <div className="border-t border-gray-200 pt-4 mt-4">
+                  <div className="grid grid-cols-3 gap-4 bg-gray-50 p-3 rounded">
+                    <div className="font-medium text-black">รวมทั้งหมด:</div>
+                    <div className="font-medium text-black text-center">
+                      {totalMenuStats.reduce((sum: number, item: any) => sum + item.quantity, 0).toLocaleString()} จาน
+                    </div>
+                    <div className="font-medium text-black text-right">
+                      ฿{totalMenuStats.reduce((sum: number, item: any) => sum + item.revenue, 0).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              </>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="font-light text-gray-500">ไม่มีข้อมูลการขาย</div>
+                </div>
+              );
+            })()
+          ) : (
+            // Daily View
+            dailyMenuStats && dailyMenuStats.length > 0 ? (
+              <>
+                <div className="grid grid-cols-3 gap-4 pb-2 border-b border-gray-200">
+                  <div className="text-xs font-light text-gray-400 tracking-wider uppercase">เมนู</div>
+                  <div className="text-xs font-light text-gray-400 tracking-wider uppercase text-center">จำนวนที่ขาย</div>
+                  <div className="text-xs font-light text-gray-400 tracking-wider uppercase text-right">ยอดขาย</div>
+                </div>
+                {dailyMenuStats
+                  .sort((a: any, b: any) => b.quantity - a.quantity)
+                  .map((menuItem: any, index: number) => (
+                    <div key={index} className="grid grid-cols-3 gap-4 py-3 border-b border-gray-100">
+                      <div className="font-light text-black">{menuItem.name}</div>
+                      <div className="font-light text-gray-700 text-center">
+                        {menuItem.quantity.toLocaleString()} จาน
+                      </div>
+                      <div className="font-light text-black text-right">
+                        ฿{menuItem.revenue.toLocaleString()}
+                      </div>
+                    </div>
+                  ))}
+
+                {/* Daily Summary */}
+                <div className="border-t border-gray-200 pt-4 mt-4">
+                  <div className="grid grid-cols-3 gap-4 bg-gray-50 p-3 rounded">
+                    <div className="font-medium text-black">รวมในวันนี้:</div>
+                    <div className="font-medium text-black text-center">
+                      {dailyMenuStats.reduce((sum: number, item: any) => sum + item.quantity, 0).toLocaleString()} จาน
+                    </div>
+                    <div className="font-medium text-black text-right">
+                      ฿{dailyMenuStats.reduce((sum: number, item: any) => sum + item.revenue, 0).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <div className="font-light text-gray-500">ไม่มีข้อมูลการขายในวันที่เลือก</div>
+              </div>
+            )
+          )}
+        </div>
+      </div>
+
+      {/* Ingredients Usage Table */}
+      <div className="border border-gray-100 p-6">
+        <div className="flex flex-col gap-4 mb-6">
+          <div className="flex items-center gap-2">
+            <Package className="w-4 h-4 text-gray-600" />
+            <label className="text-lg font-light text-black tracking-wide">การใช้วัตถุดิบ</label>
+          </div>
+
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIngredientViewMode('total')}
+                className={`px-4 py-2 text-sm font-light tracking-wide transition-all duration-200 ${
+                  ingredientViewMode === 'total'
+                    ? 'text-black border-b-2 border-black'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                ยอดรวม
+              </button>
+              <button
+                onClick={() => setIngredientViewMode('daily')}
+                className={`px-4 py-2 text-sm font-light tracking-wide transition-all duration-200 ${
+                  ingredientViewMode === 'daily'
+                    ? 'text-black border-b-2 border-black'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                รายวัน
+              </button>
+            </div>
+
+            {/* Date Picker - Only show when in daily mode */}
+            {ingredientViewMode === 'daily' && (
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-gray-600" />
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  min={getBoothDateRange().min}
+                  max={getBoothDateRange().max}
+                  className="border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none px-3 py-1"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="space-y-3">
+          {(() => {
+            const ingredientsData = ingredientViewMode === 'total'
+              ? calculateTotalIngredientUsage()
+              : calculateDailyIngredientUsage(selectedDate);
+
+            return ingredientsData.length > 0 ? (
+              <>
+                <div className="grid grid-cols-3 gap-4 pb-2 border-b border-gray-200">
+                  <div className="text-xs font-light text-gray-400 tracking-wider uppercase">วัตถุดิบ</div>
+                  <div className="text-xs font-light text-gray-400 tracking-wider uppercase text-center">ใช้ไปแล้ว</div>
+                  <div className="text-xs font-light text-gray-400 tracking-wider uppercase text-right">มูลค่าที่ใช้</div>
+                </div>
+                {ingredientsData
+                  .sort((a: any, b: any) => b.usedValue - a.usedValue)
+                  .map((ingredient: any, index: number) => (
+                    <div key={index} className="grid grid-cols-3 gap-4 py-3 border-b border-gray-100">
+                      <div className="font-light text-black">{ingredient.name}</div>
+                      <div className="font-light text-gray-700 text-center">
+                        {ingredient.usedQuantity.toFixed(2)} {ingredient.unit}
+                      </div>
+                      <div className="font-light text-black text-right">
+                        ฿{ingredient.usedValue.toFixed(2)}
+                      </div>
+                    </div>
+                  ))}
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <div className="font-light text-gray-500">
+                  {ingredientViewMode === 'daily'
+                    ? 'ไม่มีข้อมูลการขายในวันที่เลือก'
+                    : 'ไม่มีข้อมูลวัตถุดิบ'
+                  }
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* Total */}
+        <div className="border-t border-gray-200 pt-4 mt-4">
+          <div className="flex justify-between bg-gray-50 p-3 rounded">
+            <div className="font-medium text-black">
+              รวมมูลค่าวัตถุดิบที่ใช้{ingredientViewMode === 'daily' ? ' (วันนี้)' : ' (รวมทั้งหมด)'}:
+            </div>
+            <div className="font-medium text-black">
+              ฿{(() => {
+                const ingredientsData = ingredientViewMode === 'total'
+                  ? calculateTotalIngredientUsage()
+                  : calculateDailyIngredientUsage(selectedDate);
+
+                const totalValue = ingredientsData.reduce((sum: number, ingredient: any) => sum + ingredient.usedValue, 0);
+                return totalValue.toFixed(2);
+              })()}
+            </div>
+          </div>
+        </div>
+      </div>
+      
     </div>
   );
 }

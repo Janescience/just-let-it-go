@@ -297,8 +297,8 @@ export async function GET(request: NextRequest) {
       .populate('boothId', 'name location')
       .populate('employeeId', 'name username')
       .populate('items.menuItemId', 'name price')
-      .sort({ createdAt: -1 })
-      .limit(50); // Latest 50 sales
+      .sort({ createdAt: -1 });
+      // .limit(50); // Latest 50 sales
 
 
     return NextResponse.json({

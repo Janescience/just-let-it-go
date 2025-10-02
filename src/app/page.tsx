@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, ComposedChart, LabelList, CartesianGrid, Legend } from 'recharts';
 import { Calendar, Store, TrendingUp, TrendingDown, AlertTriangle, AlertCircle, Info, Clock, Users, Utensils } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import OnboardingGuide from '@/components/ui/OnboardingGuide';
@@ -21,6 +21,26 @@ interface BoothSalesData {
   menuItems: MenuItem[];
   totalQuantity: number;
   totalRevenue: number;
+}
+
+interface MenuProfit {
+  menuItemId: string;
+  name: string;
+  price: number;
+  quantity: number;
+  revenue: number;
+  cost: number;
+  profit: number;
+  color?: string;
+}
+
+interface BoothProfitData {
+  _id: string;
+  boothName: string;
+  menuItems: MenuProfit[];
+  totalQuantity: number;
+  totalRevenue: number;
+  totalProfit: number;
 }
 
 interface BoothDateData {
@@ -82,9 +102,27 @@ interface BoothDate {
   displayName: string;
 }
 
+interface IngredientUsage {
+  _id: string;
+  name: string;
+  unit: string;
+  totalUsed: number;
+  costPerUnit: number;
+  totalValue: number;
+}
+
+interface DailySummary {
+  date: string;
+  revenue: number;
+  cost: number;
+  profit: number;
+  displayDate: string;
+}
+
 export default function HomePage() {
   const { user } = useAuth();
   const [boothSalesData, setBoothSalesData] = useState<BoothSalesData[]>([]);
+  const [boothProfitData, setBoothProfitData] = useState<BoothProfitData[]>([]);
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingBooths, setLoadingBooths] = useState<{[boothId: string]: boolean}>({});
@@ -93,8 +131,51 @@ export default function HomePage() {
   const [topPerformers, setTopPerformers] = useState<{best: TopPerformer[], worst: TopPerformer[]}>({best: [], worst: []});
   const [inventoryAlerts, setInventoryAlerts] = useState<InventoryAlert[]>([]);
   const [customerPatterns, setCustomerPatterns] = useState<CustomerPatterns>({peakHours: [], orderSizes: [], popularCombinations: []});
+  const [boothIngredients, setBoothIngredients] = useState<{[boothId: string]: IngredientUsage[]}>({});
+  const [selectedIngredient, setSelectedIngredient] = useState<{[boothId: string]: IngredientUsage | null}>({});
+  const [boothDailySummary, setBoothDailySummary] = useState<{[boothId: string]: DailySummary[]}>({});
+  const [isMobile, setIsMobile] = useState(false);
 
-  const COLORS = ['#000000', '#1f1f1f', '#3f3f3f', '#5f5f5f', '#7f7f7f', '#9f9f9f', '#bfbfbf', '#dfdfdf', '#8884d8', '#82ca9d'];
+  const SALES_COLORS = ['#000000', '#1a1a1a', '#333333', '#4d4d4d', '#666666', '#808080', '#999999', '#b3b3b3', '#cccccc', '#e6e6e6'];
+  const PROFIT_COLORS = ['#065f46', '#047857', '#059669', '#10b981', '#34d399', '#6ee7b7', '#9decf9', '#67e8f9', '#22d3ee', '#06b6d4'];
+
+  const CustomMobilePieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name, quantity, revenue }: any) => {
+    const RADIAN = Math.PI / 180;
+    const radius = outerRadius + 15;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+    const lineStartX = cx + outerRadius * Math.cos(-midAngle * RADIAN);
+    const lineStartY = cy + outerRadius * Math.sin(-midAngle * RADIAN);
+    const lineEndX = cx + (outerRadius + 10) * Math.cos(-midAngle * RADIAN);
+    const lineEndY = cy + (outerRadius + 10) * Math.sin(-midAngle * RADIAN);
+
+    const shortName = name.length > 8 ? `${name.substring(0, 6)}...` : name;
+
+    return (
+      <g>
+        <line
+          x1={lineStartX}
+          y1={lineStartY}
+          x2={lineEndX}
+          y2={lineEndY}
+          stroke="#666"
+          strokeWidth={1}
+        />
+        <text
+          x={x}
+          y={y}
+          fill="#333"
+          textAnchor={x > cx ? 'start' : 'end'}
+          dominantBaseline="central"
+          fontSize="7"
+          fontWeight="normal"
+        >
+          {shortName}
+        </text>
+      </g>
+    );
+  };
 
   useEffect(() => {
     if (user) {
@@ -103,8 +184,36 @@ export default function HomePage() {
   }, [user]);
 
   useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  useEffect(() => {
+    // Center scroll for pie charts on mobile
+    if (isMobile) {
+      const pieChartContainers = document.querySelectorAll('.pie-chart-scroll');
+      pieChartContainers.forEach(container => {
+        const scrollContainer = container as HTMLElement;
+        const scrollWidth = scrollContainer.scrollWidth;
+        const clientWidth = scrollContainer.clientWidth;
+        const scrollLeft = (scrollWidth - clientWidth) / 2;
+        scrollContainer.scrollLeft = scrollLeft;
+      });
+    }
+  }, [isMobile, boothSalesData, boothProfitData]);
+
+  useEffect(() => {
     if (onboardingStatus?.allCompleted && boothDatesData.length > 0) {
       fetchAllBoothSalesData();
+      fetchAllBoothProfitData();
+      fetchAllBoothIngredients();
+      fetchAllBoothDailySummary();
     }
   }, [selectedDates, onboardingStatus, boothDatesData]);
 
@@ -139,10 +248,13 @@ export default function HomePage() {
         const boothDates = await response.json();
         setBoothDatesData(boothDates);
 
-        // Initialize selected dates with 'today' for each booth
+        // Initialize selected dates with today's date for each booth
+        const todayDate = getTodayDate();
         const initialDates: {[boothId: string]: string} = {};
         boothDates.forEach((booth: BoothDateData) => {
-          initialDates[booth.boothId] = 'today';
+          // Use today's date if available, otherwise use 'all'
+          const hasToday = booth.dates.includes(todayDate);
+          initialDates[booth.boothId] = hasToday ? todayDate : 'all';
         });
         setSelectedDates(initialDates);
       }
@@ -178,7 +290,7 @@ export default function HomePage() {
             const processedItems = top10Items.map((item: any, index: number) => ({
               ...item,
               value: item.quantity,
-              color: COLORS[index % COLORS.length]
+              color: SALES_COLORS[index % SALES_COLORS.length]
             }));
 
             // Add "อื่นๆ" category if there are more than 10 items
@@ -287,6 +399,118 @@ export default function HomePage() {
     }
   };
 
+  const fetchAllBoothProfitData = async () => {
+    try {
+      const allBoothData: BoothProfitData[] = [];
+
+      for (const booth of boothDatesData) {
+        const selectedDate = selectedDates[booth.boothId] || 'today';
+        const params = new URLSearchParams();
+        params.append('boothId', booth.boothId);
+        if (selectedDate !== 'all') {
+          params.append('date', selectedDate);
+        }
+
+        const response = await fetch(`/api/dashboard/menu-profits?${params}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.length > 0) {
+            const boothData = data[0]; // Should only be one booth since we filtered by boothId
+
+            // Sort by profit descending and take top 10
+            const sortedItems = boothData.menuItems.sort((a: any, b: any) => b.profit - a.profit);
+            const top10Items = sortedItems.slice(0, 10);
+            const otherItems = sortedItems.slice(10);
+
+            // Process top 10 items
+            const processedItems = top10Items.map((item: any, index: number) => ({
+              ...item,
+              value: item.profit,
+              color: PROFIT_COLORS[index % PROFIT_COLORS.length]
+            }));
+
+            // Add "อื่นๆ" category if there are more than 10 items
+            if (otherItems.length > 0) {
+              const othersProfit = otherItems.reduce((sum: number, item: any) => sum + item.profit, 0);
+
+              processedItems.push({
+                menuItemId: 'others',
+                name: 'อื่นๆ',
+                price: 0,
+                quantity: otherItems.reduce((sum: number, item: any) => sum + item.quantity, 0),
+                revenue: otherItems.reduce((sum: number, item: any) => sum + item.revenue, 0),
+                cost: otherItems.reduce((sum: number, item: any) => sum + item.cost, 0),
+                profit: othersProfit,
+                value: othersProfit,
+                color: '#9CA3AF' // Gray color for others
+              });
+            }
+
+            boothData.menuItems = processedItems;
+            allBoothData.push(boothData);
+          }
+        }
+
+        // Clear loading state for this booth
+        setLoadingBooths(prev => ({
+          ...prev,
+          [booth.boothId]: false
+        }));
+      }
+
+      setBoothProfitData(allBoothData);
+    } catch (error) {
+      console.error('Error fetching booth profit data:', error);
+      // Clear all loading states on error
+      setLoadingBooths({});
+    }
+  };
+
+  const fetchAllBoothDailySummary = async () => {
+    try {
+      const allBoothDaily: {[boothId: string]: DailySummary[]} = {};
+
+      for (const booth of boothDatesData) {
+        const response = await fetch(`/api/dashboard/booth-daily-summary?boothId=${booth.boothId}`);
+        if (response.ok) {
+          const dailyData = await response.json();
+          allBoothDaily[booth.boothId] = dailyData;
+        } else {
+          console.error('Failed to fetch daily data for booth', booth.boothId, response.status);
+        }
+      }
+
+      setBoothDailySummary(allBoothDaily);
+    } catch (error) {
+      console.error('Error fetching booth daily summary:', error);
+    }
+  };
+
+  const fetchAllBoothIngredients = async () => {
+    try {
+      const allBoothIngredients: {[boothId: string]: IngredientUsage[]} = {};
+
+      for (const booth of boothDatesData) {
+        const selectedDate = selectedDates[booth.boothId] || 'today';
+        const params = new URLSearchParams();
+        params.append('boothId', booth.boothId);
+        if (selectedDate !== 'all') {
+          params.append('date', selectedDate);
+        }
+
+        const response = await fetch(`/api/dashboard/booth-ingredients?${params}`);
+        if (response.ok) {
+          const ingredients = await response.json();
+          allBoothIngredients[booth.boothId] = ingredients;
+        }
+      }
+
+      setBoothIngredients(allBoothIngredients);
+    } catch (error) {
+      console.error('Error fetching booth ingredients:', error);
+    }
+  };
+
   const handleDateChange = (boothId: string, date: string) => {
     setLoadingBooths(prev => ({
       ...prev,
@@ -297,6 +521,19 @@ export default function HomePage() {
       ...prev,
       [boothId]: date
     }));
+
+    // Clear selected ingredient when date changes
+    setSelectedIngredient(prev => ({
+      ...prev,
+      [boothId]: null
+    }));
+  };
+
+  const handleBarClick = (data: any, boothId: string) => {
+    setSelectedIngredient(prev => ({
+      ...prev,
+      [boothId]: data
+    }));
   };
 
   const getAvailableDatesForBooth = (boothId: string) => {
@@ -304,7 +541,6 @@ export default function HomePage() {
     if (!booth) return [];
 
     return [
-      { date: 'today', displayName: 'วันนี้' },
       { date: 'all', displayName: 'ทุกวัน' },
       ...booth.dates.map((date: string) => ({
         date,
@@ -317,38 +553,127 @@ export default function HomePage() {
     ];
   };
 
+  // Get today's date in YYYY-MM-DD format
+  const getTodayDate = () => {
+    const now = new Date();
+    // Use Thailand timezone for consistency
+    const serverTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    let thailandNow;
+    if (serverTimezone === 'Asia/Bangkok') {
+      thailandNow = now;
+    } else {
+      // Add 7 hours for Thailand time
+      const thailandOffset = 7 * 60 * 60 * 1000;
+      thailandNow = new Date(now.getTime() + thailandOffset);
+    }
+
+    return thailandNow.toISOString().split('T')[0]; // YYYY-MM-DD
+  };
+
   const CustomPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name, quantity, revenue }: any) => {
     const RADIAN = Math.PI / 180;
-    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const radius = outerRadius + 30; // Position label outside the pie
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
-    // Only show label if percentage is significant enough (>5%)
-    if (percent < 0.05) return null;
+    // Only show label if percentage is significant enough (>1%)
+    if (percent < 0.01) return null;
+
+    // Draw line from pie edge to label
+    const lineStartX = cx + outerRadius * Math.cos(-midAngle * RADIAN);
+    const lineStartY = cy + outerRadius * Math.sin(-midAngle * RADIAN);
+    const lineEndX = cx + (outerRadius + 20) * Math.cos(-midAngle * RADIAN);
+    const lineEndY = cy + (outerRadius + 20) * Math.sin(-midAngle * RADIAN);
 
     return (
       <g>
+        {/* Connection line */}
+        <line
+          x1={lineStartX}
+          y1={lineStartY}
+          x2={lineEndX}
+          y2={lineEndY}
+          stroke="#666666"
+          strokeWidth={1}
+        />
+        {/* Menu name */}
         <text
           x={x}
           y={y - 8}
-          fill="#ffffff"
+          fill="#000000"
           textAnchor={x > cx ? 'start' : 'end'}
           dominantBaseline="central"
-          fontSize={10}
-          fontWeight="bold"
+          fontSize={11}
+          fontWeight="500"
         >
-          {`${quantity} จาน`}
+          {name}
         </text>
+        {/* Quantity and revenue */}
         <text
           x={x}
           y={y + 8}
-          fill="#ffffff"
+          fill="#666666"
           textAnchor={x > cx ? 'start' : 'end'}
           dominantBaseline="central"
-          fontSize={9}
-          fontWeight="bold"
+          fontSize={10}
+          fontWeight="400"
         >
-          ฿{revenue?.toLocaleString()}
+          {`${quantity} จาน • ฿${revenue?.toLocaleString()}`}
+        </text>
+      </g>
+    );
+  };
+
+  const CustomProfitPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name, quantity, profit }: any) => {
+    const RADIAN = Math.PI / 180;
+    const radius = outerRadius + 30; // Position label outside the pie
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+    // Only show label if percentage is significant enough (>1%)
+    if (percent < 0.01) return null;
+
+    // Draw line from pie edge to label
+    const lineStartX = cx + outerRadius * Math.cos(-midAngle * RADIAN);
+    const lineStartY = cy + outerRadius * Math.sin(-midAngle * RADIAN);
+    const lineEndX = cx + (outerRadius + 20) * Math.cos(-midAngle * RADIAN);
+    const lineEndY = cy + (outerRadius + 20) * Math.sin(-midAngle * RADIAN);
+
+    return (
+      <g>
+        {/* Connection line */}
+        <line
+          x1={lineStartX}
+          y1={lineStartY}
+          x2={lineEndX}
+          y2={lineEndY}
+          stroke="#666666"
+          strokeWidth={1}
+        />
+        {/* Menu name */}
+        <text
+          x={x}
+          y={y - 8}
+          fill="#000000"
+          textAnchor={x > cx ? 'start' : 'end'}
+          dominantBaseline="central"
+          fontSize={11}
+          fontWeight="500"
+        >
+          {name}
+        </text>
+        {/* Quantity and profit */}
+        <text
+          x={x}
+          y={y + 8}
+          fill="#666666"
+          textAnchor={x > cx ? 'start' : 'end'}
+          dominantBaseline="central"
+          fontSize={10}
+          fontWeight="400"
+        >
+          {`${quantity} จาน • ฿${profit?.toLocaleString()}`}
         </text>
       </g>
     );
@@ -362,6 +687,20 @@ export default function HomePage() {
           <p className="font-light text-white">{data.name}</p>
           <p className="font-light text-gray-300">จำนวน: {data.quantity} จาน</p>
           <p className="font-light text-gray-300">ยอดขาย: ฿{data.revenue?.toLocaleString()}</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const CustomProfitTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload; // Get the original data
+      return (
+        <div className="bg-black p-3 border border-gray-700 shadow-lg rounded">
+          <p className="font-light text-white">{data.name}</p>
+          <p className="font-light text-gray-300">จำนวน: {data.quantity} จาน</p>
+          <p className="font-light text-gray-300">กำไร: ฿{data.profit?.toLocaleString()}</p>
         </div>
       );
     }
@@ -625,42 +964,13 @@ export default function HomePage() {
 
               return (
                 <div key={boothDate.boothId} className="border border-gray-200 p-6">
-                  {/* Header with booth name and date selection */}
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      <Store className="w-5 h-5 text-black" />
-                      <div className="text-lg font-thin text-black tracking-wider">
-                        {booth ? booth.boothName : boothDate.boothName}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-black" />
-                      <select
-                        value={selectedDate}
-                        onChange={(e) => handleDateChange(boothDate.boothId, e.target.value)}
-                        className="px-3 py-2 border-b border-gray-200 font-light text-black focus:border-black focus:outline-none bg-transparent text-sm"
-                      >
-                        {availableDates.map((dateOption) => (
-                          <option key={dateOption.date} value={dateOption.date}>
-                            {dateOption.displayName}
-                          </option>
-                        ))}
-                      </select>
+                  {/* Header with booth name */}
+                  <div className="flex items-center gap-3 mb-6">
+                    <Store className="w-5 h-5 text-black" />
+                    <div className="text-lg font-thin text-black tracking-wider">
+                      {booth ? booth.boothName : boothDate.boothName}
                     </div>
                   </div>
-
-                  {/* Revenue summary */}
-                  {booth && (
-                    <div className="text-center mb-6 p-4 border border-gray-200">
-                      <div className="text-sm font-light text-gray-500">ยอดขายรวม</div>
-                      <div className="text-xl font-light text-black">
-                        ฿{booth.totalRevenue.toLocaleString()}
-                      </div>
-                      <div className="text-sm font-light text-gray-500">
-                        {booth.totalQuantity} จาน
-                      </div>
-                    </div>
-                  )}
 
                   {loadingBooths[boothDate.boothId] ? (
                     <div className="text-center py-16">
@@ -668,29 +978,312 @@ export default function HomePage() {
                       <p className="font-light text-gray-500">กำลังโหลดข้อมูล...</p>
                     </div>
                   ) : booth && booth.menuItems.length > 0 ? (
-                    <div className="space-y-4">
-                      <div className="h-96">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={booth.menuItems as any}
-                              cx="50%"
-                              cy="50%"
-                              labelLine={false}
-                              label={CustomPieLabel}
-                              outerRadius={120}
-                              fill="#8884d8"
-                              dataKey="value"
-                            >
-                              {booth.menuItems.map((entry: any, index: number) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                              ))}
-                            </Pie>
-                            <Tooltip content={<CustomTooltip />} />
-                            <Legend />
-                          </PieChart>
-                        </ResponsiveContainer>
+                    <div className="space-y-6">
+                      {/* Daily Sales & Profit Chart - Top */}
+                      {boothDailySummary[boothDate.boothId] && boothDailySummary[boothDate.boothId].length > 0 && (
+                        <div className="border-b border-gray-200 pb-6">
+                          <h4 className="text-sm font-light text-black mb-4 tracking-wider text-center">ยอดขายและกำไรรายวัน</h4>
+                          <div className="h-64 md:h-80 overflow-x-auto">
+                            <div style={{ width: isMobile ? `${Math.max(boothDailySummary[boothDate.boothId]?.length * 60, 400)}px` : '100%', height: '100%' }}>
+                              <ResponsiveContainer width="100%" height="100%">
+                                <ComposedChart
+                                  data={boothDailySummary[boothDate.boothId]}
+                                  margin={{ top: 30, right: 5, left: 0, bottom: 10 }}
+                                >
+                                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                                <XAxis
+                                  dataKey="displayDate"
+                                  fontSize={isMobile ? 9 : 10}
+                                  tick={{ fill: '#666666' }}
+                                  axisLine={false}
+                                  tickLine={false}
+                                  interval={0}
+                                />
+                                <YAxis
+                                  fontSize={isMobile ? 7 : 9}
+                                  tick={{ fill: '#666666' }}
+                                  width={isMobile ? 35 : 45}
+                                  axisLine={false}
+                                  tickLine={false}
+                                />
+                                <Tooltip
+                                  formatter={(value: any, name: any) => [
+                                    `฿${value.toLocaleString()}`,
+                                    name === 'revenue' ? 'ยอดขาย' : 'กำไร'
+                                  ]}
+                                  labelFormatter={(label) => `วันที่ ${label}`}
+                                  contentStyle={{
+                                    backgroundColor: '#ffffff',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: '4px',
+                                    fontSize: '12px'
+                                  }}
+                                />
+                                <Legend
+                                  wrapperStyle={{
+                                    fontSize: isMobile ? '10px' : '12px',
+                                    paddingTop: '10px'
+                                  }}
+                                  formatter={(value) => value === 'revenue' ? 'ยอดขาย' : 'กำไร'}
+                                />
+                                <Bar
+                                  dataKey="revenue"
+                                  fill="#666666"
+                                  name="revenue"
+                                  radius={[2, 2, 0, 0]}
+                                >
+                                  <LabelList
+                                    dataKey="revenue"
+                                    position="top"
+                                    fontSize={isMobile ? 8 : 10}
+                                    fill="#333"
+                                    formatter={(value: any) => {
+                                      const numValue = Number(value);
+                                      return numValue > 0 ? `฿${(numValue / 1000).toFixed(0)}k` : '';
+                                    }}
+                                  />
+                                </Bar>
+                                <Bar
+                                  dataKey="profit"
+                                  fill="#059669"
+                                  name="profit"
+                                  radius={[2, 2, 0, 0]}
+                                >
+                                  <LabelList
+                                    dataKey="profit"
+                                    position="top"
+                                    fontSize={isMobile ? 8 : 10}
+                                    fill="#059669"
+                                    formatter={(value: any) => {
+                                      const numValue = Number(value);
+                                      return numValue > 0 ? `฿${(numValue / 1000).toFixed(0)}k` : '';
+                                    }}
+                                  />
+                                </Bar>
+                              </ComposedChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Date Selection */}
+                      <div className="bg-gray-50 p-4 border border-gray-200 mb-6">
+                        <div className="flex items-center justify-center gap-2 mb-2">
+                          <Calendar className="w-4 h-4 text-black" />
+                          <select
+                            value={selectedDate}
+                            onChange={(e) => handleDateChange(boothDate.boothId, e.target.value)}
+                            className="px-3 py-2 border border-gray-300 font-light text-black focus:border-black focus:outline-none bg-white text-sm rounded"
+                          >
+                            {availableDates.map((dateOption) => (
+                              <option key={dateOption.date} value={dateOption.date}>
+                                {dateOption.displayName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="text-xs text-gray-500 text-center">
+                          ข้อมูลด้านล่างแสดงตามวันที่ที่เลือก
+                        </div>
                       </div>
+
+                      {/* Revenue and Profit Summary */}
+                      {booth && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-gray-200 pb-6">
+                          {/* Revenue */}
+                          <div className="text-center p-4 border border-gray-200">
+                            <div className="text-sm font-light text-gray-500">ยอดขายรวม</div>
+                            <div className="text-xl font-light text-black">
+                              ฿{booth.totalRevenue.toLocaleString()}
+                            </div>
+                            <div className="text-sm font-light text-gray-500">
+                              {booth.totalQuantity} จาน
+                            </div>
+                          </div>
+                          {/* Profit */}
+                          {(() => {
+                            const profitBooth = boothProfitData.find(b => b._id === boothDate.boothId);
+                            return (
+                              <div className="text-center p-4 border border-gray-200">
+                                <div className="text-sm font-light text-gray-500">กำไรรวม</div>
+                                <div className="text-xl font-light text-black">
+                                  {profitBooth ? `฿${profitBooth.totalProfit.toLocaleString()}` : 'ไม่มีข้อมูล'}
+                                </div>
+                                <div className="text-sm font-light text-gray-500">
+                                  {profitBooth ? `${profitBooth.totalQuantity} จาน` : 'ต้นทุนวัตถุดิบ'}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+
+                      {/* Pie Charts Row */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Sales Pie Chart */}
+                        <div>
+                          <h4 className="text-sm font-light text-black mb-4 tracking-wider text-center">ยอดขายแต่ละเมนู</h4>
+                          <div className="h-[400px] overflow-x-auto pie-chart-scroll">
+                            <div style={{ width: isMobile ? '500px' : '100%', height: '100%' }}>
+                              <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                <Pie
+                                  data={booth.menuItems as any}
+                                  cx="50%"
+                                  cy="50%"
+                                  labelLine={false}
+                                  label={CustomPieLabel}
+                                  outerRadius={isMobile ? 110 : 120}
+                                  fill="#8884d8"
+                                  dataKey="value"
+                                >
+                                  {booth.menuItems.map((entry: any, index: number) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                  ))}
+                                </Pie>
+                                <Tooltip content={<CustomTooltip />} />
+                                </PieChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Profit Pie Chart */}
+                        {(() => {
+                          const profitBooth = boothProfitData.find(b => b._id === boothDate.boothId);
+                          return profitBooth && profitBooth.menuItems.length > 0 ? (
+                            <div>
+                              <h4 className="text-sm font-light text-black mb-4 tracking-wider text-center">กำไรแต่ละเมนู</h4>
+                              <div className="h-[400px] overflow-x-auto pie-chart-scroll">
+                                <div style={{ width: isMobile ? '500px' : '100%', height: '100%' }}>
+                                  <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                    <Pie
+                                      data={profitBooth.menuItems as any}
+                                      cx="50%"
+                                      cy="50%"
+                                      labelLine={false}
+                                      label={CustomProfitPieLabel}
+                                      outerRadius={isMobile ? 110 : 120}
+                                      fill="#8884d8"
+                                      dataKey="value"
+                                    >
+                                      {profitBooth.menuItems.map((entry: any, index: number) => (
+                                        <Cell key={`profit-cell-${index}`} fill={entry.color} />
+                                      ))}
+                                    </Pie>
+                                    <Tooltip content={<CustomProfitTooltip />} />
+                                    </PieChart>
+                                  </ResponsiveContainer>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center h-[400px] border border-gray-200">
+                              <div className="text-center">
+                                <div className="text-sm font-light text-gray-600 mb-2">ไม่มีข้อมูลกำไร</div>
+                                <div className="text-xs font-light text-gray-400">ยังไม่มีข้อมูลต้นทุนวัตถุดิบ</div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Ingredients Usage Bar Chart */}
+                      {boothIngredients[boothDate.boothId] && boothIngredients[boothDate.boothId].length > 0 && (
+                        <div className="mt-6 pt-6 border-t border-gray-200">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-sm font-light text-black tracking-wider">การใช้วัตถุดิบ</h4>
+                            <div className="text-right">
+                              <div className="text-sm font-light text-gray-500">ต้นทุนรวม</div>
+                              <div className="text-lg font-medium text-black">
+                                ฿{boothIngredients[boothDate.boothId].reduce((sum, item) => sum + item.totalValue, 0).toLocaleString()}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="h-80 overflow-x-auto">
+                            <div style={{ width: isMobile ? `${Math.max(boothIngredients[boothDate.boothId]?.length * 80, 400)}px` : '100%', height: '100%' }}>
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart
+                                  data={boothIngredients[boothDate.boothId]}
+                                  margin={{ top: isMobile ? 20 : 50, right: isMobile ? 10 : 30, left: isMobile ? 5 : 20, bottom: isMobile ? 60 : 80 }}
+                                >
+                                <XAxis
+                                  dataKey="name"
+                                  angle={isMobile ? 0 : -45}
+                                  textAnchor={isMobile ? "middle" : "end"}
+                                  height={isMobile ? 60 : 80}
+                                  fontSize={isMobile ? 10 : 10}
+                                  tick={{ fill: '#666666' }}
+                                  axisLine={false}
+                                  tickLine={false}
+                                  interval={0}
+                                />
+                                <YAxis
+                                  fontSize={isMobile ? 8 : 10}
+                                  tick={{ fill: '#666666' }}
+                                  width={isMobile ? 30 : 40}
+                                  axisLine={false}
+                                  tickLine={false}
+                                />
+                                <Tooltip
+                                  content={({ active, payload, label }) => {
+                                    if (active && payload && payload.length) {
+                                      const data = payload[0].payload;
+                                      return (
+                                        <div className="bg-white p-3 border border-gray-300 shadow-lg rounded text-black">
+                                          <p className="font-medium">{label}</p>
+                                          <p className="text-sm">จำนวน: {data.totalUsed.toLocaleString()} {data.unit}</p>
+                                          <p className="text-sm">มูลค่า: ฿{data.totalValue.toLocaleString()}</p>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  }}
+                                />
+                                <Bar
+                                  dataKey="totalUsed"
+                                  fill="#000000"
+                                  radius={[2, 2, 0, 0]}
+                                  onClick={(data) => handleBarClick(data, boothDate.boothId)}
+                                  style={{ cursor: 'pointer' }}
+                                />
+                              </BarChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </div>
+
+                          {/* Selected Ingredient Info */}
+                          {selectedIngredient[boothDate.boothId] && (
+                            <div className="mt-4 p-4 border border-gray-300 bg-gray-50">
+                              <div className="flex items-center justify-between mb-2">
+                                <h5 className="font-medium text-black">{selectedIngredient[boothDate.boothId]?.name}</h5>
+                                <button
+                                  onClick={() => setSelectedIngredient(prev => ({ ...prev, [boothDate.boothId]: null }))}
+                                  className="text-gray-400 hover:text-gray-600"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                  <span className="text-gray-600">จำนวนใช้:</span>
+                                  <div className="font-medium">
+                                    {selectedIngredient[boothDate.boothId]?.totalUsed.toLocaleString()} {selectedIngredient[boothDate.boothId]?.unit}
+                                  </div>
+                                </div>
+                                <div>
+                                  <span className="text-gray-600">มูลค่า:</span>
+                                  <div className="font-medium">
+                                    ฿{selectedIngredient[boothDate.boothId]?.totalValue.toLocaleString()}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="text-center py-16">

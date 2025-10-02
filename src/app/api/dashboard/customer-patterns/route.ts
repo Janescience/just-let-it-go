@@ -41,12 +41,12 @@ export async function GET(request: NextRequest) {
       return addSecurityHeaders(response);
     }
 
-    // Peak Hours Analysis
+    // Peak Hours Analysis - Use UTC time without timezone conversion
     const peakHours = await SaleModel.aggregate([
       { $match: { boothId: { $in: allBoothIds } } },
       {
         $group: {
-          _id: { $hour: { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: 7 } } },
+          _id: { $hour: '$createdAt' },
           orderCount: { $sum: 1 },
           totalRevenue: { $sum: '$totalAmount' }
         }
