@@ -45,6 +45,7 @@ export function useAuth() {
     logout,
     isAdmin: user?.role === 'admin',
     isStaff: user?.role === 'staff',
+    isSuperAdmin: user?.role === 'super_admin',
     refetch: checkAuth,
   };
 }

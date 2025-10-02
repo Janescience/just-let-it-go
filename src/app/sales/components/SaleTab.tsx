@@ -173,9 +173,9 @@ export function SaleTab({
                     )}
                   </div>
 
-                  {/* Add to cart overlay */}
-                  <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                    <div className="bg-white rounded-full p-3 text-black hover:bg-gray-100 transition-colors duration-200">
+                  {/* Add to cart button */}
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                    <div className="bg-black rounded-full p-3 text-white hover:bg-gray-800 transition-colors duration-200 shadow-lg">
                       <Plus className="w-6 h-6" />
                     </div>
                   </div>

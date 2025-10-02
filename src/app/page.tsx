@@ -5,6 +5,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 import { Calendar, Store, TrendingUp, TrendingDown, AlertTriangle, AlertCircle, Info, Clock, Users, Utensils } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import OnboardingGuide from '@/components/ui/OnboardingGuide';
+import SuperAdminReturn from '@/components/ui/SuperAdminReturn';
 
 interface MenuItem {
   menuItemId: string;
@@ -394,6 +395,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-white pb-24">
+      <SuperAdminReturn />
       {/* Header */}
       <div className="border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">

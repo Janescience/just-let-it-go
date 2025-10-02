@@ -22,3 +22,4 @@ export {
   ListPageLoading
 } from './PageLoading';
 export { default as OnboardingGuide } from './OnboardingGuide';
+export { default as SuperAdminReturn } from './SuperAdminReturn';

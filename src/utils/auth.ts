@@ -76,3 +76,11 @@ export function clearAuthCookie(): string {
   const secureFlag = isProduction ? 'Secure; ' : '';
   return `auth-token=; Path=/; HttpOnly; ${secureFlag}SameSite=Strict; Max-Age=0`;
 }
+
+// Helper function to get the effective brand ID for API operations
+export function getEffectiveBrandId(user: any): string | null {
+  if (!user) return null;
+
+  // Always use brandId for all roles now (since super admin becomes admin when switching)
+  return user.brandId || null;
+}

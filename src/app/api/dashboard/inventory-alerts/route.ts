@@ -1,13 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import IngredientModel from '@/lib/models/Ingredient';
+import { verifyToken } from '@/utils/auth';
+import { addSecurityHeaders } from '@/utils/security';
 
 export async function GET(request: NextRequest) {
   try {
     await dbConnect();
 
-    // Get all ingredients with low stock (stock <= minimumStock)
+    // Check authentication
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      const response = NextResponse.json(
+        { message: 'ไม่ได้เข้าสู่ระบบ' },
+        { status: 401 }
+      );
+      return addSecurityHeaders(response);
+    }
+
+    const payload = verifyToken(token);
+    if (!payload || !payload.user || !payload.user.brandId) {
+      const response = NextResponse.json(
+        { message: 'ไม่มีสิทธิ์ในการเข้าถึง' },
+        { status: 403 }
+      );
+      return addSecurityHeaders(response);
+    }
+
+    // Get ingredients with low stock for this brand only
     const lowStockIngredients = await IngredientModel.find({
+      brandId: payload.user.brandId,
       $expr: { $lte: ['$stock', '$minimumStock'] }
     }).select('name unit stock minimumStock costPerUnit');
 
@@ -45,12 +67,14 @@ export async function GET(request: NextRequest) {
       return a.stockRatio - b.stockRatio; // Within same severity, sort by stock ratio
     });
 
-    return NextResponse.json(sortedAlerts);
+    const response = NextResponse.json(sortedAlerts);
+    return addSecurityHeaders(response);
   } catch (error) {
     console.error('Error fetching inventory alerts:', error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: 'Failed to fetch inventory alerts' },
       { status: 500 }
     );
+    return addSecurityHeaders(response);
   }
 }

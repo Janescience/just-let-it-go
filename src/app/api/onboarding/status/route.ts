@@ -27,7 +27,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check completion status for each step using brandId from payload
+    // Use brandId from payload (now works for both regular admin and super admin switched to brand)
+    if (!payload.user.brandId) {
+      return NextResponse.json(
+        { message: 'ไม่พบข้อมูลแบรนด์' },
+        { status: 400 }
+      );
+    }
+
+    // Check completion status for each step using brandId
     const [ingredientCount, menuItemCount, equipmentCount, boothCount, brand] = await Promise.all([
       Ingredient.countDocuments({ brandId: payload.user.brandId }),
       MenuItem.countDocuments({ brandId: payload.user.brandId }),

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Store , Clock , MapPin} from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { Toast, PageLoading } from '@/components/ui';
+import { Toast, PageLoading, SuperAdminReturn } from '@/components/ui';
 import { MenuItem, Booth, Sale, Brand } from '@/types';
 import {
   SaleTab,
@@ -288,6 +288,7 @@ export default function SalesPageContent() {
 
   return (
     <div className="min-h-screen bg-white pb-24">
+      <SuperAdminReturn />
       {/* Header */}
       <div className="border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 py-4">

@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
         username: user.username,
         name: user.name,
         role: user.role,
-        brandId: user.brandId.toString(),
+        brandId: user.brandId?.toString(),
         boothId: user.boothId?.toString(),
       },
       expires: expires.toISOString(),

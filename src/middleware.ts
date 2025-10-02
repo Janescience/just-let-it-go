@@ -5,6 +5,9 @@ import { verifyToken } from '@/utils/auth';
 // Routes that don't require authentication
 const publicRoutes = ['/login', '/setup'];
 
+// Routes that only super admin can access
+const superAdminOnlyRoutes = ['/super-admin'];
+
 // Routes that only admin can access
 const adminOnlyRoutes = ['/', '/booth', '/reports', '/settings', '/inventory'];
 
@@ -51,16 +54,28 @@ export function middleware(request: NextRequest) {
   const userRole = payload.user.role;
 
   // Role-based access control
+  if (userRole === 'super_admin') {
+    // Super admin can only access super admin routes
+    if (!superAdminOnlyRoutes.includes(pathname)) {
+      return NextResponse.redirect(new URL('/super-admin', request.url));
+    }
+    return NextResponse.next();
+  }
+
   if (userRole === 'admin') {
-    // Admin cannot access sales page
-    // if (staffOnlyRoutes.includes(pathname)) {
-    //   return NextResponse.redirect(new URL('/', request.url));
-    // }
-    // Admin can access all other routes
+    // Admin cannot access super admin routes
+    if (superAdminOnlyRoutes.includes(pathname)) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+    // Admin can access all other routes except super admin
     return NextResponse.next();
   }
 
   if (userRole === 'staff') {
+    // Staff cannot access super admin routes
+    if (superAdminOnlyRoutes.includes(pathname)) {
+      return NextResponse.redirect(new URL('/sales', request.url));
+    }
     // Staff can only access sales page
     if (!staffOnlyRoutes.includes(pathname)) {
       return NextResponse.redirect(new URL('/sales', request.url));

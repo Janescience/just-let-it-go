@@ -2,21 +2,43 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import SaleModel from '@/lib/models/Sale';
 import BoothModel from '@/lib/models/Booth';
+import { verifyToken } from '@/utils/auth';
+import { addSecurityHeaders } from '@/utils/security';
 
 export async function GET(request: NextRequest) {
   try {
     await dbConnect();
 
-    // Get all booths (both active and inactive for comprehensive analysis)
-    const allBooths = await BoothModel.find({}, { _id: 1 });
-    const allBoothIds = allBooths.map(booth => (booth._id as any).toString());
+    // Check authentication
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      const response = NextResponse.json(
+        { message: 'ไม่ได้เข้าสู่ระบบ' },
+        { status: 401 }
+      );
+      return addSecurityHeaders(response);
+    }
+
+    const payload = verifyToken(token);
+    if (!payload || !payload.user || !payload.user.brandId) {
+      const response = NextResponse.json(
+        { message: 'ไม่มีสิทธิ์ในการเข้าถึง' },
+        { status: 403 }
+      );
+      return addSecurityHeaders(response);
+    }
+
+    // Get booths for this brand only (both active and inactive for comprehensive analysis)
+    const brandBooths = await BoothModel.find({ brandId: payload.user.brandId }, { _id: 1 });
+    const allBoothIds = brandBooths.map(booth => (booth._id as any).toString());
 
     if (allBoothIds.length === 0) {
-      return NextResponse.json({
+      const response = NextResponse.json({
         peakHours: [],
         orderSizes: [],
         popularCombinations: []
       });
+      return addSecurityHeaders(response);
     }
 
     // Peak Hours Analysis
@@ -153,16 +175,18 @@ export async function GET(request: NextRequest) {
       }
     ]);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       peakHours,
       orderSizes,
       popularCombinations
     });
+    return addSecurityHeaders(response);
   } catch (error) {
     console.error('Error fetching customer patterns:', error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: 'Failed to fetch customer patterns' },
       { status: 500 }
     );
+    return addSecurityHeaders(response);
   }
 }

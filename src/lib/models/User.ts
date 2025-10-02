@@ -31,14 +31,16 @@ const UserSchema = new Schema<IUser>({
   },
   role: {
     type: String,
-    enum: ['admin', 'staff'],
+    enum: ['admin', 'staff', 'super_admin'],
     required: true,
     default: 'admin',
   },
   brandId: {
     type: String,
     ref: 'Brand',
-    required: true,
+    required: function() {
+      return this.role !== 'super_admin';
+    },
   },
   boothId: {
     type: String,
@@ -72,7 +74,8 @@ UserSchema.methods.comparePassword = async function(candidatePassword: string): 
 };
 
 // Indexes
-UserSchema.index({ username: 1, brandId: 1 }, { unique: true }); // Username unique per brand
+UserSchema.index({ username: 1, brandId: 1 }, { unique: true, sparse: true }); // Username unique per brand (sparse for super_admin)
+UserSchema.index({ username: 1, role: 1 }, { unique: true, partialFilterExpression: { role: 'super_admin' } }); // Username unique for super_admin
 UserSchema.index({ email: 1 }, { unique: true, sparse: true });
 UserSchema.index({ brandId: 1 });
 UserSchema.index({ boothId: 1 });

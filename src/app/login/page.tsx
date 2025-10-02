@@ -35,7 +35,10 @@ export default function LoginPage() {
       if (response.ok) {
         console.log('Login successful, redirecting user:', data.user);
         // Redirect based on user role
-        if (data.user.role === 'admin') {
+        if (data.user.role === 'super_admin') {
+          console.log('Redirecting super admin to /super-admin');
+          window.location.href = '/super-admin';
+        } else if (data.user.role === 'admin') {
           console.log('Redirecting admin to /');
           window.location.href = '/';
         } else {

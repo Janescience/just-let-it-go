@@ -4,8 +4,8 @@ export interface User {
   email?: string;
   name: string;
   password: string;
-  role: 'admin' | 'staff';
-  brandId: string;
+  role: 'admin' | 'staff' | 'super_admin';
+  brandId?: string; // Optional for super_admin
   boothId?: string; // สำหรับ staff - booth ที่ผูกไว้
   isActive: boolean;
   createdAt: Date;
@@ -262,9 +262,10 @@ export interface AuthSession {
     id: string;
     username: string;
     name: string;
-    role: 'admin' | 'staff';
-    brandId: string;
+    role: 'admin' | 'staff' | 'super_admin';
+    brandId?: string; // Optional for super_admin
     boothId?: string;
+    currentBrandId?: string; // For super_admin brand switching
   };
   expires: string;
 }
