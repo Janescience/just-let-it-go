@@ -406,12 +406,22 @@ async function processBackgroundTasks(
     // Create accounting transaction for completed sales
     if (sale.paymentStatus === 'completed') {
       try {
+        // Create description with menu names by looking up each menuItemId
+        const menuNames = await Promise.all(
+          sale.items.map(async (item: any) => {
+            const menuItem = await MenuItem.findById(item.menuItemId);
+            const quantity = item.quantity > 1 ? ` x${item.quantity}` : '';
+            return `${menuItem?.name || 'Unknown'}${quantity}`;
+          })
+        );
+
         const accountingTransaction = new AccountingTransaction({
           date: new Date(),
           type: 'income',
           category: 'sale_revenue',
           amount: sale.totalAmount,
-          description: `การขายสินค้า - รายการที่ ${sale._id}`,
+          description: `การขายสินค้า - ${menuNames.join(', ')}`,
+          paymentMethod: sale.paymentMethod,
           boothId: boothId,
           relatedId: sale._id,
           relatedType: 'sale',

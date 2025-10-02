@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
+    const filterType = searchParams.get('filterType');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const type = searchParams.get('type');

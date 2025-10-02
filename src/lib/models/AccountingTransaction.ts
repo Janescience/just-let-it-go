@@ -24,6 +24,11 @@ const AccountingTransactionSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  paymentMethod: {
+    type: String,
+    enum: ['cash', 'transfer', 'mixed', 'other'],
+    default: 'other'
+  },
   boothId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Booth',

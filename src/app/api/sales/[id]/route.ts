@@ -229,17 +229,37 @@ export async function PUT(
     });
 
     if (originalAccounting) {
+      // Create description with menu names for edit by looking up each menuItemId
+      const menuNames = await Promise.all(
+        validatedNewItems.map(async (item: any) => {
+          const menuItem = await MenuItem.findById(item.menuItemId);
+          const quantity = item.quantity > 1 ? ` x${item.quantity}` : '';
+          return `${menuItem?.name || 'Unknown'}${quantity}`;
+        })
+      );
+
       originalAccounting.amount = newTotalAmount;
-      originalAccounting.description = `การขายสินค้า (แก้ไข) - รายการที่ ${originalSale._id}`;
+      originalAccounting.description = `การขายสินค้า (แก้ไข) - ${menuNames.join(', ')}`;
+      originalAccounting.paymentMethod = originalSale.paymentMethod;
       await originalAccounting.save();
     } else if (newTotalAmount > 0) {
+      // Create description with menu names for new transaction by looking up each menuItemId
+      const menuNames = await Promise.all(
+        validatedNewItems.map(async (item: any) => {
+          const menuItem = await MenuItem.findById(item.menuItemId);
+          const quantity = item.quantity > 1 ? ` x${item.quantity}` : '';
+          return `${menuItem?.name || 'Unknown'}${quantity}`;
+        })
+      );
+
       // Create new accounting transaction if none exists
       const accountingTransaction = new AccountingTransaction({
         date: originalSale.createdAt,
         type: 'income',
         category: 'sale_revenue',
         amount: newTotalAmount,
-        description: `การขายสินค้า (แก้ไข) - รายการที่ ${originalSale._id}`,
+        description: `การขายสินค้า (แก้ไข) - ${menuNames.join(', ')}`,
+        paymentMethod: originalSale.paymentMethod,
         boothId: originalSale.boothId,
         relatedId: originalSale._id,
         relatedType: 'sale',
