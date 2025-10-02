@@ -86,8 +86,9 @@ export async function GET(request: NextRequest) {
           date: {
             $dateToString: {
               format: "%Y-%m-%d",
-              date: "$createdAt",
-              ...(process.env.NODE_ENV === 'production' && { timezone: "Asia/Bangkok" })
+              date: process.env.NODE_ENV === 'production'
+                ? { $dateAdd: { startDate: "$createdAt", unit: "hour", amount: 7 } }
+                : "$createdAt"
             }
           }
         }
