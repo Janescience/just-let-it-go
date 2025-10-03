@@ -972,15 +972,9 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {loadingBooths[boothDate.boothId] ? (
-                    <div className="text-center py-16">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-                      <p className="font-light text-gray-500">กำลังโหลดข้อมูล...</p>
-                    </div>
-                  ) : booth && booth.menuItems.length > 0 ? (
-                    <div className="space-y-6">
-                      {/* Daily Sales & Profit Chart - Top */}
-                      {boothDailySummary[boothDate.boothId] && boothDailySummary[boothDate.boothId].length > 0 && (
+                  <div className="space-y-6">
+                    {/* Daily Sales & Profit Chart - Top */}
+                    {boothDailySummary[boothDate.boothId] && boothDailySummary[boothDate.boothId].length > 0 && (
                         <div className="border-b border-gray-200 pb-6">
                           <h4 className="text-sm font-light text-black mb-4 tracking-wider text-center">ยอดขายและกำไรรายวัน</h4>
                           <div className="h-64 md:h-80 overflow-x-auto">
@@ -1087,7 +1081,15 @@ export default function HomePage() {
                           ข้อมูลด้านล่างแสดงตามวันที่ที่เลือก
                         </div>
                       </div>
+                  </div>
 
+                  {loadingBooths[boothDate.boothId] ? (
+                    <div className="text-center py-16">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+                      <p className="font-light text-gray-500">กำลังโหลดข้อมูล...</p>
+                    </div>
+                  ) : booth && booth.menuItems.length > 0 ? (
+                    <div className="space-y-6">
                       {/* Revenue and Profit Summary */}
                       {booth && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-gray-200 pb-6">
