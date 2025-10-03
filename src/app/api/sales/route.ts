@@ -278,6 +278,9 @@ export async function GET(request: NextRequest) {
 
     await connectDB();
 
+    const { searchParams } = new URL(request.url);
+    const boothIdParam = searchParams.get('boothId');
+
     let query: any = {};
 
     // Filter by booth for staff users
@@ -289,20 +292,52 @@ export async function GET(request: NextRequest) {
       const booths = await Booth.find({ brandId: payload.user.brandId }).select('_id name isActive');
       const boothIds = booths.map(booth => booth._id);
 
-
-      query.boothId = { $in: boothIds };
+      // If specific boothId is requested, filter by that booth (if it belongs to the brand)
+      if (boothIdParam && boothIds.some((id: any) => id.toString() === boothIdParam)) {
+        query.boothId = boothIdParam;
+      } else {
+        query.boothId = { $in: boothIds };
+      }
     }
 
     const sales = await Sale.find(query)
       .populate('boothId', 'name location')
       .populate('employeeId', 'name username')
-      .populate('items.menuItemId', 'name price')
+      .populate({
+        path: 'items.menuItemId',
+        select: 'name price ingredients',
+        populate: {
+          path: 'ingredients.ingredientId',
+          select: 'costPerUnit'
+        }
+      })
       .sort({ createdAt: -1 });
-      // .limit(50); // Latest 50 sales
 
+    // Calculate cost for each sale based on menu item ingredients (no additional queries needed)
+    const salesWithCost = sales.map((sale) => {
+      let totalCost = 0;
+
+      for (const item of sale.items) {
+        const menuItem = item.menuItemId;
+
+        if (menuItem && menuItem.ingredients) {
+          for (const ingredient of menuItem.ingredients) {
+            const costPerUnit = ingredient.ingredientId?.costPerUnit || 0;
+            const usedQuantity = ingredient.quantity * item.quantity;
+            totalCost += costPerUnit * usedQuantity;
+          }
+        }
+      }
+
+      return {
+        ...sale.toObject(),
+        totalCost,
+        profit: sale.totalAmount - totalCost
+      };
+    });
 
     return NextResponse.json({
-      sales
+      sales: salesWithCost
     });
   } catch (error) {
     console.error('Error fetching sales:', error);

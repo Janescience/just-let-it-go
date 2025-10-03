@@ -12,7 +12,7 @@ interface BoothMenuTabProps {
 export function BoothMenuTab({ booth, onRefresh, onOpenMenuModal }: BoothMenuTabProps) {
   const [menuWithStock, setMenuWithStock] = useState<MenuWithStock[]>([]);
   const [loading, setLoading] = useState(false);
-  const [ingredients, setIngredients] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
 
   const fetchMenuWithStock = async () => {
     try {
@@ -25,11 +25,12 @@ export function BoothMenuTab({ booth, onRefresh, onOpenMenuModal }: BoothMenuTab
         setMenuWithStock(menuData.booth.menuItems);
       }
 
-      // Fetch ingredients with cost
-      const ingredientResponse = await fetch('/api/ingredients');
-      if (ingredientResponse.ok) {
-        const ingredientData = await ingredientResponse.json();
-        setIngredients(ingredientData.ingredients || []);
+
+      // Fetch categories
+      const categoryResponse = await fetch('/api/categories');
+      if (categoryResponse.ok) {
+        const categoryData = await categoryResponse.json();
+        setCategories(categoryData.categories || []);
       }
     } catch (error) {
       console.error('Error fetching menu with stock:', error);
@@ -111,78 +112,89 @@ export function BoothMenuTab({ booth, onRefresh, onOpenMenuModal }: BoothMenuTab
 
         <div className="space-y-6">
           {loading ? (
-            <div className="space-y-6">
-              {[...Array(4)].map((_, index) => (
-                <div key={index} className="space-y-4">
-                  {/* Menu header skeleton */}
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-2 flex-1">
-                      <div className="h-5 bg-gray-200 rounded animate-pulse w-1/3"></div>
-                      <div className="h-4 bg-gray-100 rounded animate-pulse w-1/4"></div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div>
-                      <div className="h-4 bg-gray-100 rounded animate-pulse w-12"></div>
-                    </div>
-                  </div>
-
-                  {/* Ingredients skeleton */}
-                  <div className="space-y-2">
-                    <div className="h-4 bg-gray-200 rounded animate-pulse w-1/4"></div>
-                    {[...Array(3)].map((_, i) => (
-                      <div key={i} className="h-8 bg-gray-100 rounded animate-pulse"></div>
-                    ))}
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-3 w-16">ลำดับ</th>
+                    <th className="text-left text-xs font-light text-gray-400 tracking-wider uppercase p-3">เมนู</th>
+                    <th className="text-left text-xs font-light text-gray-400 tracking-wider uppercase p-3 w-32">หมวดหมู่</th>
+                    <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-3 w-32">ราคาขาย</th>
+                    <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-3 w-32">ต้นทุน</th>
+                    <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-3 w-32">กำไร</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...Array(5)].map((_, index) => (
+                    <tr key={index} className="border-b border-gray-100">
+                      <td className="p-3 text-center w-16">
+                        <div className="h-4 bg-gray-200 rounded animate-pulse w-8 mx-auto"></div>
+                      </td>
+                      <td className="p-3">
+                        <div className="space-y-2">
+                          <div className="h-5 bg-gray-200 rounded animate-pulse w-3/4"></div>
+                          <div className="h-4 bg-gray-100 rounded animate-pulse w-full"></div>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           ) : menuWithStock && menuWithStock.length > 0 ? (
-            <div className="space-y-6">
-              {menuWithStock.map((item: MenuWithStock, index: number) => (
-                <div key={item._id || index} className="border-b border-gray-100 pb-6 last:border-b-0">
-                  {/* Menu Header */}
-                  <div className="flex-1">
-                    <div className="font-light text-black tracking-wide text-lg mb-4">{item.name}</div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">ราคาขาย</div>
-                        <div className="font-light text-black">฿{item.price?.toLocaleString()}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">ต้นทุน</div>
-                        <div className="font-light text-gray-700">
-                          ฿{(() => {
-                            const totalCost = item.ingredients?.reduce((cost: number, ing: any) => {
-                              // หา ingredient จาก API /ingredients ด้วย ingredientId
-                              const ingredient = ingredients.find(avail => avail._id === ing.ingredientId);
-                              const costPerUnit = ingredient ? ingredient.costPerUnit : 0;
-                              const quantity = ing.quantityNeeded || 0;
-                              return cost + (costPerUnit * quantity);
-                            }, 0) || 0;
-                            return totalCost.toFixed(2);
-                          })()}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">กำไร</div>
-                        <div className="font-light text-black">
-                          ฿{(() => {
-                            const totalCost = item.ingredients?.reduce((cost: number, ing: any) => {
-                              // หา ingredient จาก API /ingredients ด้วย ingredientId
-                              const ingredient = ingredients.find(avail => avail._id === ing.ingredientId);
-                              const costPerUnit = ingredient ? ingredient.costPerUnit : 0;
-                              const quantity = ing.quantityNeeded || 0;
-                              return cost + (costPerUnit * quantity);
-                            }, 0) || 0;
-                            const profit = (item.price || 0) - totalCost;
-                            return profit.toFixed(2);
-                          })()}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-3 w-16">ลำดับ</th>
+                    <th className="text-left text-xs font-light text-gray-400 tracking-wider uppercase p-3">เมนู</th>
+                    <th className="text-left text-xs font-light text-gray-400 tracking-wider uppercase p-3 w-32">หมวดหมู่</th>
+                    <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-3 w-32">ราคาขาย</th>
+                    <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-3 w-32">ต้นทุน</th>
+                    <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-3 w-32">กำไร</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {menuWithStock.map((item: any, index: number) => {
+                    const category = categories.find(cat => cat._id === item.categoryId);
+
+                    return (
+                      <tr key={item._id || index} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="p-3 text-center w-16">
+                          <div className="font-light text-gray-500">#{index + 1}</div>
+                        </td>
+                        <td className="p-3">
+                          <div>
+                            <div className="font-light text-black tracking-wide text-base mb-1">{item.name}</div>
+                            {item.description && (
+                              <div className="font-light text-gray-500 text-sm">{item.description}</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3 w-32">
+                          <div className="font-light text-gray-600">
+                            {category ? category.name : 'ไม่มีหมวดหมู่'}
+                          </div>
+                        </td>
+                        <td className="p-3 text-center w-32">
+                          <div className="font-light text-black">฿{item.price?.toLocaleString()}</div>
+                        </td>
+                        <td className="p-3 text-center w-32">
+                          <div className="font-light text-gray-700">฿{item.totalCost?.toFixed(2) || '0.00'}</div>
+                        </td>
+                        <td className="p-3 text-center w-32">
+                          <div className={`font-light ${(item.profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            ฿{item.profit?.toFixed(2) || '0.00'}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           ) : (
             <div className="text-center py-12">

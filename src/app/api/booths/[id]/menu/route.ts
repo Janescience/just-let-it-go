@@ -131,23 +131,22 @@ export async function GET(
 
     const { id } = await params;
 
-    // Get booth with populated menu items and booth stock
+    // Simple and fast query - only get what we need for display
     const booth = await Booth.findOne({
       _id: id,
       brandId: payload.user.brandId
     })
     .populate({
       path: 'menuItems',
-      select: 'name price description isActive ingredients',
+      select: 'name price description categoryId isActive ingredients',
       populate: {
         path: 'ingredients.ingredientId',
-        select: 'name unit'
-      }
+        select: 'costPerUnit'
+      },
+      options: { sort: { categoryId: 1, name: 1 } }
     })
-    .populate({
-      path: 'boothStock.ingredientId',
-      select: 'name unit minimumStock'
-    });
+    .select('_id name menuItems')
+    .lean();
 
     if (!booth) {
       return NextResponse.json(
@@ -156,69 +155,33 @@ export async function GET(
       );
     }
 
-    // Get all available menu items for this brand
+    // Get all available menu items for this brand (simple query)
     const allMenuItems = await MenuItem.find({
       brandId: payload.user.brandId,
       isActive: true
-    }).select('name price description');
+    })
+    .select('name price description categoryId')
+    .sort({ categoryId: 1, name: 1 })
+    .lean();
 
-    // Calculate stock status for each menu item
-    const menuItemsWithStock = booth.menuItems.map((menuItem: any) => {
-      const menuIngredients = menuItem.ingredients.map((ing: { ingredientId: any; quantity: number }) => {
-        // Find corresponding booth stock
-        const boothStock = booth.boothStock.find(
-          (stock: { ingredientId: any; allocatedQuantity: number; usedQuantity: number; remainingQuantity: number }) => stock.ingredientId._id.toString() === ing.ingredientId._id.toString()
-        );
-
-        const allocated = boothStock?.allocatedQuantity || 0;
-        const used = boothStock?.usedQuantity || 0;
-        const remaining = boothStock?.remainingQuantity || 0;
-        const percentage = allocated > 0 ? (remaining / allocated) * 100 : 0;
-
-        // Calculate possible servings based on this ingredient
-        const possibleServings = ing.quantity > 0 ? Math.floor(remaining / ing.quantity) : 0;
-
-        // Determine status
-        let status: 'sufficient' | 'low' | 'critical' | 'out' = 'sufficient';
-        if (remaining <= 0) {
-          status = 'out';
-        } else if (percentage <= 10) {
-          status = 'critical';
-        } else if (percentage <= 25) {
-          status = 'low';
-        }
-
-        return {
-          ingredientId: ing.ingredientId._id,
-          name: ing.ingredientId.name,
-          unit: ing.ingredientId.unit,
-          quantityNeeded: ing.quantity,
-          allocated,
-          used,
-          remaining,
-          percentage: Math.round(percentage),
-          possibleServings,
-          status
-        };
-      });
-
-      // Calculate max servings for this menu item (limited by ingredient with least servings)
-      const maxServings = menuIngredients.length > 0
-        ? Math.min(...menuIngredients.map((ing: { possibleServings: number }) => ing.possibleServings))
-        : 0;
-
-      // Find limiting ingredient
-      const limitingIngredient = menuIngredients.find((ing: { possibleServings: number }) => ing.possibleServings === maxServings);
+    // Simplified menu items - only calculate cost for display
+    const menuItemsWithCost = booth.menuItems.map((menuItem: any) => {
+      // Calculate cost from ingredients
+      const totalCost = menuItem.ingredients?.reduce((cost: number, ing: any) => {
+        const costPerUnit = ing.ingredientId?.costPerUnit || 0;
+        const quantity = ing.quantity || 0;
+        return cost + (costPerUnit * quantity);
+      }, 0) || 0;
 
       return {
         _id: menuItem._id,
         name: menuItem.name,
         price: menuItem.price,
         description: menuItem.description,
+        categoryId: menuItem.categoryId,
         isActive: menuItem.isActive,
-        ingredients: menuIngredients,
-        maxServings,
-        limitingIngredient: limitingIngredient?.name
+        totalCost: Math.round(totalCost * 100) / 100, // Round to 2 decimal places
+        profit: Math.round((menuItem.price - totalCost) * 100) / 100
       };
     });
 
@@ -226,7 +189,7 @@ export async function GET(
       booth: {
         _id: booth._id,
         name: booth.name,
-        menuItems: menuItemsWithStock
+        menuItems: menuItemsWithCost
       },
       allMenuItems
     });

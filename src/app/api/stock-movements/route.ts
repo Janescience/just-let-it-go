@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { verifyToken } from '@/utils/auth';
+// Import User first to ensure it's registered before other models that might reference it
+import User from '@/lib/models/User';
 import StockMovement from '@/lib/models/StockMovement';
 import Ingredient from '@/lib/models/Ingredient';
 import AccountingTransaction from '@/lib/models/AccountingTransaction';
+import Booth from '@/lib/models/Booth';
 
 export async function GET(request: NextRequest) {
   try {
+    // Ensure User model is registered (fix for Vercel serverless)
+    if (!(global as any).mongoose?.models?.User) {
+      require('@/lib/models/User');
+    }
     const token = request.cookies.get('auth-token')?.value;
     if (!token) {
       return NextResponse.json(
@@ -58,6 +65,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Ensure User model is registered (fix for Vercel serverless)
+    if (!(global as any).mongoose?.models?.User) {
+      require('@/lib/models/User');
+    }
     const token = request.cookies.get('auth-token')?.value;
     if (!token) {
       return NextResponse.json(
