@@ -181,6 +181,7 @@ export async function PUT(
             unit: changeData.ingredient.unit,
             type: 'adjustment',
             quantity: changeData.change,
+            cost: changeData.ingredient.costPerUnit, // เพิ่ม cost จาก costPerUnit
             reason: `แก้ไขรายการขาย ${originalSale._id}`,
             boothId: originalSale.boothId,
             saleId: originalSale._id
@@ -366,6 +367,7 @@ export async function DELETE(
               unit: ingredient.unit,
               type: 'adjustment',
               quantity: totalUsed,
+              cost: ingredient.costPerUnit, // เพิ่ม cost จาก costPerUnit
               reason: `ลบรายการขาย ${sale._id}`,
               boothId: sale.boothId,
               saleId: sale._id

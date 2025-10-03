@@ -50,8 +50,12 @@ const StockMovementSchema = new Schema<IStockMovement>({
     type: Number,
     min: 0,
   },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
 }, {
-  timestamps: { createdAt: true, updatedAt: false },
+  timestamps: false,
 });
 
 StockMovementSchema.index({ ingredientId: 1, createdAt: -1 });

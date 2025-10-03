@@ -1,19 +1,22 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { DollarSign, Plus, TrendingUp, TrendingDown, Calendar, Filter } from 'lucide-react';
+import { DollarSign, Plus, TrendingUp, TrendingDown, Calendar, Filter, Settings } from 'lucide-react';
 import { Button, Input, DashboardPageLoading } from '@/components/ui';
 import { Header } from '@/components/layout/Header';
+import { useAuth } from '@/hooks/useAuth';
 import { AccountingTransaction, AccountingSummary, Booth, INCOME_CATEGORIES, EXPENSE_CATEGORIES, AccountingFilterCriteria } from '@/types';
 import { AccountingSummaryCard } from './components/AccountingSummaryCard';
 import { TransactionTable } from './components/TransactionTable';
 import { CategoryBreakdown } from './components/CategoryBreakdown';
 import { TransactionModal } from './components/TransactionModal';
 import { AccountingFilterPanel } from './components/AccountingFilterPanel';
+import { RepairAccountingModal } from './components/RepairAccountingModal';
 import { getDefaultCriteriaForType, buildQueryParamsFromCriteria } from '@/utils/accounting-filters';
 import { FILTER_CRITERIA_LABELS, THAI_MONTHS } from '@/types';
 
 export default function AccountingPage() {
+  const { user } = useAuth();
   const [transactions, setTransactions] = useState<AccountingTransaction[]>([]);
   const [summary, setSummary] = useState<AccountingSummary | null>(null);
   const [booths, setBooths] = useState<Booth[]>([]);
@@ -27,6 +30,7 @@ export default function AccountingPage() {
   // Modal states
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<AccountingTransaction | null>(null);
+  const [showRepairModal, setShowRepairModal] = useState(false);
 
   useEffect(() => {
     // Fetch booths
@@ -225,6 +229,9 @@ export default function AccountingPage() {
             filterInfo={getFilterInfo()}
             filterCriteria={filterCriteria}
             booths={booths}
+            userRole={user?.role}
+            currentBrandId={user?.currentBrandId}
+            onRepairAccounting={() => setShowRepairModal(true)}
           />
         </div>
 
@@ -239,6 +246,14 @@ export default function AccountingPage() {
             }}
             incomeCategories={INCOME_CATEGORIES}
             expenseCategories={EXPENSE_CATEGORIES}
+          />
+        )}
+
+        {/* Repair Accounting Modal */}
+        {showRepairModal && (
+          <RepairAccountingModal
+            isOpen={showRepairModal}
+            onClose={() => setShowRepairModal(false)}
           />
         )}
       </div>

@@ -10,9 +10,18 @@ import Booth from '@/lib/models/Booth';
 
 export async function GET(request: NextRequest) {
   try {
-    // Ensure User model is registered (fix for Vercel serverless)
+    // Ensure models are registered (fix for Vercel serverless)
     if (!(global as any).mongoose?.models?.User) {
       require('@/lib/models/User');
+    }
+    if (!(global as any).mongoose?.models?.Booth) {
+      require('@/lib/models/Booth');
+    }
+    if (!(global as any).mongoose?.models?.Ingredient) {
+      require('@/lib/models/Ingredient');
+    }
+    if (!(global as any).mongoose?.models?.StockMovement) {
+      require('@/lib/models/StockMovement');
     }
     const token = request.cookies.get('auth-token')?.value;
     if (!token) {
@@ -48,8 +57,7 @@ export async function GET(request: NextRequest) {
     })
       .populate('ingredientId', 'name unit')
       .populate('boothId', 'name')
-      .sort({ createdAt: -1 })
-      .limit(100); // Limit to last 100 movements
+      .sort({ createdAt: -1 });
 
     return NextResponse.json({
       movements
@@ -65,9 +73,18 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Ensure User model is registered (fix for Vercel serverless)
+    // Ensure models are registered (fix for Vercel serverless)
     if (!(global as any).mongoose?.models?.User) {
       require('@/lib/models/User');
+    }
+    if (!(global as any).mongoose?.models?.Booth) {
+      require('@/lib/models/Booth');
+    }
+    if (!(global as any).mongoose?.models?.Ingredient) {
+      require('@/lib/models/Ingredient');
+    }
+    if (!(global as any).mongoose?.models?.StockMovement) {
+      require('@/lib/models/StockMovement');
     }
     const token = request.cookies.get('auth-token')?.value;
     if (!token) {

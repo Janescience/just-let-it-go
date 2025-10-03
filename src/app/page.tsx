@@ -124,8 +124,10 @@ export default function HomePage() {
   const [boothSalesData, setBoothSalesData] = useState<BoothSalesData[]>([]);
   const [boothProfitData, setBoothProfitData] = useState<BoothProfitData[]>([]);
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
-  const [loading, setLoading] = useState(true);
   const [loadingBooths, setLoadingBooths] = useState<{[boothId: string]: boolean}>({});
+  const [loadingInventoryAlerts, setLoadingInventoryAlerts] = useState(true);
+  const [loadingTopPerformers, setLoadingTopPerformers] = useState(true);
+  const [loadingCustomerPatterns, setLoadingCustomerPatterns] = useState(true);
   const [boothDatesData, setBoothDatesData] = useState<BoothDateData[]>([]);
   const [selectedDates, setSelectedDates] = useState<{[boothId: string]: string}>({});
   const [topPerformers, setTopPerformers] = useState<{best: TopPerformer[], worst: TopPerformer[]}>({best: [], worst: []});
@@ -229,15 +231,13 @@ export default function HomePage() {
         // Only fetch dashboard data if onboarding is complete
         if (onboardingData.allCompleted) {
           await fetchBoothDates();
-          await fetchInventoryAlerts();
-          await fetchCustomerPatterns();
-          await fetchTopPerformers();
+          fetchInventoryAlerts(); // Run in parallel
+          fetchCustomerPatterns(); // Run in parallel
+          fetchTopPerformers(); // Run in parallel
         }
       }
     } catch (error) {
       console.error('Error fetching data:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -329,6 +329,7 @@ export default function HomePage() {
   };
 
   const fetchTopPerformers = async () => {
+    setLoadingTopPerformers(true);
     try {
       const response = await fetch('/api/dashboard/menu-sales?allBooths=true');
       if (response.ok) {
@@ -372,10 +373,13 @@ export default function HomePage() {
       }
     } catch (error) {
       console.error('Error fetching top performers:', error);
+    } finally {
+      setLoadingTopPerformers(false);
     }
   };
 
   const fetchInventoryAlerts = async () => {
+    setLoadingInventoryAlerts(true);
     try {
       const response = await fetch('/api/dashboard/inventory-alerts');
       if (response.ok) {
@@ -384,10 +388,13 @@ export default function HomePage() {
       }
     } catch (error) {
       console.error('Error fetching inventory alerts:', error);
+    } finally {
+      setLoadingInventoryAlerts(false);
     }
   };
 
   const fetchCustomerPatterns = async () => {
+    setLoadingCustomerPatterns(true);
     try {
       const response = await fetch('/api/dashboard/customer-patterns');
       if (response.ok) {
@@ -396,6 +403,8 @@ export default function HomePage() {
       }
     } catch (error) {
       console.error('Error fetching customer patterns:', error);
+    } finally {
+      setLoadingCustomerPatterns(false);
     }
   };
 
@@ -707,28 +716,33 @@ export default function HomePage() {
     return null;
   };
 
-  if (loading) {
+
+  // Show loading when onboarding status is not yet loaded
+  if (!onboardingStatus) {
     return (
       <div className="min-h-screen bg-white">
         <div className="border-b border-gray-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-xl sm:text-2xl font-thin text-black tracking-wider">กำลังโหลด...</h1>
-                <p className="text-sm font-light text-gray-500 mt-1">โปรดรอสักครู่</p>
+                <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-2"></div>
+                <div className="h-4 w-48 bg-gray-200 rounded animate-pulse"></div>
               </div>
             </div>
           </div>
         </div>
         <div className="p-4 tablet:p-6 pb-24">
-          <div className="text-center py-8 text-gray-600 font-light">กำลังโหลดข้อมูล...</div>
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+            <div className="h-4 w-32 bg-gray-200 rounded animate-pulse mx-auto"></div>
+          </div>
         </div>
       </div>
     );
   }
 
   // Show onboarding guide if setup is not complete
-  if (onboardingStatus && !onboardingStatus.allCompleted) {
+  if (!onboardingStatus.allCompleted) {
     return <OnboardingGuide completionStatus={onboardingStatus.completionStatus} />;
   }
 
@@ -749,7 +763,33 @@ export default function HomePage() {
 
       <div className="max-w-7xl mx-auto p-4 tablet:p-6 pb-24">
         {/* Inventory Alerts Section */}
-        {inventoryAlerts.length > 0 && (
+        {loadingInventoryAlerts ? (
+          <div className="mb-8">
+            <div className="border border-gray-200 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-5 w-48 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-6 w-16 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="p-4 border border-gray-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="h-3 w-8 bg-gray-200 rounded animate-pulse"></div>
+                      </div>
+                    </div>
+                    <div className="h-3 w-20 bg-gray-200 rounded animate-pulse mb-2"></div>
+                    <div className="h-3 w-16 bg-gray-200 rounded animate-pulse mb-2"></div>
+                    <div className="h-3 w-24 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : inventoryAlerts.length > 0 && (
           <div className="mb-8">
             <div className="border border-gray-200 p-6">
               <div className="flex items-center gap-3 mb-4">
@@ -812,7 +852,55 @@ export default function HomePage() {
         )}
 
         {/* Top Performers Section */}
-        {topPerformers.best.length > 0 && (
+        {loadingTopPerformers ? (
+          <div className="mb-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Best Performers Skeleton */}
+            <div className="border border-gray-200 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-5 w-32 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="flex items-center justify-between p-3 border border-gray-200">
+                    <div className="flex-1">
+                      <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-1"></div>
+                      <div className="h-3 w-16 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                    <div className="text-right">
+                      <div className="h-4 w-16 bg-gray-200 rounded animate-pulse mb-1"></div>
+                      <div className="h-3 w-20 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                    <div className="ml-3 w-8 h-8 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Worst Performers Skeleton */}
+            <div className="border border-gray-200 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-5 w-36 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="flex items-center justify-between p-3 border border-gray-200">
+                    <div className="flex-1">
+                      <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-1"></div>
+                      <div className="h-3 w-16 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                    <div className="text-right">
+                      <div className="h-4 w-16 bg-gray-200 rounded animate-pulse mb-1"></div>
+                      <div className="h-3 w-20 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                    <div className="ml-3 w-8 h-8 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : topPerformers.best.length > 0 && (
           <div className="mb-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Best Performers */}
             <div className="border border-gray-200 p-6">
@@ -867,7 +955,70 @@ export default function HomePage() {
         )}
 
         {/* Customer Patterns Section */}
-        {(customerPatterns.peakHours.length > 0 || customerPatterns.orderSizes.length > 0 || customerPatterns.popularCombinations.length > 0) && (
+        {loadingCustomerPatterns ? (
+          <div className="mb-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Peak Hours Skeleton */}
+            <div className="border border-gray-200 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-5 w-32 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="flex items-center justify-between p-3 border border-gray-200">
+                    <div className="flex-1">
+                      <div className="h-4 w-16 bg-gray-200 rounded animate-pulse mb-1"></div>
+                      <div className="h-3 w-20 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                    <div className="text-right">
+                      <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                    <div className="ml-3 w-8 h-8 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Order Sizes Skeleton */}
+            <div className="border border-gray-200 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-5 w-24 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="p-3 border border-gray-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                    <div className="h-3 w-24 bg-gray-200 rounded animate-pulse mb-1"></div>
+                    <div className="h-3 w-20 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Popular Combinations Skeleton */}
+            <div className="border border-gray-200 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-5 w-36 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="p-3 border border-gray-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="w-8 h-8 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                    <div className="h-3 w-16 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (customerPatterns.peakHours.length > 0 || customerPatterns.orderSizes.length > 0 || customerPatterns.popularCombinations.length > 0) && (
           <div className="mb-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Peak Hours */}
             {customerPatterns.peakHours.length > 0 && (
@@ -1084,9 +1235,54 @@ export default function HomePage() {
                   </div>
 
                   {loadingBooths[boothDate.boothId] ? (
-                    <div className="text-center py-16">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-                      <p className="font-light text-gray-500">กำลังโหลดข้อมูล...</p>
+                    <div className="space-y-6">
+                      {/* Revenue and Profit Summary Skeleton */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-gray-200 pb-6">
+                        <div className="text-center p-4 border border-gray-200">
+                          <div className="h-4 w-20 bg-gray-200 rounded animate-pulse mb-2 mx-auto"></div>
+                          <div className="h-6 w-24 bg-gray-200 rounded animate-pulse mb-2 mx-auto"></div>
+                          <div className="h-3 w-16 bg-gray-200 rounded animate-pulse mx-auto"></div>
+                        </div>
+                        <div className="text-center p-4 border border-gray-200">
+                          <div className="h-4 w-16 bg-gray-200 rounded animate-pulse mb-2 mx-auto"></div>
+                          <div className="h-6 w-24 bg-gray-200 rounded animate-pulse mb-2 mx-auto"></div>
+                          <div className="h-3 w-20 bg-gray-200 rounded animate-pulse mx-auto"></div>
+                        </div>
+                      </div>
+
+                      {/* Pie Charts Skeleton */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div>
+                          <div className="h-4 w-32 bg-gray-200 rounded animate-pulse mb-4 mx-auto"></div>
+                          <div className="h-[400px] flex items-center justify-center border border-gray-200">
+                            <div className="w-48 h-48 bg-gray-200 rounded-full animate-pulse"></div>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="h-4 w-28 bg-gray-200 rounded animate-pulse mb-4 mx-auto"></div>
+                          <div className="h-[400px] flex items-center justify-center border border-gray-200">
+                            <div className="w-48 h-48 bg-gray-200 rounded-full animate-pulse"></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Ingredients Bar Chart Skeleton */}
+                      <div className="mt-6 pt-6 border-t border-gray-200">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+                          <div className="text-right">
+                            <div className="h-3 w-16 bg-gray-200 rounded animate-pulse mb-1"></div>
+                            <div className="h-5 w-20 bg-gray-200 rounded animate-pulse"></div>
+                          </div>
+                        </div>
+                        <div className="h-80 border border-gray-200 flex items-center justify-center">
+                          <div className="flex items-end gap-2">
+                            {[1, 2, 3, 4, 5].map((i) => (
+                              <div key={i} className={`w-8 bg-gray-200 animate-pulse`} style={{height: `${20 + (i * 20)}px`}}></div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   ) : booth && booth.menuItems.length > 0 ? (
                     <div className="space-y-6">
@@ -1300,15 +1496,74 @@ export default function HomePage() {
               );
             })}
           </div>
-        ) : (
-          <div className="border border-gray-200 p-6">
-            <div className="text-center py-16">
-              <Store className="w-20 h-20 text-gray-300 mx-auto mb-4" />
-              <h2 className="text-lg font-thin text-gray-600 mb-2">ไม่มีบูธที่ใช้งาน</h2>
-              <p className="font-light text-gray-400">ยังไม่มีบูธที่กำลังใช้งานหรือยังไม่มีข้อมูลการขาย</p>
-            </div>
+        ) : boothDatesData.length === 0 && onboardingStatus?.allCompleted ? (
+          // Show skeleton while booth dates are loading
+          <div className="grid gap-8 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="border border-gray-200 p-6">
+                {/* Header Skeleton */}
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-5 w-32 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+
+                {/* Daily Chart Skeleton */}
+                <div className="border-b border-gray-200 pb-6 mb-6">
+                  <div className="h-4 w-40 bg-gray-200 rounded animate-pulse mb-4 mx-auto"></div>
+                  <div className="h-64 border border-gray-200 flex items-center justify-center">
+                    <div className="flex items-end gap-2">
+                      {[1, 2, 3, 4, 5, 6, 7].map((j) => (
+                        <div key={j} className={`w-6 bg-gray-200 animate-pulse`} style={{height: `${30 + (j * 15)}px`}}></div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Date Selection Skeleton */}
+                <div className="bg-gray-50 p-4 border border-gray-200 mb-6">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="h-8 w-32 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                  <div className="h-3 w-48 bg-gray-200 rounded animate-pulse mx-auto"></div>
+                </div>
+
+                {/* Content Skeleton */}
+                <div className="space-y-6">
+                  {/* Summary Cards Skeleton */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-gray-200 pb-6">
+                    <div className="text-center p-4 border border-gray-200">
+                      <div className="h-4 w-20 bg-gray-200 rounded animate-pulse mb-2 mx-auto"></div>
+                      <div className="h-6 w-24 bg-gray-200 rounded animate-pulse mb-2 mx-auto"></div>
+                      <div className="h-3 w-16 bg-gray-200 rounded animate-pulse mx-auto"></div>
+                    </div>
+                    <div className="text-center p-4 border border-gray-200">
+                      <div className="h-4 w-16 bg-gray-200 rounded animate-pulse mb-2 mx-auto"></div>
+                      <div className="h-6 w-24 bg-gray-200 rounded animate-pulse mb-2 mx-auto"></div>
+                      <div className="h-3 w-20 bg-gray-200 rounded animate-pulse mx-auto"></div>
+                    </div>
+                  </div>
+
+                  {/* Pie Charts Skeleton */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                      <div className="h-4 w-32 bg-gray-200 rounded animate-pulse mb-4 mx-auto"></div>
+                      <div className="h-[400px] flex items-center justify-center border border-gray-200">
+                        <div className="w-48 h-48 bg-gray-200 rounded-full animate-pulse"></div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="h-4 w-28 bg-gray-200 rounded animate-pulse mb-4 mx-auto"></div>
+                      <div className="h-[400px] flex items-center justify-center border border-gray-200">
+                        <div className="w-48 h-48 bg-gray-200 rounded-full animate-pulse"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

@@ -22,6 +22,9 @@ export default function InventoryPage() {
   const [showStockModal, setShowStockModal] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
   const [view, setView] = useState<'list' | 'movements' | 'analysis'>('list');
+  const [movementTypeFilter, setMovementTypeFilter] = useState<string>('all');
+  const [showEditMovementModal, setShowEditMovementModal] = useState(false);
+  const [selectedMovement, setSelectedMovement] = useState<StockMovement | null>(null);
 
   useEffect(() => {
     if (user && ingredients.length === 0 && !loading.ingredients) {
@@ -190,8 +193,12 @@ export default function InventoryPage() {
     return reorderPoint;
   };
 
+  const outOfStockIngredients = ingredients.filter(ingredient =>
+    ingredient.stock === 0
+  );
+
   const lowStockIngredients = ingredients.filter(ingredient =>
-    ingredient.stock <= ingredient.minimumStock
+    ingredient.stock > 0 && ingredient.stock <= ingredient.minimumStock
   );
 
   // Calculate summary values
@@ -207,8 +214,12 @@ export default function InventoryPage() {
       .reduce((sum, m) => {
         const ingredientId = typeof m.ingredientId === 'string' ? m.ingredientId : (m.ingredientId as any)?._id;
         const ingredient = ingredients.find(ing => ing._id === ingredientId);
-        if (ingredient) {
-          return sum + (Math.abs(m.quantity) * ingredient.costPerUnit);
+        if (ingredient && ingredient.costPerUnit > 0) {
+          const value = Math.abs(m.quantity) * ingredient.costPerUnit;
+          console.log(`Usage: ${ingredient.name} - Qty: ${Math.abs(m.quantity)} - Cost: ${ingredient.costPerUnit} - Value: ${value}`);
+          return sum + value;
+        } else {
+          console.log(`Skipped: ${ingredient?.name || 'Unknown'} - Cost: ${ingredient?.costPerUnit || 0}`);
         }
         return sum;
       }, 0);
@@ -228,6 +239,11 @@ export default function InventoryPage() {
       totalUsageValue,
       totalPurchaseValue
     };
+  };
+
+  const handleEditMovement = (movement: StockMovement) => {
+    setSelectedMovement(movement);
+    setShowEditMovementModal(true);
   };
 
   // Show loading only if ingredients are loading and we have no ingredients yet
@@ -258,7 +274,10 @@ export default function InventoryPage() {
         {/* Summary Cards */}
         {view === 'list' && (
           <div className="mb-6">
-            <SummaryCards getSummaryData={getSummaryData} />
+            <SummaryCards
+              getSummaryData={getSummaryData}
+              isLoading={loading.ingredients || loading.stockMovements}
+            />
           </div>
         )}
 
@@ -316,20 +335,42 @@ export default function InventoryPage() {
           </div>
         </div>
 
-        {/* Low Stock Alert */}
-        {lowStockIngredients.length > 0 && view === 'list' && (
-          <div className="border border-gray-200 p-6 mb-8">
-            <div className="flex items-center gap-3 mb-4">
-              <AlertTriangle className="w-4 h-4 text-gray-400" />
-              <span className="text-sm font-light text-gray-600">วัตถุดิบใกล้หมด ({lowStockIngredients.length} รายการ)</span>
-            </div>
-            <div className="space-y-2">
-              {lowStockIngredients.map(ingredient => (
-                <div key={ingredient._id} className="text-sm font-light text-gray-600">
-                  {ingredient.name}: เหลือ {ingredient.stock} {ingredient.unit} (ขั้นต่ำ {ingredient.minimumStock})
+        {/* Stock Alerts */}
+        {(outOfStockIngredients.length > 0 || lowStockIngredients.length > 0) && view === 'list' && (
+          <div className="space-y-4 mb-8">
+            {/* Out of Stock Alert */}
+            {outOfStockIngredients.length > 0 && (
+              <div className="border border-red-200 bg-red-50 p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <AlertTriangle className="w-4 h-4 text-red-500" />
+                  <span className="text-sm font-light text-red-700">วัตถุดิบหมด ({outOfStockIngredients.length} รายการ)</span>
                 </div>
-              ))}
-            </div>
+                <div className="space-y-2">
+                  {outOfStockIngredients.map(ingredient => (
+                    <div key={ingredient._id} className="text-sm font-light text-red-600">
+                      {ingredient.name}: หมด ({ingredient.unit}) - ต้องเติมทันที
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Low Stock Alert */}
+            {lowStockIngredients.length > 0 && (
+              <div className="border border-orange-200 bg-orange-50 p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <AlertTriangle className="w-4 h-4 text-orange-500" />
+                  <span className="text-sm font-light text-orange-700">วัตถุดิบใกล้หมด ({lowStockIngredients.length} รายการ)</span>
+                </div>
+                <div className="space-y-2">
+                  {lowStockIngredients.map(ingredient => (
+                    <div key={ingredient._id} className="text-sm font-light text-orange-600">
+                      {ingredient.name}: เหลือ {ingredient.stock} {ingredient.unit} (ขั้นต่ำ {ingredient.minimumStock})
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -339,6 +380,7 @@ export default function InventoryPage() {
               <table className="w-full min-w-[800px]">
                 <thead>
                   <tr className="border-b border-gray-100">
+                    <th className="text-center py-3 px-2 text-xs font-light text-gray-400 tracking-wider uppercase w-12">ลำดับ</th>
                     <th className="text-left py-3 px-2 text-xs font-light text-gray-400 tracking-wider uppercase min-w-[160px]">ชื่อวัตถุดิบ</th>
                     <th className="text-right py-3 px-2 text-xs font-light text-gray-400 tracking-wider uppercase min-w-[80px]">สต็อก</th>
                     <th className="text-right py-3 px-2 text-xs font-light text-gray-400 tracking-wider uppercase min-w-[100px]">ต้นทุน/หน่วย</th>
@@ -354,6 +396,9 @@ export default function InventoryPage() {
                   <>
                     {[1, 2, 3, 4, 5].map(i => (
                       <tr key={i} className="border-b border-gray-50">
+                        <td className="py-4 px-2 text-center w-12">
+                          <div className="h-3 w-6 bg-gray-200 rounded animate-pulse mx-auto"></div>
+                        </td>
                         <td className="py-4 px-2">
                           <div className="flex items-center gap-3 min-w-[140px]">
                             <div>
@@ -387,25 +432,36 @@ export default function InventoryPage() {
                     ))}
                   </>
                 ) : (
-                  filteredIngredients.map(ingredient => {
+                  filteredIngredients.map((ingredient, index) => {
                     const totalValue = ingredient.stock * ingredient.costPerUnit;
-                    const isLowStock = ingredient.stock <= ingredient.minimumStock;
+                    const isOutOfStock = ingredient.stock === 0;
+                    const isLowStock = ingredient.stock > 0 && ingredient.stock <= ingredient.minimumStock;
 
                     return (
                       <tr key={ingredient._id} className="border-b border-gray-50 hover:bg-gray-25 transition-colors">
+                        <td className="py-4 px-2 text-center w-12">
+                          <div className="text-xs font-light text-gray-400">#{index + 1}</div>
+                        </td>
                         <td className="py-4 px-2">
                           <div className="flex items-center gap-3 min-w-[140px]">
                             <div>
                               <div className="font-light text-black tracking-wide text-sm whitespace-nowrap">{ingredient.name}</div>
                               <div className="text-xs font-light text-gray-400">{ingredient.unit}</div>
                             </div>
+                            {isOutOfStock && (
+                              <div className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0" title="สต็อกหมด"></div>
+                            )}
                             {isLowStock && (
                               <div className="w-2 h-2 bg-orange-400 rounded-full flex-shrink-0" title="สต็อกใกล้หมด"></div>
                             )}
                           </div>
                         </td>
                         <td className="py-4 px-2 text-right">
-                          <div className={`font-light text-sm whitespace-nowrap ${isLowStock ? 'text-orange-600' : 'text-black'}`}>
+                          <div className={`font-light text-sm whitespace-nowrap ${
+                            isOutOfStock ? 'text-red-600' :
+                            isLowStock ? 'text-orange-600' :
+                            'text-black'
+                          }`}>
                             {Number(ingredient.stock).toFixed(2)}
                           </div>
                         </td>
@@ -459,7 +515,13 @@ export default function InventoryPage() {
           loading.stockMovements && stockMovements.length === 0 ? (
             <StockMovementsLoadingSkeleton />
           ) : (
-            <StockMovementsView stockMovements={stockMovements} ingredients={ingredients} />
+            <StockMovementsView
+              stockMovements={stockMovements}
+              ingredients={ingredients}
+              typeFilter={movementTypeFilter}
+              onTypeFilterChange={setMovementTypeFilter}
+              onEditMovement={handleEditMovement}
+            />
           )
         ) : (
           loading.stockMovements && stockMovements.length === 0 ? (
@@ -510,6 +572,22 @@ export default function InventoryPage() {
             fetchStockMovements();
             setShowStockModal(false);
             setSelectedIngredient(null);
+          }}
+        />
+      )}
+
+      {/* Edit Movement Modal */}
+      {showEditMovementModal && selectedMovement && (
+        <EditMovementModal
+          movement={selectedMovement}
+          onClose={() => {
+            setShowEditMovementModal(false);
+            setSelectedMovement(null);
+          }}
+          onSuccess={() => {
+            fetchStockMovements();
+            setShowEditMovementModal(false);
+            setSelectedMovement(null);
           }}
         />
       )}
@@ -895,15 +973,59 @@ function EditIngredientModal({ ingredient, onClose, onSuccess }: {
 }
 
 // Stock Movements View Component
-function StockMovementsView({ stockMovements, ingredients }: {
+function StockMovementsView({ stockMovements, ingredients, typeFilter, onTypeFilterChange, onEditMovement }: {
   stockMovements: StockMovement[];
   ingredients: Ingredient[];
+  typeFilter: string;
+  onTypeFilterChange: (filter: string) => void;
+  onEditMovement: (movement: StockMovement) => void;
 }) {
+  // Filter movements by type
+  const filteredMovements = React.useMemo(() => {
+    if (typeFilter === 'all') return stockMovements;
+    return stockMovements.filter(movement => movement.type === typeFilter);
+  }, [stockMovements, typeFilter]);
+
+  // Calculate summary for filtered movements
+  const summary = React.useMemo(() => {
+    const ingredientSummary: { [key: string]: { name: string; unit: string; totalQuantity: number; totalCost: number; costPerUnit: number; } } = {};
+    let grandTotalCost = 0;
+
+    filteredMovements.forEach(movement => {
+      const ingredientId = typeof movement.ingredientId === 'string' ? movement.ingredientId : (movement.ingredientId as any)?._id;
+      const ingredient = ingredients.find(ing => ing._id === ingredientId);
+
+      if (ingredient) {
+        const quantity = Math.abs(movement.quantity);
+        const cost = quantity * ingredient.costPerUnit;
+
+        if (!ingredientSummary[ingredientId]) {
+          ingredientSummary[ingredientId] = {
+            name: ingredient.name,
+            unit: ingredient.unit,
+            totalQuantity: 0,
+            totalCost: 0,
+            costPerUnit: ingredient.costPerUnit
+          };
+        }
+
+        ingredientSummary[ingredientId].totalQuantity += quantity;
+        ingredientSummary[ingredientId].totalCost += cost;
+        grandTotalCost += cost;
+      }
+    });
+
+    return {
+      ingredientSummary: Object.values(ingredientSummary).sort((a, b) => b.totalCost - a.totalCost),
+      grandTotalCost
+    };
+  }, [filteredMovements, ingredients]);
+
   // จัดกลุ่ม movements ตาม saleId และ timestamp ใกล้เคียงกัน
   const groupedMovements = React.useMemo(() => {
     const groups: { [key: string]: StockMovement[] } = {};
 
-    stockMovements.forEach(movement => {
+    filteredMovements.forEach(movement => {
       let groupKey = '';
 
       if (movement.saleId) {
@@ -932,7 +1054,7 @@ function StockMovementsView({ stockMovements, ingredients }: {
         )
       }))
       .sort((a, b) => new Date(b.latestTime).getTime() - new Date(a.latestTime).getTime());
-  }, [stockMovements]);
+  }, [filteredMovements]);
 
   const getIngredientName = (ingredientId: string | any, originalName?: string) => {
     const id = typeof ingredientId === 'string' ? ingredientId : ingredientId?._id || ingredientId;
@@ -947,16 +1069,75 @@ function StockMovementsView({ stockMovements, ingredients }: {
   };
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full">
-        <thead>
-          <tr className="border-b border-gray-100">
-            <th className="text-left py-3 text-xs font-light text-gray-400 tracking-wider uppercase">วัน/เวลา</th>
-            <th className="text-left py-3 text-xs font-light text-gray-400 tracking-wider uppercase">ประเภท/เหตุผล</th>
-            <th className="text-left py-3 text-xs font-light text-gray-400 tracking-wider uppercase">วัตถุดิบที่เกี่ยวข้อง</th>
-            <th className="text-right py-3 text-xs font-light text-gray-400 tracking-wider uppercase">ต้นทุนรวม</th>
-          </tr>
-        </thead>
+    <div className="space-y-6">
+      {/* Filter Section */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <label className="text-sm font-light text-gray-600">กรองตามประเภท:</label>
+          <select
+            value={typeFilter}
+            onChange={(e) => onTypeFilterChange(e.target.value)}
+            className="px-3 py-2 border border-gray-200 text-sm font-light text-black bg-white hover:border-gray-300 focus:border-black focus:outline-none transition-colors"
+          >
+            <option value="all">ทั้งหมด</option>
+            <option value="purchase">ซื้อเข้า</option>
+            <option value="use">ใช้ไป</option>
+            <option value="waste">สูญเสีย</option>
+            <option value="adjustment">ปรับปรุง</option>
+          </select>
+        </div>
+        <div className="text-sm font-light text-gray-500">
+          แสดง {filteredMovements.length} รายการ
+        </div>
+      </div>
+
+      {/* Summary Section */}
+      {typeFilter !== 'all' && summary.ingredientSummary.length > 0 && (
+        <div className="border border-gray-100 p-6 bg-gray-50">
+          <h3 className="text-lg font-light text-black mb-4">สรุปข้อมูล</h3>
+
+          {/* Ingredient Summary */}
+          <div className="space-y-3 mb-6">
+            <h4 className="text-sm font-light text-gray-600 uppercase tracking-wider">สรุปตามวัตถุดิบ</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {summary.ingredientSummary.map((ingredient, index) => (
+                <div key={index} className="bg-white p-4 border border-gray-100">
+                  <div className="text-sm font-light text-black mb-2">{ingredient.name}</div>
+                  <div className="text-xs font-light text-gray-500 mb-1">
+                    จำนวน: {ingredient.totalQuantity.toFixed(2)} {ingredient.unit}
+                  </div>
+                  <div className="text-sm font-light text-black">
+                    ฿{ingredient.totalCost.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Total Summary */}
+          <div className="border-t border-gray-200 pt-4">
+            <div className="flex justify-between items-center">
+              <span className="text-lg font-light text-black">ต้นทุนรวมทั้งหมด</span>
+              <span className="text-xl font-light text-black">
+                ฿{summary.grandTotalCost.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Movements Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[800px]">
+          <thead>
+            <tr className="border-b border-gray-100">
+              <th className="text-left py-3 text-xs font-light text-gray-400 tracking-wider uppercase w-32 min-w-[120px]">วัน/เวลา</th>
+              <th className="text-left py-3 text-xs font-light text-gray-400 tracking-wider uppercase w-40 min-w-[150px]">ประเภท/เหตุผล</th>
+              <th className="text-left py-3 text-xs font-light text-gray-400 tracking-wider uppercase min-w-[300px]">วัตถุดิบที่เกี่ยวข้อง</th>
+              <th className="text-right py-3 text-xs font-light text-gray-400 tracking-wider uppercase w-32 min-w-[120px]">ต้นทุนรวม</th>
+              <th className="text-center py-3 text-xs font-light text-gray-400 tracking-wider uppercase w-20 min-w-[80px]">จัดการ</th>
+            </tr>
+          </thead>
         <tbody>
           {groupedMovements.map(({ key, movements }) => {
             const firstMovement = movements[0];
@@ -981,7 +1162,7 @@ function StockMovementsView({ stockMovements, ingredients }: {
 
             return (
               <tr key={key} className="border-b border-gray-50 hover:bg-gray-25 transition-colors">
-                <td className="py-4">
+                <td className="py-4 w-32 min-w-[120px]">
                   <div className="text-sm font-light text-gray-600">
                     {new Date(firstMovement.createdAt).toLocaleDateString('th-TH', {
                       month: 'short',
@@ -991,20 +1172,20 @@ function StockMovementsView({ stockMovements, ingredients }: {
                     })}
                   </div>
                 </td>
-                <td className="py-4">
+                <td className="py-4 w-40 min-w-[150px]">
                   <div>
-                    <div className="font-light text-black tracking-wide">
+                    <div className="font-light text-black tracking-wide text-sm">
                       {firstMovement.type === 'purchase' && 'ซื้อเข้า'}
                       {firstMovement.type === 'use' && (firstMovement.saleId ? 'ขายเมนู' : 'ใช้ไป')}
                       {firstMovement.type === 'waste' && 'สูญเสีย'}
                     </div>
                     {firstMovement.reason && !firstMovement.saleId && (
-                      <div className="text-xs font-light text-gray-500 mt-1">
+                      <div className="text-xs font-light text-gray-500 mt-1 break-words">
                         {firstMovement.reason}
                       </div>
                     )}
                     {firstMovement.saleId && (
-                      <div className="text-xs font-light text-gray-400 mt-1">
+                      <div className="text-xs font-light text-gray-400 mt-1 break-words">
                         {(() => {
                           // Collect unique menu items with quantities from reasons
                           const menuItems = [...new Set(movements.map(m => m.reason?.replace('ขาย ', '')).filter(Boolean))];
@@ -1014,18 +1195,16 @@ function StockMovementsView({ stockMovements, ingredients }: {
                     )}
                   </div>
                 </td>
-                <td className="py-4">
-                  <div className="space-y-1">
-                    {movements.map((movement, idx) => (
-                      <div key={idx} className="text-sm font-light text-gray-600">
-                        {getIngredientName(movement.ingredientId, movement.ingredientName)}: {Math.abs(movement.quantity).toFixed(2)} {getIngredientUnit(movement.ingredientId) || movement.unit}
-                      </div>
-                    ))}
+                <td className="py-4 min-w-[300px]">
+                  <div className="text-sm font-light text-gray-600 break-words leading-relaxed">
+                    {movements.map((movement) =>
+                      `${getIngredientName(movement.ingredientId, movement.ingredientName)}: ${Math.abs(movement.quantity).toFixed(2)} ${getIngredientUnit(movement.ingredientId) || movement.unit}`
+                    ).join(', ')}
                   </div>
                 </td>
-                <td className="py-4 text-right">
+                <td className="py-4 text-right w-32 min-w-[120px]">
                   {totalCost > 0 ? (
-                    <div className="font-light text-black">
+                    <div className="font-light text-black text-sm">
                       ฿{totalCost.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   ) : (
@@ -1034,43 +1213,82 @@ function StockMovementsView({ stockMovements, ingredients }: {
                     </div>
                   )}
                   {firstMovement.saleId && firstMovement.saleQuantity && firstMovement.saleAmount && (
-                    <div className="text-xs font-light text-gray-400 mt-1">
+                    <div className="text-xs font-light text-gray-400 mt-1 break-words">
                       ขาย {firstMovement.saleQuantity} จาน - ฿{firstMovement.saleAmount.toLocaleString()}
                     </div>
+                  )}
+                </td>
+                <td className="py-4 text-center w-20 min-w-[80px]">
+                  {movements.length === 1 && !firstMovement.saleId && (
+                    <button
+                      onClick={() => onEditMovement(firstMovement)}
+                      className="px-2 py-1 text-xs font-light text-gray-600 hover:text-black border border-gray-200 hover:border-gray-300 transition-colors whitespace-nowrap"
+                    >
+                      แก้ไข
+                    </button>
                   )}
                 </td>
               </tr>
             );
           })}
         </tbody>
-      </table>
+        </table>
+
+        {filteredMovements.length === 0 && (
+          <div className="text-center py-12">
+            <div className="text-lg font-light text-gray-800 mb-2">ไม่พบข้อมูลการเคลื่อนไหวสต็อก</div>
+            <div className="text-sm font-light text-gray-500">ลองเปลี่ยนตัวกรองเพื่อดูข้อมูลประเภทอื่น</div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 // Summary Cards Component
-function SummaryCards({ getSummaryData }: {
+function SummaryCards({ getSummaryData, isLoading }: {
   getSummaryData: () => { totalInventoryValue: number; totalUsageValue: number; totalPurchaseValue: number; };
+  isLoading: boolean;
 }) {
-  const { totalInventoryValue, totalUsageValue, totalPurchaseValue } = getSummaryData();
-
   const cards = [
     {
       title: 'มูลค่ารวมทั้งหมด',
-      value: totalInventoryValue,
       subtitle: 'วัตถุดิบที่เรามี'
     },
     {
       title: 'มูลค่าที่ใช้ไป',
-      value: totalUsageValue,
       subtitle: 'ทั้งหมด'
     },
     {
       title: 'มูลค่าที่ซื้อเข้า',
-      value: totalPurchaseValue,
       subtitle: 'ทั้งหมด'
     }
   ];
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {cards.map((card, index) => (
+          <div key={index} className="border-b border-gray-100 pb-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs font-light text-gray-400 tracking-wider uppercase">
+                {card.title}
+              </div>
+              <div className="text-xs font-light text-gray-400">
+                {card.subtitle}
+              </div>
+            </div>
+            <div className="text-3xl font-light text-black tracking-wider">
+              <div className="h-8 w-24 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  const { totalInventoryValue, totalUsageValue, totalPurchaseValue } = getSummaryData();
+  const values = [totalInventoryValue, totalUsageValue, totalPurchaseValue];
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1085,7 +1303,7 @@ function SummaryCards({ getSummaryData }: {
             </div>
           </div>
           <div className="text-3xl font-light text-black tracking-wider">
-            ฿{card.value.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ฿{values[index].toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
       ))}
@@ -1345,6 +1563,238 @@ function StockManagementModal({ ingredient, onClose, onSuccess }: {
               onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
               placeholder="เหตุผลของการเคลื่อนไหวสต็อก"
               className="border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black"
+            />
+          </div>
+        </form>
+      </div>
+    </Modal>
+  );
+}
+
+// Edit Movement Modal Component
+interface EditMovementModalProps {
+  movement: StockMovement;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function EditMovementModal({ movement, onClose, onSuccess }: EditMovementModalProps) {
+  const [movementData, setMovementData] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(false);
+  const [fetchingData, setFetchingData] = React.useState(true);
+  const [formData, setFormData] = React.useState({
+    quantity: Math.abs(movement.quantity).toString(),
+    reason: movement.reason || '',
+    createdAt: new Date(movement.createdAt).toISOString().slice(0, 16)
+  });
+
+  React.useEffect(() => {
+    const fetchMovementData = async () => {
+      try {
+        const response = await fetch(`/api/stock-movements/${movement._id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setMovementData(data);
+        }
+      } catch (error) {
+        console.error('Error fetching movement data:', error);
+      } finally {
+        setFetchingData(false);
+      }
+    };
+
+    fetchMovementData();
+  }, [movement._id]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const updateData = {
+        quantity: movement.type === 'purchase' || movement.type === 'adjustment'
+          ? parseFloat(formData.quantity)
+          : -parseFloat(formData.quantity),
+        reason: formData.reason || undefined,
+        createdAt: formData.createdAt
+      };
+
+      console.log('Sending update data:', updateData);
+      console.log('Original createdAt:', movement.createdAt);
+      console.log('New createdAt:', formData.createdAt);
+
+      const response = await fetch(`/api/stock-movements/${movement._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
+      });
+
+      if (response.ok) {
+        onSuccess();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'เกิดข้อผิดพลาด');
+      }
+    } catch (error) {
+      console.error('Error updating movement:', error);
+      alert('เกิดข้อผิดพลาดในการแก้ไข');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const actions: ModalActionButton[] = [
+    {
+      label: 'ยกเลิก',
+      onClick: onClose,
+      variant: 'secondary',
+      disabled: loading
+    },
+    {
+      label: loading ? 'กำลังบันทึก...' : 'บันทึก',
+      onClick: () => {
+        const form = document.querySelector('form');
+        if (form) {
+          form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+        }
+      },
+      variant: 'primary',
+      disabled: loading,
+      loading: loading
+    }
+  ];
+
+  if (fetchingData) {
+    return (
+      <Modal
+        isOpen={true}
+        onClose={onClose}
+        title="แก้ไขการเคลื่อนไหวสต็อก"
+        size="md"
+        actions={actions}
+      >
+        <div className="p-8 text-center">
+          <div className="text-sm font-light text-gray-500">กำลังโหลดข้อมูล...</div>
+        </div>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title="แก้ไขการเคลื่อนไหวสต็อก"
+      size="md"
+      actions={actions}
+    >
+      <div className="p-8 space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Movement Info */}
+          <div className="bg-gray-50 p-4 rounded">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">ประเภท</div>
+                <div className="font-light text-black">
+                  {movement.type === 'purchase' && 'ซื้อเข้า'}
+                  {movement.type === 'use' && 'ใช้ไป'}
+                  {movement.type === 'waste' && 'สูญเสีย'}
+                  {movement.type === 'adjustment' && 'ปรับปรุง'}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">วัตถุดิบ</div>
+                <div className="font-light text-black">{movementData?.ingredient?.name || movement.ingredientName}</div>
+                {movementData?.ingredient?.currentCostPerUnit && (
+                  <div className="text-xs font-light text-gray-500 mt-1">
+                    ต้นทุนปัจจุบัน: ฿{movementData.ingredient.currentCostPerUnit.toFixed(2)}/{movementData.ingredient.unit}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Original vs New Cost Comparison */}
+            {movement.type === 'purchase' && movementData?.ingredient?.currentCostPerUnit && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">ต้นทุนรวมเดิม</div>
+                    <div className="font-light text-gray-600">
+                      ฿{((movement.cost || 0) * Math.abs(movement.quantity)).toFixed(2)}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      {Math.abs(movement.quantity).toFixed(2)} × ฿{(movement.cost || 0).toFixed(2)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">ต้นทุนรวมใหม่</div>
+                    <div className="font-light text-black">
+                      ฿{(parseFloat(formData.quantity || '0') * movementData.ingredient.currentCostPerUnit).toFixed(2)}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      {parseFloat(formData.quantity || '0').toFixed(2)} × ฿{movementData.ingredient.currentCostPerUnit.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Warning if amounts don't match */}
+                {Math.abs(
+                  ((movement.cost || 0) * Math.abs(movement.quantity)) -
+                  (parseFloat(formData.quantity || '0') * movementData.ingredient.currentCostPerUnit)
+                ) > 0.01 && (
+                  <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                    <div className="text-xs font-light text-yellow-700">
+                      ⚠️ ยอดไม่ตรงกับต้นทุนปัจจุบัน - กรุณาตรวจสอบความถูกต้อง
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Quantity */}
+          <div>
+            <label className="block text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">
+              จำนวน ({movementData?.ingredient?.unit || ''})
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.quantity}
+              onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+              className="w-full border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none"
+              required
+              min="0"
+            />
+          </div>
+
+          {/* Date/Time */}
+          <div>
+            <label className="block text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">
+              วันเวลา
+            </label>
+            <input
+              type="datetime-local"
+              value={formData.createdAt}
+              onChange={(e) => setFormData({ ...formData, createdAt: e.target.value })}
+              className="w-full border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none"
+              required
+            />
+          </div>
+
+          {/* Reason */}
+          <div>
+            <label className="block text-xs font-light text-gray-400 mb-2 tracking-wider uppercase">
+              เหตุผล
+            </label>
+            <input
+              type="text"
+              value={formData.reason}
+              onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+              className="w-full border-0 border-b border-gray-200 rounded-none bg-transparent text-sm font-light focus:border-black focus:outline-none"
+              placeholder="เหตุผลของการเคลื่อนไหวสต็อก"
             />
           </div>
         </form>

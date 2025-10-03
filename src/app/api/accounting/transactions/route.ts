@@ -38,8 +38,7 @@ export async function GET(request: NextRequest) {
 
     const transactions = await AccountingTransaction.find(query)
       .populate('boothId', 'name')
-      .sort({ date: -1 })
-      .limit(1000); // จำกัดไม่เกิน 1000 รายการ
+      .sort({ date: -1 });
 
     // Calculate summary
     const summary = transactions.reduce((acc, transaction) => {

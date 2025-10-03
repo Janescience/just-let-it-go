@@ -175,6 +175,7 @@ export async function POST(request: NextRequest) {
             unit: ingredient?.unit,
             type: 'use',
             quantity: -totalUsed,
+            cost: ingredient?.costPerUnit, // เพิ่ม cost จาก costPerUnit
             reason: `ขาย ${menuItem.name} x ${item.quantity}`,
             boothId,
             saleId: sale._id,
@@ -195,7 +196,7 @@ export async function POST(request: NextRequest) {
               type: 'expense',
               category: 'sale_cost',
               amount: ingredient.costPerUnit * totalUsed,
-              description: `การหักต้นทุนวัตถุดิบ - รายการที่ ${sale._id}`,
+              description: `การหักต้นทุนวัตถุดิบ - ${menuItem.name} x ${item.quantity} (${ingredient.name} - ${totalUsed})`,
               boothId: boothId,
               relatedId: sale._id,
               relatedType: 'sale',
@@ -420,8 +421,11 @@ async function processBackgroundTasks(
                 // Record stock movement
                 const stockMovement = new StockMovement({
                   ingredientId,
+                  ingredientName: ingredient.name,
+                  unit: ingredient.unit,
                   type: 'use',
                   quantity: -totalUsed,
+                  cost: ingredient.costPerUnit, // เพิ่ม cost จาก costPerUnit
                   reason: `ขาย ${menuItem.name} จำนวน ${saleItem.quantity}`,
                   boothId,
                   saleId: sale._id
