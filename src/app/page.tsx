@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, ComposedChart, LabelList, CartesianGrid, Legend } from 'recharts';
 import { Calendar, Store, TrendingUp, TrendingDown, AlertTriangle, AlertCircle, Info, Clock, Users, Utensils } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -209,13 +209,8 @@ export default function HomePage() {
     }
   }, [isMobile, boothSalesData, boothProfitData]);
 
-  useEffect(() => {
-    if (onboardingStatus?.allCompleted && boothDatesData.length > 0) {
-      fetchAllBoothSalesData();
-      fetchAllBoothProfitData();
-      fetchAllBoothDailySummary();
-    }
-  }, [selectedDates, onboardingStatus, boothDatesData]);
+  // Stabilize selectedDates object to prevent unnecessary re-renders
+  const stableSelectedDates = useMemo(() => selectedDates, [JSON.stringify(selectedDates)]);
 
   const fetchData = async () => {
     try {
@@ -261,12 +256,12 @@ export default function HomePage() {
     }
   };
 
-  const fetchAllBoothSalesData = async () => {
+  const fetchAllBoothSalesData = useCallback(async () => {
     try {
       const allBoothData: BoothSalesData[] = [];
 
       for (const booth of boothDatesData) {
-        const selectedDate = selectedDates[booth.boothId] || 'today';
+        const selectedDate = stableSelectedDates[booth.boothId] || 'today';
         const params = new URLSearchParams();
         params.append('boothId', booth.boothId);
         if (selectedDate !== 'all') {
@@ -324,7 +319,7 @@ export default function HomePage() {
       // Clear all loading states on error
       setLoadingBooths({});
     }
-  };
+  }, [boothDatesData, stableSelectedDates]);
 
   const fetchTopPerformers = async () => {
     setLoadingTopPerformers(true);
@@ -406,12 +401,12 @@ export default function HomePage() {
     }
   };
 
-  const fetchAllBoothProfitData = async () => {
+  const fetchAllBoothProfitData = useCallback(async () => {
     try {
       const allBoothData: BoothProfitData[] = [];
 
       for (const booth of boothDatesData) {
-        const selectedDate = selectedDates[booth.boothId] || 'today';
+        const selectedDate = stableSelectedDates[booth.boothId] || 'today';
         const params = new URLSearchParams();
         params.append('boothId', booth.boothId);
         if (selectedDate !== 'all') {
@@ -471,9 +466,9 @@ export default function HomePage() {
       // Clear all loading states on error
       setLoadingBooths({});
     }
-  };
+  }, [boothDatesData, stableSelectedDates]);
 
-  const fetchAllBoothDailySummary = async () => {
+  const fetchAllBoothDailySummary = useCallback(async () => {
     try {
       const allBoothDaily: {[boothId: string]: DailySummary[]} = {};
 
@@ -491,8 +486,16 @@ export default function HomePage() {
     } catch (error) {
       console.error('Error fetching booth daily summary:', error);
     }
-  };
+  }, [boothDatesData]);
 
+  // Main effect to trigger data fetching when dependencies change
+  useEffect(() => {
+    if (onboardingStatus?.allCompleted && boothDatesData.length > 0) {
+      fetchAllBoothSalesData();
+      fetchAllBoothProfitData();
+      fetchAllBoothDailySummary();
+    }
+  }, [onboardingStatus, boothDatesData, fetchAllBoothSalesData, fetchAllBoothProfitData, fetchAllBoothDailySummary]);
 
   const handleDateChange = (boothId: string, date: string) => {
     setLoadingBooths(prev => ({

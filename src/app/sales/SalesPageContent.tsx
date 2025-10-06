@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Store , Clock , MapPin} from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -84,7 +84,7 @@ export default function SalesPageContent() {
   }, [searchParams]);
 
   // Fetch menu items
-  const fetchMenuItems = async () => {
+  const fetchMenuItems = useCallback(async () => {
     try {
       const url = selectedBoothId
         ? `/api/menu-items?boothId=${selectedBoothId}`
@@ -136,10 +136,10 @@ export default function SalesPageContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedBoothId]);
 
   // Fetch sales data for history and summary tabs
-  const fetchSalesData = async () => {
+  const fetchSalesData = useCallback(async () => {
     try {
       const params = new URLSearchParams({
         page: currentPage.toString(),
@@ -162,10 +162,10 @@ export default function SalesPageContent() {
     } catch (error) {
       console.error('❌ Error fetching sales data:', error);
     }
-  };
+  }, [currentPage, selectedDate, selectedBoothId]);
 
   // Fetch brand info
-  const fetchBrandInfo = async () => {
+  const fetchBrandInfo = useCallback(async () => {
     try {
       const response = await fetch('/api/brands', {
         credentials: 'include',
@@ -178,9 +178,9 @@ export default function SalesPageContent() {
     } catch (error) {
       console.error('Error fetching brand info:', error);
     }
-  };
+  }, []);
 
-  const setupEventSource = () => {
+  const setupEventSource = useCallback(() => {
     const eventSource = new EventSource('/api/events/menu');
 
     eventSource.onmessage = (event) => {
@@ -200,7 +200,7 @@ export default function SalesPageContent() {
     };
 
     return eventSource;
-  };
+  }, [fetchMenuItems]);
 
   useEffect(() => {
     if (user) {
@@ -214,20 +214,20 @@ export default function SalesPageContent() {
         eventSource.close();
       };
     }
-  }, [user, selectedBoothId]);
+  }, [user, selectedBoothId, fetchMenuItems, fetchBrandInfo, setupEventSource]);
 
   useEffect(() => {
     if (user) {
       fetchSalesData();
     }
-  }, [currentPage, selectedDate, activeTab]);
+  }, [user, currentPage, selectedDate, activeTab, fetchSalesData]);
 
   // Initial data fetch
   useEffect(() => {
     if (user && selectedBoothId) {
       fetchSalesData();
     }
-  }, [user, selectedBoothId]);
+  }, [user, selectedBoothId, fetchSalesData]);
 
   const addToCart = (menuItem: MenuItem, quantity: number = 1) => {
     setCart(prevCart => {

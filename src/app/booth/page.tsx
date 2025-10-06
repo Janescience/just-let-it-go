@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, RefreshCw, MapPin, ChevronDown, ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -152,29 +152,6 @@ export default function BoothPage() {
   );
 
 
-  useEffect(() => {
-    if (user && booths.length === 0 && !loading.booths) {
-      fetchBooths();
-    }
-  }, [user, booths.length, loading.booths]);
-
-  useEffect(() => {
-    if (booths.length > 0 && Object.keys(boothsStats).length === 0 && !loading.stats) {
-      // Defer stats loading to make page load faster
-      setTimeout(() => {
-        fetchBoothsStats();
-      }, 100);
-    }
-  }, [booths.length, boothsStats, loading.stats]);
-
-  useEffect(() => {
-    if (booths.length > 0 && salesActivities.length === 0 && !loading.activities) {
-      // Defer activities loading even more
-      setTimeout(() => {
-        fetchSalesActivities();
-      }, 300);
-    }
-  }, [booths.length, salesActivities.length, loading.activities]);
 
   // Listen for booth stats updates from sales page
   useEffect(() => {
@@ -267,7 +244,7 @@ export default function BoothPage() {
     }, 1000); // Small delay to ensure sale is processed
   };
 
-  const fetchSalesActivities = async () => {
+  const fetchSalesActivities = useCallback(async () => {
     setLoading(prev => ({ ...prev, activities: true }));
     try {
       const response = await fetch('/api/sales');
@@ -296,7 +273,7 @@ export default function BoothPage() {
     } finally {
       setLoading(prev => ({ ...prev, activities: false }));
     }
-  };
+  }, []);
 
   const handleMarkAllAsRead = () => {
     setSalesActivities(prev =>
@@ -305,7 +282,7 @@ export default function BoothPage() {
     setNewSalesCount(0);
   };
 
-  const fetchBooths = async () => {
+  const fetchBooths = useCallback(async () => {
     setLoading(prev => ({ ...prev, booths: true }));
     try {
       const response = await fetch('/api/booths');
@@ -318,9 +295,9 @@ export default function BoothPage() {
     } finally {
       setLoading(prev => ({ ...prev, booths: false }));
     }
-  };
+  }, []);
 
-  const fetchBoothsStats = async () => {
+  const fetchBoothsStats = useCallback(async () => {
     setLoading(prev => ({ ...prev, stats: true }));
     try {
       const statsPromises = booths.map(async (booth) => {
@@ -348,7 +325,32 @@ export default function BoothPage() {
     } finally {
       setLoading(prev => ({ ...prev, stats: false }));
     }
-  };
+  }, [booths]);
+
+  // Main data fetching effects - placed after all function definitions
+  useEffect(() => {
+    if (user && booths.length === 0 && !loading.booths) {
+      fetchBooths();
+    }
+  }, [user, booths.length, loading.booths, fetchBooths]);
+
+  useEffect(() => {
+    if (booths.length > 0 && Object.keys(boothsStats).length === 0 && !loading.stats) {
+      // Defer stats loading to make page load faster
+      setTimeout(() => {
+        fetchBoothsStats();
+      }, 100);
+    }
+  }, [booths.length, boothsStats, loading.stats, fetchBoothsStats]);
+
+  useEffect(() => {
+    if (booths.length > 0 && salesActivities.length === 0 && !loading.activities) {
+      // Defer activities loading even more
+      setTimeout(() => {
+        fetchSalesActivities();
+      }, 300);
+    }
+  }, [booths.length, salesActivities.length, loading.activities, fetchSalesActivities]);
 
   const activeBooths = booths.filter(booth => booth.isActive);
   const inactiveBooths = booths.filter(booth => !booth.isActive);

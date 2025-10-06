@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Package, BarChart3, Edit, History, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/Input';
@@ -27,21 +27,25 @@ export default function InventoryPage() {
   const [showEditMovementModal, setShowEditMovementModal] = useState(false);
   const [selectedMovement, setSelectedMovement] = useState<StockMovement | null>(null);
 
-  useEffect(() => {
-    if (user && ingredients.length === 0 && !loading.ingredients) {
-      // Load ingredients first
-      fetchIngredients();
-    }
-  }, [user, ingredients.length, loading.ingredients]);
+  // Use refs to track if data has been fetched to prevent infinite loops
+  const ingredientsFetched = useRef(false);
+  const stockMovementsFetched = useRef(false);
 
   useEffect(() => {
-    if (user && ingredients.length > 0 && stockMovements.length === 0 && !loading.stockMovements) {
-      // Load stock movements after ingredients are loaded
+    if (user && !ingredientsFetched.current && !loading.ingredients) {
+      ingredientsFetched.current = true;
+      fetchIngredients();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (ingredients.length > 0 && !stockMovementsFetched.current && !loading.stockMovements) {
+      stockMovementsFetched.current = true;
       setTimeout(() => {
         fetchStockMovements();
       }, 100);
     }
-  }, [user, ingredients.length, stockMovements.length, loading.stockMovements]);
+  }, [ingredients.length]);
 
   const fetchIngredients = async () => {
     setLoading(prev => ({ ...prev, ingredients: true }));
@@ -71,6 +75,24 @@ export default function InventoryPage() {
     } finally {
       setLoading(prev => ({ ...prev, stockMovements: false }));
     }
+  };
+
+  // Functions for manual refetch (reset refs to allow refetch)
+  const refetchIngredients = () => {
+    ingredientsFetched.current = false;
+    fetchIngredients();
+  };
+
+  const refetchStockMovements = () => {
+    stockMovementsFetched.current = false;
+    fetchStockMovements();
+  };
+
+  const refetchBoth = () => {
+    ingredientsFetched.current = false;
+    stockMovementsFetched.current = false;
+    fetchIngredients();
+    // StockMovements will be fetched automatically after ingredients load
   };
 
   const filteredIngredients = ingredients
@@ -538,7 +560,7 @@ export default function InventoryPage() {
         <AddIngredientModal
           onClose={() => setShowAddModal(false)}
           onSuccess={() => {
-            fetchIngredients();
+            refetchIngredients();
             setShowAddModal(false);
           }}
         />
@@ -553,7 +575,7 @@ export default function InventoryPage() {
             setSelectedIngredient(null);
           }}
           onSuccess={() => {
-            fetchIngredients();
+            refetchIngredients();
             setShowEditModal(false);
             setSelectedIngredient(null);
           }}
@@ -569,8 +591,7 @@ export default function InventoryPage() {
             setSelectedIngredient(null);
           }}
           onSuccess={() => {
-            fetchIngredients();
-            fetchStockMovements();
+            refetchBoth();
             setShowStockModal(false);
             setSelectedIngredient(null);
           }}
