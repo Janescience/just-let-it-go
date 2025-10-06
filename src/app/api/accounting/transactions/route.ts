@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { verifyToken } from '@/utils/auth';
 import AccountingTransaction from '@/lib/models/AccountingTransaction';
+import Booth from '@/lib/models/Booth';
 
 export async function GET(request: NextRequest) {
   try {
