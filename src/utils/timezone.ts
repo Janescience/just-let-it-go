@@ -87,6 +87,36 @@ export function formatDateISO(date: Date | string): string {
 }
 
 /**
+ * แสดงวันเวลาจาก DB โดยตรง (DB เก็บเวลาไทยแล้ว ไม่ต้องแปลง)
+ * ใช้สำหรับแสดง createdAt, updatedAt จาก DB
+ * @param date - Date object หรือ string
+ * @returns วันที่และเวลาในรูปแบบ DD/MM/YYYY HH:mm
+ */
+export function displayDateTime(date: Date | string): string {
+  const d = new Date(date);
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const year = d.getUTCFullYear();
+  const hours = String(d.getUTCHours()).padStart(2, '0');
+  const minutes = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
+}
+
+/**
+ * แสดงวันที่จาก DB โดยตรง (DB เก็บเวลาไทยแล้ว ไม่ต้องแปลง)
+ * ใช้สำหรับแสดง createdAt, updatedAt จาก DB
+ * @param date - Date object หรือ string
+ * @returns วันที่ในรูปแบบ DD/MM/YYYY
+ */
+export function displayDate(date: Date | string): string {
+  const d = new Date(date);
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const year = d.getUTCFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+/**
  * Migration utility: แปลง UTC เป็น Thailand time สำหรับข้อมูลเก่า
  */
 export function migrateUtcToThailand(utcDate: Date): Date {

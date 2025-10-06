@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, RefreshCw, MapPin, ChevronDown, ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -145,6 +145,11 @@ export default function BoothPage() {
   const [newSalesCount, setNewSalesCount] = useState(0);
   const [showInactiveBooths, setShowInactiveBooths] = useState(false);
 
+  // Use refs to track if data has been fetched to prevent infinite loops
+  const boothsFetched = useRef(false);
+  const statsFetched = useRef(false);
+  const activitiesFetched = useRef(false);
+
   // Real-time connection - use user.brandId which is always available
   const { connected, subscribe, unsubscribe } = useRealtime(
     user?.brandId || '',
@@ -153,18 +158,6 @@ export default function BoothPage() {
 
 
 
-  // Listen for booth stats updates from sales page
-  useEffect(() => {
-    const handleBoothStatsUpdate = () => {
-      fetchBoothsStats();
-    };
-
-    window.addEventListener('booth-stats-update', handleBoothStatsUpdate);
-
-    return () => {
-      window.removeEventListener('booth-stats-update', handleBoothStatsUpdate);
-    };
-  }, []);
 
   // Real-time sale event listener
   useEffect(() => {
@@ -226,21 +219,10 @@ export default function BoothPage() {
     };
   }, [connected, subscribe, unsubscribe, booths]);
 
-  // Auto-refresh stats every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (booths.length > 0) {
-        fetchBoothsStats();
-      }
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [booths]);
-
   const triggerStatsUpdate = () => {
     setTimeout(() => {
-      fetchBoothsStats();
-      fetchSalesActivities(); // Also refresh activities
+      refetchStats();
+      refetchActivities(); // Also refresh activities
     }, 1000); // Small delay to ensure sale is processed
   };
 
@@ -327,30 +309,86 @@ export default function BoothPage() {
     }
   }, [booths]);
 
+  // Refetch functions that reset the refs
+  const refetchBooths = useCallback(() => {
+    boothsFetched.current = false;
+    fetchBooths();
+  }, [fetchBooths]);
+
+  const refetchStats = useCallback(() => {
+    statsFetched.current = false;
+    fetchBoothsStats();
+  }, [fetchBoothsStats]);
+
+  const refetchActivities = useCallback(() => {
+    activitiesFetched.current = false;
+    fetchSalesActivities();
+  }, [fetchSalesActivities]);
+
+  const refetchAll = useCallback(() => {
+    boothsFetched.current = false;
+    statsFetched.current = false;
+    activitiesFetched.current = false;
+    fetchBooths();
+    setTimeout(() => {
+      fetchBoothsStats();
+    }, 100);
+    setTimeout(() => {
+      fetchSalesActivities();
+    }, 300);
+  }, [fetchBooths, fetchBoothsStats, fetchSalesActivities]);
+
   // Main data fetching effects - placed after all function definitions
   useEffect(() => {
-    if (user && booths.length === 0 && !loading.booths) {
+    if (user && !boothsFetched.current && !loading.booths) {
+      boothsFetched.current = true;
       fetchBooths();
     }
-  }, [user, booths.length, loading.booths, fetchBooths]);
+  }, [user]);
 
   useEffect(() => {
-    if (booths.length > 0 && Object.keys(boothsStats).length === 0 && !loading.stats) {
+    if (booths.length > 0 && !statsFetched.current && !loading.stats) {
+      statsFetched.current = true;
       // Defer stats loading to make page load faster
       setTimeout(() => {
         fetchBoothsStats();
       }, 100);
     }
-  }, [booths.length, boothsStats, loading.stats, fetchBoothsStats]);
+  }, [booths.length]);
 
   useEffect(() => {
-    if (booths.length > 0 && salesActivities.length === 0 && !loading.activities) {
+    if (booths.length > 0 && !activitiesFetched.current && !loading.activities) {
+      activitiesFetched.current = true;
       // Defer activities loading even more
       setTimeout(() => {
         fetchSalesActivities();
       }, 300);
     }
-  }, [booths.length, salesActivities.length, loading.activities, fetchSalesActivities]);
+  }, [booths.length]);
+
+  // Listen for booth stats updates from sales page
+  useEffect(() => {
+    const handleBoothStatsUpdate = () => {
+      refetchStats();
+    };
+
+    window.addEventListener('booth-stats-update', handleBoothStatsUpdate);
+
+    return () => {
+      window.removeEventListener('booth-stats-update', handleBoothStatsUpdate);
+    };
+  }, [refetchStats]);
+
+  // Auto-refresh stats every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (booths.length > 0) {
+        refetchStats();
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [booths, refetchStats]);
 
   const activeBooths = booths.filter(booth => booth.isActive);
   const inactiveBooths = booths.filter(booth => !booth.isActive);
@@ -407,7 +445,7 @@ export default function BoothPage() {
 
           <div className="flex gap-2 text-right justify-end">
             <button
-              onClick={() => fetchBoothsStats()}
+              onClick={() => refetchStats()}
               className="px-6 py-2 border border-gray-200 text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide"
               disabled={loading.stats}
             >

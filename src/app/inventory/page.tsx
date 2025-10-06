@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Modal, ModalActionButton } from '@/components/ui';
 import { TablePageLoading } from '@/components/ui';
 import { Ingredient, StockMovement } from '@/types';
-import { formatDateTimeShort, formatDateISO } from '@/utils/timezone';
+import { formatDateISO, displayDateTime } from '@/utils/timezone';
 
 export default function InventoryPage() {
   const { user } = useAuth();
@@ -1186,7 +1186,7 @@ function StockMovementsView({ stockMovements, ingredients, typeFilter, onTypeFil
               <tr key={key} className="border-b border-gray-50 hover:bg-gray-25 transition-colors">
                 <td className="py-4 w-32 min-w-[120px]">
                   <div className="text-sm font-light text-gray-600">
-                    {formatDateTimeShort(firstMovement.createdAt)}
+                    {displayDateTime(firstMovement.createdAt)}
                   </div>
                 </td>
                 <td className="py-4 w-40 min-w-[150px]">
