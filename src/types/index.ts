@@ -259,6 +259,7 @@ export interface StockMovement {
   saleQuantity?: number; // Number of dishes sold
   saleAmount?: number; // Total revenue from sale
   createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface AuthSession {
