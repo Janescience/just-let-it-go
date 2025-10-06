@@ -17,6 +17,7 @@ import {
   SalesSummaryLoading,
   SalesBottomBar
 } from './components';
+import { formatDateISO, now } from '@/utils/timezone';
 
 interface CartItem extends MenuItem {
   quantity: number;
@@ -59,7 +60,7 @@ export default function SalesPageContent() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [brand, setBrand] = useState<Brand | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(formatDateISO(now()));
   const [activeTab, setActiveTab] = useState<'sale' | 'history' | 'summary'>('sale');
   const [toast, setToast] = useState<{
     show: boolean;

@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import { now } from '@/utils/timezone';
 
 export interface IErrorLog extends Document {
   level: 'error' | 'warning' | 'info' | 'debug';
@@ -111,9 +112,25 @@ const ErrorLogSchema = new Schema<IErrorLog>({
   notes: {
     type: String,
     trim: true
+  },
+  createdAt: {
+    type: Date,
+  },
+  updatedAt: {
+    type: Date,
+  },
+});
+
+// Set timestamps with Thailand time
+ErrorLogSchema.pre('save', function(next) {
+  const currentTime = now();
+
+  if (this.isNew) {
+    this.createdAt = currentTime;
   }
-}, {
-  timestamps: true
+  this.updatedAt = currentTime;
+
+  next();
 });
 
 // Indexes for efficient querying

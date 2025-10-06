@@ -1,6 +1,7 @@
 import React from 'react';
 import { Calendar, TrendingUp, AlertTriangle, Users, Flame, Eye, ShoppingCart } from 'lucide-react';
 import { Booth } from '@/types';
+import { formatDate as formatDateUtils } from '@/utils/timezone';
 
 interface BoothStats {
   booth: Booth & {
@@ -43,10 +44,7 @@ interface BoothCardProps {
 
 export function BoothCard({ booth, stats, isLoadingStats = false, onClick, onSaleClick }: BoothCardProps) {
   const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('th-TH', {
-      day: 'numeric',
-      month: 'short'
-    });
+    return formatDateUtils(date).slice(0, 5); // DD-MM format
   };
 
   const isExpired = new Date(booth.endDate) < new Date();

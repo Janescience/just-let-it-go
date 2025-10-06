@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, CheckCircle, XCircle, Eye, Filter, RefreshCw, Trash2, Search, Calendar, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { formatDateTime } from '@/utils/timezone';
 
 interface ErrorLog {
   _id: string;
@@ -168,7 +169,7 @@ export default function ErrorLogsPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('th-TH');
+    return formatDateTime(dateString);
   };
 
   if (user?.role !== 'super_admin') {

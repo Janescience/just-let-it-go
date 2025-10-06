@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Activity, Clock, Store, DollarSign } from 'lucide-react';
-import { formatThaiDate } from '@/utils/timezone';
+import { formatDateTimeShort, formatDate as formatDateUtils } from '@/utils/timezone';
 
 interface SaleActivity {
   id: string;
@@ -35,18 +35,11 @@ export function SalesActivitySidebar({
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const formatTime = (date: Date) => {
-    return formatThaiDate(date, {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
+    return formatDateTimeShort(date);
   };
 
   const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('th-TH', {
-      day: '2-digit',
-      month: '2-digit'
-    });
+    return formatDateUtils(date).slice(0, 5); // DD-MM format
   };
 
   const handleOpen = () => {

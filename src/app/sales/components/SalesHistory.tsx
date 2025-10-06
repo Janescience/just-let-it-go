@@ -4,7 +4,7 @@ import React from 'react';
 import { Calendar, ChevronLeft, ChevronRight, ListOrdered } from 'lucide-react';
 import { Input } from '@/components/ui';
 import { Sale } from '@/types';
-import { formatThaiDate } from '@/utils/timezone';
+import { formatDate, formatTime } from '@/utils/timezone';
 
 interface SalesHistoryProps {
   salesHistory: Sale[];
@@ -29,20 +29,6 @@ export function SalesHistory({
   onPreviousPage,
   onNextPage
 }: SalesHistoryProps) {
-  const formatTime = (date: string | Date) => {
-    return formatThaiDate(new Date(date), {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const formatDate = (date: string | Date) => {
-    return new Date(date).toLocaleDateString('th-TH', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
 
   return (
     <div className="h-full overflow-y-auto max-w-7xl mx-auto px-6 py-4 space-y-6">

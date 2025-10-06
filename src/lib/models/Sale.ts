@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { Sale } from '@/types';
+import { now } from '@/utils/timezone';
 
 interface ISale extends Omit<Sale, '_id'>, Document {}
 
@@ -54,8 +55,24 @@ const SaleSchema = new Schema<ISale>({
     type: String,
     ref: 'User',
   },
-}, {
-  timestamps: true,
+  createdAt: {
+    type: Date,
+  },
+  updatedAt: {
+    type: Date,
+  },
+});
+
+// Set timestamps with Thailand time
+SaleSchema.pre('save', function(next) {
+  const currentTime = now();
+
+  if (this.isNew) {
+    this.createdAt = currentTime;
+  }
+  this.updatedAt = currentTime;
+
+  next();
 });
 
 SaleSchema.index({ boothId: 1 });

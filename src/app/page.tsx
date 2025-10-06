@@ -6,7 +6,7 @@ import { Calendar, Store, TrendingUp, TrendingDown, AlertTriangle, AlertCircle, 
 import { useAuth } from '@/hooks/useAuth';
 import OnboardingGuide from '@/components/ui/OnboardingGuide';
 import SuperAdminReturn from '@/components/ui/SuperAdminReturn';
-import { createThailandDate, getThaiDateKey } from '@/utils/timezone';
+import { now, formatDate, formatDateISO } from '@/utils/timezone';
 
 interface MenuItem {
   menuItemId: string;
@@ -516,19 +516,14 @@ export default function HomePage() {
       { date: 'all', displayName: 'ทุกวัน' },
       ...booth.dates.map((date: string) => ({
         date,
-        displayName: new Date(date).toLocaleDateString('th-TH', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric'
-        })
+        displayName: formatDate(date)
       }))
     ];
   };
 
   // Get today's date in YYYY-MM-DD format
   const getTodayDate = () => {
-    // Use timezone utility for consistency
-    return getThaiDateKey(createThailandDate());
+    return formatDateISO(now());
   };
 
   const CustomPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name, quantity, revenue }: any) => {

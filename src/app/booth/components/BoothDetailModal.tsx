@@ -4,6 +4,7 @@ import { Modal } from '@/components/ui';
 import { Booth } from '@/types';
 import { BoothSalesTab } from './BoothSalesTab';
 import { BoothMenuTab } from './BoothMenuTab';
+import { formatDate as formatDateUtils } from '@/utils/timezone';
 
 interface BoothStats {
   booth: Booth & {
@@ -107,11 +108,7 @@ export function BoothDetailModal({
   };
 
   const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('th-TH', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    return formatDateUtils(date);
   };
 
   const isExpired = new Date(booth.endDate) < new Date();

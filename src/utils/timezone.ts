@@ -1,97 +1,94 @@
 /**
- * Timezone utility functions for handling Thailand time consistently
+ * Simple Thailand timezone utility
  *
- * This utility helps manage timezone issues between local development (Thailand)
- * and server deployment (UTC) environments.
+ * ทุกอย่างใช้ Thailand timezone หมด ไม่ต้องแปลงไปมา
+ * - ตอนบันทึก: ใช้ now()
+ * - ตอนแสดง: ใช้ formatDate() หรือ formatDateTime()
  */
-
-export const THAILAND_TIMEZONE = 'Asia/Bangkok';
-export const THAILAND_OFFSET_HOURS = 7;
 
 /**
- * Get current Thailand time
- * @returns Date object in Thailand timezone
+ * ใช้แทน new Date() เพื่อให้ได้เวลาไทยเสมอ
+ * ใช้วิธีเดียวกับที่ production ใช้ และได้ผลจริง
  */
-export function getCurrentThailandTime(): Date {
-  return new Date(new Date().toLocaleString("en-US", { timeZone: THAILAND_TIMEZONE }));
+export function now(): Date {
+  const currentTime = new Date();
+  // ถ้า server อยู่ในไทยแล้ว ใช้เวลาปัจจุบัน
+  // ถ้า server อยู่ UTC (เช่น Vercel) ให้บวก 7 ชั่วโมง
+  // if (serverTimezone === 'Asia/Bangkok') {
+  //   return currentTime;
+  // } else {
+    // สมมติว่า server เป็น UTC, บวก 7 ชั่วโมงสำหรับไทย
+    const thailandOffset = 7 * 60 * 60 * 1000;
+    return new Date(currentTime.getTime() + thailandOffset);
+  // }
 }
 
 /**
- * Convert any date to Thailand timezone
- * @param date - Date to convert (defaults to current time)
- * @returns Date object adjusted to Thailand timezone
+ * Format date เป็น DD-MM-YYYY
+ * @param date - Date object หรือ string
+ * @returns วันที่ในรูปแบบ DD-MM-YYYY
  */
-export function toThailandTime(date: Date = new Date()): Date {
-  return new Date(date.toLocaleString("en-US", { timeZone: THAILAND_TIMEZONE }));
+export function formatDate(date: Date | string): string {
+  const d = new Date(date);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}-${month}-${year}`;
 }
 
 /**
- * Create a new Date that represents Thailand time
- * This is the recommended function to use for all new timestamps
- * @returns Date object in Thailand timezone
+ * Format time เป็น HH:mm:ss
+ * @param date - Date object หรือ string
+ * @returns เวลาในรูปแบบ HH:mm:ss (24hr)
  */
-export function createThailandDate(): Date {
-  return getCurrentThailandTime();
+export function formatTime(date: Date | string): string {
+  const d = new Date(date);
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  return `${hours}:${minutes}:${seconds}`;
 }
 
 /**
- * Convert UTC date to Thailand time (for fixing old data)
- * @param utcDate - UTC date to convert
- * @returns Date object adjusted to Thailand timezone
+ * Format date และ time เป็น DD-MM-YYYY HH:mm:ss
+ * @param date - Date object หรือ string
+ * @returns วันที่และเวลาในรูปแบบ DD-MM-YYYY HH:mm:ss
  */
-export function utcToThailandTime(utcDate: Date): Date {
-  const utcTime = utcDate.getTime();
-  const thailandTime = utcTime + (THAILAND_OFFSET_HOURS * 60 * 60 * 1000);
-  return new Date(thailandTime);
+export function formatDateTime(date: Date | string): string {
+  return `${formatDate(date)} ${formatTime(date)}`;
 }
 
 /**
- * Format date for Thailand locale
- * @param date - Date to format
- * @param options - Intl.DateTimeFormatOptions
- * @returns Formatted date string in Thai
+ * Format date เป็น DD-MM-YYYY HH:mm (ไม่มีวินาที)
+ * @param date - Date object หรือ string
+ * @returns วันที่และเวลาในรูปแบบ DD-MM-YYYY HH:mm
  */
-export function formatThaiDate(
-  date: Date,
-  options: Intl.DateTimeFormatOptions = {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  }
-): string {
-  return date.toLocaleDateString('th-TH', {
-    ...options,
-    timeZone: THAILAND_TIMEZONE
-  });
+export function formatDateTimeShort(date: Date | string): string {
+  const d = new Date(date);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${day}-${month}-${year} ${hours}:${minutes}`;
 }
 
 /**
- * Get date key for grouping (YYYY-MM-DD format in Thailand timezone)
- * @param date - Date to convert
- * @returns Date string in YYYY-MM-DD format
+ * Format date to YYYY-MM-DD (for input fields and date comparisons)
+ * @param date - Date object หรือ string
+ * @returns วันที่ในรูปแบบ YYYY-MM-DD
  */
-export function getThaiDateKey(date: Date): string {
-  const thailandDate = toThailandTime(date);
-  return thailandDate.toISOString().split('T')[0];
+export function formatDateISO(date: Date | string): string {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 /**
- * Check if the current server environment is in Thailand timezone
- * @returns true if server is already in Thailand timezone
- */
-export function isServerInThailandTimezone(): boolean {
-  const serverTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  return serverTimezone === THAILAND_TIMEZONE;
-}
-
-/**
- * Legacy function: Convert UTC to Thailand time (for migration)
- * Use this only for fixing old data that was stored in UTC
- * @param utcDate - UTC date
- * @returns Thailand time
+ * Migration utility: แปลง UTC เป็น Thailand time สำหรับข้อมูลเก่า
  */
 export function migrateUtcToThailand(utcDate: Date): Date {
-  return utcToThailandTime(utcDate);
+  return new Date(utcDate.getTime() + (7 * 3600000));
 }

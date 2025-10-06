@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Save } from 'lucide-react';
 import { Modal, Input, ModalActionButton } from '@/components/ui';
 import { AccountingTransaction } from '@/types';
+import { formatDateISO, now } from '@/utils/timezone';
 
 interface TransactionModalProps {
   transaction: AccountingTransaction | null;
@@ -32,7 +33,7 @@ export function TransactionModal({
   useEffect(() => {
     if (transaction) {
       setFormData({
-        date: new Date(transaction.date).toISOString().split('T')[0],
+        date: formatDateISO(transaction.date),
         type: transaction.type,
         category: transaction.category,
         amount: transaction.amount.toString(),
@@ -43,7 +44,7 @@ export function TransactionModal({
       });
     } else {
       setFormData({
-        date: new Date().toISOString().split('T')[0],
+        date: formatDateISO(now()),
         type: 'expense',
         category: '',
         amount: '',

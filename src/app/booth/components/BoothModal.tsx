@@ -5,6 +5,7 @@ import { Step1BasicInfo } from './steps/Step1BasicInfo';
 import { Step2MenuSelection } from './steps/Step2MenuSelection';
 import { Step3Summary } from './steps/Step3Summary';
 import { BusinessPlan, LocalIngredient } from './types/BusinessPlanTypes';
+import { formatDateISO, now } from '@/utils/timezone';
 
 interface BoothModalProps {
   booth?: Booth;
@@ -20,8 +21,8 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
     // Basic Info
     name: booth?.name || '',
     location: booth?.location || '',
-    startDate: booth?.startDate ? new Date(booth.startDate).toISOString().split('T')[0] : '',
-    endDate: booth?.endDate ? new Date(booth.endDate).toISOString().split('T')[0] : '',
+    startDate: booth?.startDate ? formatDateISO(booth.startDate) : '',
+    endDate: booth?.endDate ? formatDateISO(booth.endDate) : '',
     numberOfDays: booth?.startDate && booth?.endDate
       ? Math.ceil((new Date(booth.endDate).getTime() - new Date(booth.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1
       : 10,
@@ -241,7 +242,7 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
       const endDate = new Date(startDate);
       endDate.setDate(startDate.getDate() + businessPlan.numberOfDays - 1);
 
-      const endDateString = endDate.toISOString().split('T')[0];
+      const endDateString = formatDateISO(endDate);
 
       if (businessPlan.endDate !== endDateString) {
         setBusinessPlan(prev => ({
@@ -714,8 +715,8 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
       name: '',
       location: '',
       rentCost: sourceBooth.rentCost,
-      startDate: new Date().toISOString().split('T')[0], // Today's date
-      endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // +7 days
+      startDate: formatDateISO(now()), // Today's date
+      endDate: formatDateISO(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)), // +7 days
       openingStart: sourceBooth.openingHours?.start || '08:00',
       openingEnd: sourceBooth.openingHours?.end || '18:00',
       // Keep current staff credentials (don't copy)

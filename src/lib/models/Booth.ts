@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { Booth } from '@/types';
+import { now } from '@/utils/timezone';
 
 interface IBooth extends Omit<Booth, '_id'>, Document {}
 
@@ -153,8 +154,24 @@ const BoothSchema = new Schema<IBooth>({
       totalCapitalWithProfit: Number,
     },
   },
-}, {
-  timestamps: true,
+  createdAt: {
+    type: Date,
+  },
+  updatedAt: {
+    type: Date,
+  },
+});
+
+// Set timestamps with Thailand time
+BoothSchema.pre('save', function(next) {
+  const currentTime = now();
+
+  if (this.isNew) {
+    this.createdAt = currentTime;
+  }
+  this.updatedAt = currentTime;
+
+  next();
 });
 
 BoothSchema.index({ brandId: 1 });

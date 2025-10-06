@@ -5,7 +5,7 @@ import Sale from '@/lib/models/Sale';
 import MenuItem from '@/lib/models/MenuItem';
 import AccountingTransaction from '@/lib/models/AccountingTransaction';
 import Booth from '@/lib/models/Booth';
-import { getThaiDateKey } from '@/utils/timezone';
+import { formatDateISO } from '@/utils/timezone';
 
 export async function GET(request: NextRequest) {
   try {
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
 
     salesWithoutAccounting.forEach(sale => {
       // Use timezone utility for consistent date grouping
-      const dateKey = getThaiDateKey(new Date(sale.createdAt));
+      const dateKey = formatDateISO(new Date(sale.createdAt));
 
       if (!dailySums[dateKey]) {
         dailySums[dateKey] = {

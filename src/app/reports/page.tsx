@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { DashboardPageLoading } from '@/components/ui';
+import { formatDate, formatDateISO, now } from '@/utils/timezone';
 
 interface SalesData {
   totalSales: number;
@@ -35,8 +36,8 @@ export default function ReportsPage() {
   const [salesData, setSalesData] = useState<SalesData | null>(null);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState({
-    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days ago
-    endDate: new Date().toISOString().split('T')[0] // today
+    startDate: formatDateISO(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)), // 30 days ago
+    endDate: formatDateISO(now()) // today
   });
   const [selectedBooth, setSelectedBooth] = useState<string>('all');
   const [booths, setBooths] = useState<any[]>([]);
@@ -314,11 +315,7 @@ export default function ReportsPage() {
                   <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100">
                     <div>
                       <div className="font-light">
-                        {new Date(day.date).toLocaleDateString('th-TH', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        })}
+                        {formatDate(day.date)}
                       </div>
                       <div className="text-lg text-gray-600">{day.orders} ออเดอร์</div>
                     </div>

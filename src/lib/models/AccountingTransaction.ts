@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { now } from '@/utils/timezone';
 
 const AccountingTransactionSchema = new mongoose.Schema({
   date: {
@@ -47,9 +48,25 @@ const AccountingTransactionSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Brand',
     required: true
+  },
+  createdAt: {
+    type: Date,
+  },
+  updatedAt: {
+    type: Date,
   }
-}, {
-  timestamps: true
+});
+
+// Set timestamps with Thailand time
+AccountingTransactionSchema.pre('save', function(next) {
+  const currentTime = now();
+
+  if (this.isNew) {
+    this.createdAt = currentTime;
+  }
+  this.updatedAt = currentTime;
+
+  next();
 });
 
 // Indexes for better query performance

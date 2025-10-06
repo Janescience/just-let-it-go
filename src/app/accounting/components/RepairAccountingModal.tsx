@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, AlertTriangle, CheckCircle, RefreshCw, XCircle } from 'lucide-react';
+import { formatDateTimeShort, formatDate as formatDateUtils } from '@/utils/timezone';
 
 interface SaleItem {
   menuItemId: string;
@@ -126,13 +127,7 @@ export function RepairAccountingModal({ isOpen, onClose }: RepairAccountingModal
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('th-TH', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatDateTimeShort(dateString);
   };
 
   const formatCurrency = (amount: number) => {
@@ -200,11 +195,7 @@ export function RepairAccountingModal({ isOpen, onClose }: RepairAccountingModal
                     {dailySums.map((daily) => (
                       <div key={daily.date} className="bg-white p-3 rounded border">
                         <div className="text-sm font-medium text-gray-900">
-                          {new Date(daily.date).toLocaleDateString('th-TH', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric'
-                          })}
+                          {formatDateUtils(daily.date)}
                         </div>
                         <div className="text-xs text-gray-600 mt-1">
                           {daily.count} รายการ • {formatCurrency(daily.totalAmount)}

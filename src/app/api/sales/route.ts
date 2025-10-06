@@ -11,7 +11,7 @@ import Ingredient from '@/lib/models/Ingredient';
 import Booth from '@/lib/models/Booth';
 import AccountingTransaction from '@/lib/models/AccountingTransaction';
 import { RealtimeBroadcaster, createNewSaleEvent, createStockUpdateEvent, createLowStockAlert } from '@/utils/realtime';
-import { createThailandDate } from '@/utils/timezone';
+import { now } from '@/utils/timezone';
 import { logSalesError, logAccountingError, logInventoryError } from '@/utils/errorLogger';
 
 export async function POST(request: NextRequest) {
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create sale record with proper timezone handling
-    const thailandTime = createThailandDate();
+    const thailandTime = now();
 
 
     const sale = new Sale({

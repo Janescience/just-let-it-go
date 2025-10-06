@@ -3,10 +3,10 @@ import { ChevronDown, ChevronRight, Edit, Trash2 } from 'lucide-react';
 import { AccountingTransaction } from '@/types';
 import {
   groupTransactionsByDate,
-  formatThaiDate,
   formatCurrency,
   exportToExcel
 } from '@/utils/excel-export';
+import { formatDate, formatTime } from '@/utils/timezone';
 
 interface TransactionTableProps {
   transactions: AccountingTransaction[];
@@ -144,7 +144,7 @@ export function TransactionTable({
                       )}
                       <div>
                         <div className="text-sm font-medium text-gray-900">
-                          {formatThaiDate(dailyTx.date)}
+                          {formatDate(dailyTx.date)}
                         </div>
                         <div className="text-xs text-gray-500">
                           {dailyTx.transactions.length} รายการ
@@ -197,10 +197,7 @@ export function TransactionTable({
                       <tr key={transaction._id} className="hover:bg-gray-25">
                         <td className="p-2 sm:p-3 pl-8 sm:pl-12">
                           <div className="text-xs text-gray-500 whitespace-nowrap">
-                            {new Date(transaction.date).toLocaleTimeString('th-TH', {
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
+                            {formatTime(transaction.date).slice(0, 5)}
                           </div>
                         </td>
                         <td className="p-2 sm:p-3" colSpan={2}>

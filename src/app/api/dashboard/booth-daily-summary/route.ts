@@ -6,7 +6,7 @@ import MenuItemModel from '@/lib/models/MenuItem';
 import IngredientModel from '@/lib/models/Ingredient';
 import { verifyToken } from '@/utils/auth';
 import { addSecurityHeaders } from '@/utils/security';
-import { formatThaiDate } from '@/utils/timezone';
+import { formatDate } from '@/utils/timezone';
 
 export async function GET(request: NextRequest) {
   try {
@@ -173,10 +173,7 @@ export async function GET(request: NextRequest) {
     const completeData = allBoothDates.map((dateStr: string) => {
       const salesForDate = salesDataMap.get(dateStr);
 
-      const displayDate = formatThaiDate(new Date(dateStr), {
-        day: 'numeric',
-        month: 'numeric'
-      }).replace('/', '/');
+      const displayDate = formatDate(new Date(dateStr)).slice(0, 5); // DD-MM format
 
       if (salesForDate) {
         // มียอดขาย - แสดงข้อมูลจริง

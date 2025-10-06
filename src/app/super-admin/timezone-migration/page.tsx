@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Clock, Database, CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Toast } from '@/components/ui';
+import { formatDateTime as formatDateTimeUtils } from '@/utils/timezone';
 
 interface DataSample {
   _id: string;
@@ -119,15 +120,7 @@ export default function TimezoneMigrationPage() {
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
     return {
-      thai: date.toLocaleString('th-TH', {
-        timeZone: 'Asia/Bangkok',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      }),
+      thai: formatDateTimeUtils(date),
       utc: date.toISOString(),
       timestamp: date.getTime()
     };

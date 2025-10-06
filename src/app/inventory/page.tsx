@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Modal, ModalActionButton } from '@/components/ui';
 import { TablePageLoading } from '@/components/ui';
 import { Ingredient, StockMovement } from '@/types';
+import { formatDateTimeShort, formatDateISO } from '@/utils/timezone';
 
 export default function InventoryPage() {
   const { user } = useAuth();
@@ -1033,7 +1034,7 @@ function StockMovementsView({ stockMovements, ingredients, typeFilter, onTypeFil
         groupKey = `sale_${movement.saleId}`;
       } else {
         // สำหรับ movement ที่ไม่มี saleId ให้ใช้ timestamp และ type
-        const date = new Date(movement.createdAt).toISOString().split('T')[0];
+        const date = formatDateISO(new Date(movement.createdAt));
         const hour = new Date(movement.createdAt).getHours();
         groupKey = `${movement.type}_${date}_${hour}_${movement.reason || 'no_reason'}`;
       }
@@ -1164,12 +1165,7 @@ function StockMovementsView({ stockMovements, ingredients, typeFilter, onTypeFil
               <tr key={key} className="border-b border-gray-50 hover:bg-gray-25 transition-colors">
                 <td className="py-4 w-32 min-w-[120px]">
                   <div className="text-sm font-light text-gray-600">
-                    {new Date(firstMovement.createdAt).toLocaleDateString('th-TH', {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
+                    {formatDateTimeShort(firstMovement.createdAt)}
                   </div>
                 </td>
                 <td className="py-4 w-40 min-w-[150px]">
@@ -1585,7 +1581,7 @@ function EditMovementModal({ movement, onClose, onSuccess }: EditMovementModalPr
   const [formData, setFormData] = React.useState({
     quantity: Math.abs(movement.quantity).toString(),
     reason: movement.reason || '',
-    createdAt: new Date(movement.createdAt).toISOString().slice(0, 16)
+    createdAt: new Date(movement.createdAt).toISOString().slice(0, 16) // Keep original format for datetime-local input
   });
 
   React.useEffect(() => {

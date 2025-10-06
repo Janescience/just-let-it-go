@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { formatThaiDate, utcToThailandTime } from '@/utils/timezone';
+import { formatDateTime, migrateUtcToThailand } from '@/utils/timezone';
 import { Toast } from '@/components/ui';
 import { ArrowLeft } from 'lucide-react';
 
@@ -462,7 +462,7 @@ export default function DuplicateSalesPage() {
                         />
                       </td>
                       <td className="py-2 px-3 text-sm">
-                        {formatThaiDate(utcToThailandTime(new Date(sale.createdAt)))}
+                        {formatDateTime(migrateUtcToThailand(new Date(sale.createdAt)))}
                       </td>
                       <td className="py-2 px-3 text-sm">
                         {saleIndex === 0 ? (

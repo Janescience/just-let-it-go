@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, Calendar, Package, BarChart3, Edit, X, Check, Trash2, Loader2 } from 'lucide-react';
 import { Booth } from '@/types';
-import { formatThaiDate } from '@/utils/timezone';
+import { formatDate, formatTime, formatDateISO } from '@/utils/timezone';
 
 interface BoothSalesTabProps {
   booth: Booth;
@@ -33,8 +33,8 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
     const effectiveEndDate = currentDate < endDate ? currentDate : endDate;
 
     return {
-      min: startDate.toISOString().split('T')[0],
-      max: effectiveEndDate.toISOString().split('T')[0]
+      min: formatDateISO(startDate),
+      max: formatDateISO(effectiveEndDate)
     };
   };
 
@@ -224,7 +224,7 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
     const salesByDate: { [key: string]: any[] } = {};
     boothSales.forEach((sale: any) => {
       const saleDate = new Date(sale.createdAt);
-      const dateStr = saleDate.toISOString().split('T')[0];
+      const dateStr = formatDateISO(saleDate);
 
       if (!salesByDate[dateStr]) {
         salesByDate[dateStr] = [];
@@ -241,7 +241,11 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
     const dailyData = [];
 
     for (let d = new Date(startDate); d <= effectiveEndDate; d.setDate(d.getDate() + 1)) {
-      const dateStr = d.toISOString().split('T')[0];
+      // Use YYYY-MM-DD format consistently with timezone handling
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
       const daySales = salesByDate[dateStr] || [];
 
       const dayTotal = daySales.reduce((sum: number, sale: any) => sum + sale.totalAmount, 0);
@@ -259,11 +263,7 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
 
       dailyData.push({
         date: dateStr,
-        displayDate: d.toLocaleDateString('th-TH', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric'
-        }),
+        displayDate: formatDate(d),
         total: dayTotal,
         cash: cashTotal,
         transfer: transferTotal,
@@ -302,7 +302,7 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
 
         // Filter sales for this specific date (booth is already filtered by API)
         const dateSales = allSales.filter((sale: any) => {
-          const saleDate = new Date(sale.createdAt).toISOString().split('T')[0];
+          const saleDate = formatDateISO(new Date(sale.createdAt));
           return saleDate === date;
         });
 
@@ -754,7 +754,7 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
                                       {itemIndex === 0 && (
                                         <td rowSpan={sale.items.length} className="p-2 sm:p-3 font-light text-gray-600 border-r border-gray-100 w-16 min-w-[60px]">
                                           <div className="text-xs sm:text-sm">
-                                            {formatThaiDate(new Date(sale.createdAt), { hour: '2-digit', minute: '2-digit' })}
+                                            {formatTime(sale.createdAt)}
                                           </div>
                                         </td>
                                       )}
