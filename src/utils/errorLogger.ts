@@ -48,7 +48,7 @@ export async function logError({
     if (error) {
       if (error instanceof Error) {
         errorLog.stack = error.stack;
-        if (!errorLog.message.includes(error.message)) {
+        if (errorLog.message && !errorLog.message.includes(error.message)) {
           errorLog.message = `${message}: ${error.message}`;
         }
       } else if (typeof error === 'string') {
@@ -68,7 +68,6 @@ export async function logError({
       errorLog.userAgent = request.headers.get('user-agent') || undefined;
       errorLog.ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
                          request.headers.get('x-real-ip') ||
-                         request.ip ||
                          undefined;
     }
 

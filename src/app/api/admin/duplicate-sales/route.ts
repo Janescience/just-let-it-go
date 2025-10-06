@@ -180,7 +180,7 @@ export async function GET(request: NextRequest) {
       },
 
       // Sort by creation time descending
-      { $sort: { '_id.timeGroup': -1 } },
+      { $sort: { '_id.timeGroup': -1 as const } },
 
       // Pagination
       { $skip: (page - 1) * limit },
@@ -271,11 +271,11 @@ export async function GET(request: NextRequest) {
     ];
 
     const [duplicateGroups, totalPipeline] = await Promise.all([
-      Sale.aggregate(duplicatePipeline),
+      Sale.aggregate(duplicatePipeline as any),
       Sale.aggregate([
         ...duplicatePipeline.slice(0, -3), // Remove pagination and lookups
         { $count: 'total' }
-      ])
+      ] as any)
     ]);
 
     const total = totalPipeline[0]?.total || 0;
@@ -362,16 +362,17 @@ export async function GET(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  try {
-    const token = request.cookies.get('auth-token')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  const token = request.cookies.get('auth-token')?.value;
+  if (!token) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
-    const payload = verifyToken(token);
-    if (!payload?.user || payload.user.role !== 'super_admin') {
-      return NextResponse.json({ error: 'Super Admin access required' }, { status: 403 });
-    }
+  const payload = verifyToken(token);
+  if (!payload?.user || payload.user.role !== 'super_admin') {
+    return NextResponse.json({ error: 'Super Admin access required' }, { status: 403 });
+  }
+
+  try {
 
     const { saleIds, reason } = await request.json();
 

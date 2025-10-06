@@ -198,6 +198,7 @@ export interface Sale {
   totalAmount: number;
   paymentMethod: 'cash' | 'transfer';
   paymentStatus: 'pending' | 'completed';
+  clientTransactionId?: string;
   qrCodeId?: string;
   employeeId?: string;
   createdAt: Date;

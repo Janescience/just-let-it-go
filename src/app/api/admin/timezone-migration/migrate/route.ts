@@ -9,16 +9,17 @@ import { logSystemError } from '@/utils/errorLogger';
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
-  try {
-    const token = request.cookies.get('auth-token')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  const token = request.cookies.get('auth-token')?.value;
+  if (!token) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
-    const payload = verifyToken(token);
-    if (!payload?.user || payload.user.role !== 'super_admin') {
-      return NextResponse.json({ error: 'Super Admin access required' }, { status: 403 });
-    }
+  const payload = verifyToken(token);
+  if (!payload?.user || payload.user.role !== 'super_admin') {
+    return NextResponse.json({ error: 'Super Admin access required' }, { status: 403 });
+  }
+
+  try {
 
     await connectDB();
 

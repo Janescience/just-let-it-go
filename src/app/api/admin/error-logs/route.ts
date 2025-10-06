@@ -92,8 +92,8 @@ export async function GET(request: NextRequest) {
       total: summary?.totalErrors || 0,
       unresolved: summary?.unresolvedErrors || 0,
       resolved: (summary?.totalErrors || 0) - (summary?.unresolvedErrors || 0),
-      byLevel: {},
-      byModule: {}
+      byLevel: {} as Record<string, { total: number; unresolved: number }>,
+      byModule: {} as Record<string, { total: number; unresolved: number }>
     };
 
     // Count by level
