@@ -1,10 +1,5 @@
 {
   "version": 2,
-  "functions": {
-    "src/app/api/**/*.ts": {
-      "regions": ["sin1"]
-    }
-  },
   "builds": [
     {
       "src": "package.json",
