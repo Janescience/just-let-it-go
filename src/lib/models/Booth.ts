@@ -178,9 +178,4 @@ BoothSchema.index({ brandId: 1 });
 BoothSchema.index({ brandId: 1, isActive: 1 });
 BoothSchema.index({ startDate: 1, endDate: 1 });
 
-// Clear the model cache to ensure schema updates are applied
-if (mongoose.models.Booth) {
-  delete mongoose.models.Booth;
-}
-
-export default mongoose.model<IBooth>('Booth', BoothSchema);
+export default mongoose.models.Booth || mongoose.model<IBooth>('Booth', BoothSchema);

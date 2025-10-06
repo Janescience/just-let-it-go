@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { verifyToken } from '@/utils/auth';
 import AccountingTransaction from '@/lib/models/AccountingTransaction';
-import Booth from '@/lib/models/Booth';
+// Force import to register the model
+import '@/lib/models/Booth';
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,11 +39,36 @@ export async function GET(request: NextRequest) {
     if (boothId) query.boothId = boothId;
 
     const transactions = await AccountingTransaction.find(query)
-      .populate('boothId', 'name')
       .sort({ date: -1 });
 
+    // Manually fetch booth names if needed
+    const boothIds = [...new Set(transactions.filter(t => t.boothId).map(t => t.boothId.toString()))];
+    let boothMap: { [key: string]: string } = {};
+
+    if (boothIds.length > 0) {
+      try {
+        const mongoose = require('mongoose');
+        const Booth = mongoose.models.Booth;
+        if (Booth) {
+          const booths = await Booth.find({ _id: { $in: boothIds } }, 'name');
+          boothMap = booths.reduce((map: { [key: string]: string }, booth: any) => {
+            map[booth._id.toString()] = booth.name;
+            return map;
+          }, {});
+        }
+      } catch (error) {
+        console.log('Could not fetch booth names:', error);
+      }
+    }
+
+    // Add booth names to transactions
+    const transactionsWithBooths = transactions.map(transaction => ({
+      ...transaction.toObject(),
+      boothName: transaction.boothId ? boothMap[transaction.boothId.toString()] || 'Unknown Booth' : null
+    }));
+
     // Calculate summary
-    const summary = transactions.reduce((acc, transaction) => {
+    const summary = transactionsWithBooths.reduce((acc, transaction) => {
       if (transaction.type === 'income') {
         acc.totalIncome += transaction.amount;
         acc.incomeByCategory[transaction.category] =
@@ -63,7 +89,7 @@ export async function GET(request: NextRequest) {
     const netProfit = summary.totalIncome - summary.totalExpense;
 
     return NextResponse.json({
-      transactions,
+      transactions: transactionsWithBooths,
       summary: {
         ...summary,
         netProfit
