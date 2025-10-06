@@ -25,20 +25,16 @@ export async function GET(request: NextRequest) {
 
     await connectDB();
 
-    // Get total booths and active booths
-    const [totalBooths, activeBooths] = await Promise.all([
-      Booth.countDocuments({ brandId: payload.user.brandId }),
-      Booth.countDocuments({ brandId: payload.user.brandId, isActive: true })
+    const brandFilter = { brandId: payload.user.brandId };
+    const [totalBooths, activeBooths, totalMenuItems, lowStockItems] = await Promise.all([
+      Booth.countDocuments(brandFilter),
+      Booth.countDocuments({ ...brandFilter, isActive: true }),
+      MenuItem.countDocuments(brandFilter),
+      Ingredient.countDocuments({
+        ...brandFilter,
+        $expr: { $lte: ['$currentStock', '$minStockLevel'] }
+      })
     ]);
-
-    // Get total menu items
-    const totalMenuItems = await MenuItem.countDocuments({ brandId: payload.user.brandId });
-
-    // Get low stock items (ingredients with currentStock <= minStockLevel)
-    const lowStockItems = await Ingredient.countDocuments({
-      brandId: payload.user.brandId,
-      $expr: { $lte: ['$currentStock', '$minStockLevel'] }
-    });
 
     return NextResponse.json({
       totalBooths,

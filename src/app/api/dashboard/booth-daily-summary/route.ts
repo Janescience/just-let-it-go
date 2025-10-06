@@ -6,6 +6,7 @@ import MenuItemModel from '@/lib/models/MenuItem';
 import IngredientModel from '@/lib/models/Ingredient';
 import { verifyToken } from '@/utils/auth';
 import { addSecurityHeaders } from '@/utils/security';
+import { formatThaiDate } from '@/utils/timezone';
 
 export async function GET(request: NextRequest) {
   try {
@@ -42,24 +43,18 @@ export async function GET(request: NextRequest) {
       return addSecurityHeaders(response);
     }
 
-    // Verify booth belongs to user's brand
-    const booth = await BoothModel.findOne({
+    const boothInfo = await BoothModel.findOne({
       _id: boothId,
       brandId: payload.user.brandId
-    });
+    })
+      .select('startDate endDate')
+      .lean();
 
-    if (!booth) {
+    if (!boothInfo) {
       const response = NextResponse.json(
         { message: 'ไม่พบบูธ' },
         { status: 404 }
       );
-      return addSecurityHeaders(response);
-    }
-
-    // Step 1: Get booth startDate and endDate to create complete date range
-    const boothInfo = await BoothModel.findById(boothId, { startDate: 1, endDate: 1 });
-    if (!boothInfo) {
-      const response = NextResponse.json([]);
       return addSecurityHeaders(response);
     }
 
@@ -68,9 +63,11 @@ export async function GET(request: NextRequest) {
     const startDate = new Date(boothInfo.startDate);
     const endDate = new Date(boothInfo.endDate);
 
-    for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-      const dateString = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+    const iterator = new Date(startDate);
+    while (iterator <= endDate) {
+      const dateString = iterator.toISOString().split('T')[0];
       allBoothDates.push(dateString);
+      iterator.setDate(iterator.getDate() + 1);
     }
 
 
@@ -171,13 +168,14 @@ export async function GET(request: NextRequest) {
 
 
     // Step 3: Match sales data with all booth dates
-    const completeData = allBoothDates.map((dateStr: string) => {
-      const salesForDate = salesData.find(s => s.date === dateStr);
+    const salesDataMap = new Map(salesData.map((s: any) => [s.date, s]));
 
-      const displayDate = new Date(dateStr).toLocaleDateString('th-TH', {
+    const completeData = allBoothDates.map((dateStr: string) => {
+      const salesForDate = salesDataMap.get(dateStr);
+
+      const displayDate = formatThaiDate(new Date(dateStr), {
         day: 'numeric',
-        month: 'numeric',
-        ...(process.env.NODE_ENV === 'production' && { timeZone: 'Asia/Bangkok' })
+        month: 'numeric'
       }).replace('/', '/');
 
       if (salesForDate) {

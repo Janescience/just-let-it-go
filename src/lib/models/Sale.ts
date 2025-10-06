@@ -41,6 +41,11 @@ const SaleSchema = new Schema<ISale>({
     enum: ['pending', 'completed'],
     default: 'pending',
   },
+  clientTransactionId: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
   qrCodeId: {
     type: String,
     ref: 'QRPayment',

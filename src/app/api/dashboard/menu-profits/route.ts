@@ -37,19 +37,22 @@ export async function GET(request: NextRequest) {
     const allBooths = searchParams.get('allBooths') === 'true';
 
     let boothIds: string[] = [];
+    let selectedBooth: { name?: string } | null = null;
 
     if (allBooths) {
       // Get all booths for this brand
-      const booths = await BoothModel.find({ brandId: payload.user.brandId }, { _id: 1 });
-      boothIds = booths.map(booth => (booth._id as any).toString());
+      const booths = await BoothModel.find({ brandId: payload.user.brandId }).select('_id').lean();
+      boothIds = booths.map(booth => booth._id.toString());
     } else if (boothId) {
       // Verify booth belongs to user's brand
-      const booth = await BoothModel.findOne({
+      selectedBooth = await BoothModel.findOne({
         _id: boothId,
         brandId: payload.user.brandId
-      });
+      })
+        .select('name')
+        .lean();
 
-      if (!booth) {
+      if (!selectedBooth) {
         const response = NextResponse.json(
           { message: 'ไม่พบบูธ' },
           { status: 404 }
@@ -193,10 +196,9 @@ export async function GET(request: NextRequest) {
 
     // Group by booth if not allBooths
     if (!allBooths && boothId) {
-      const booth = await BoothModel.findById(boothId);
       const response = NextResponse.json([{
         _id: boothId,
-        boothName: booth?.name || 'Unknown Booth',
+        boothName: selectedBooth?.name || 'Unknown Booth',
         menuItems: menuProfits,
         totalQuantity: menuProfits.reduce((sum, item) => sum + item.quantity, 0),
         totalRevenue: menuProfits.reduce((sum, item) => sum + item.revenue, 0),

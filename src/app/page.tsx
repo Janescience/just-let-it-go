@@ -6,6 +6,7 @@ import { Calendar, Store, TrendingUp, TrendingDown, AlertTriangle, AlertCircle, 
 import { useAuth } from '@/hooks/useAuth';
 import OnboardingGuide from '@/components/ui/OnboardingGuide';
 import SuperAdminReturn from '@/components/ui/SuperAdminReturn';
+import { createThailandDate, getThaiDateKey } from '@/utils/timezone';
 
 interface MenuItem {
   menuItemId: string;
@@ -133,8 +134,6 @@ export default function HomePage() {
   const [topPerformers, setTopPerformers] = useState<{best: TopPerformer[], worst: TopPerformer[]}>({best: [], worst: []});
   const [inventoryAlerts, setInventoryAlerts] = useState<InventoryAlert[]>([]);
   const [customerPatterns, setCustomerPatterns] = useState<CustomerPatterns>({peakHours: [], orderSizes: [], popularCombinations: []});
-  const [boothIngredients, setBoothIngredients] = useState<{[boothId: string]: IngredientUsage[]}>({});
-  const [selectedIngredient, setSelectedIngredient] = useState<{[boothId: string]: IngredientUsage | null}>({});
   const [boothDailySummary, setBoothDailySummary] = useState<{[boothId: string]: DailySummary[]}>({});
   const [isMobile, setIsMobile] = useState(false);
 
@@ -214,7 +213,6 @@ export default function HomePage() {
     if (onboardingStatus?.allCompleted && boothDatesData.length > 0) {
       fetchAllBoothSalesData();
       fetchAllBoothProfitData();
-      fetchAllBoothIngredients();
       fetchAllBoothDailySummary();
     }
   }, [selectedDates, onboardingStatus, boothDatesData]);
@@ -495,30 +493,6 @@ export default function HomePage() {
     }
   };
 
-  const fetchAllBoothIngredients = async () => {
-    try {
-      const allBoothIngredients: {[boothId: string]: IngredientUsage[]} = {};
-
-      for (const booth of boothDatesData) {
-        const selectedDate = selectedDates[booth.boothId] || 'today';
-        const params = new URLSearchParams();
-        params.append('boothId', booth.boothId);
-        if (selectedDate !== 'all') {
-          params.append('date', selectedDate);
-        }
-
-        const response = await fetch(`/api/dashboard/booth-ingredients?${params}`);
-        if (response.ok) {
-          const ingredients = await response.json();
-          allBoothIngredients[booth.boothId] = ingredients;
-        }
-      }
-
-      setBoothIngredients(allBoothIngredients);
-    } catch (error) {
-      console.error('Error fetching booth ingredients:', error);
-    }
-  };
 
   const handleDateChange = (boothId: string, date: string) => {
     setLoadingBooths(prev => ({
@@ -531,19 +505,8 @@ export default function HomePage() {
       [boothId]: date
     }));
 
-    // Clear selected ingredient when date changes
-    setSelectedIngredient(prev => ({
-      ...prev,
-      [boothId]: null
-    }));
   };
 
-  const handleBarClick = (data: any, boothId: string) => {
-    setSelectedIngredient(prev => ({
-      ...prev,
-      [boothId]: data
-    }));
-  };
 
   const getAvailableDatesForBooth = (boothId: string) => {
     const booth = boothDatesData.find(b => b.boothId === boothId);
@@ -564,20 +527,8 @@ export default function HomePage() {
 
   // Get today's date in YYYY-MM-DD format
   const getTodayDate = () => {
-    const now = new Date();
-    // Use Thailand timezone for consistency
-    const serverTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-    let thailandNow;
-    if (serverTimezone === 'Asia/Bangkok') {
-      thailandNow = now;
-    } else {
-      // Add 7 hours for Thailand time
-      const thailandOffset = 7 * 60 * 60 * 1000;
-      thailandNow = new Date(now.getTime() + thailandOffset);
-    }
-
-    return thailandNow.toISOString().split('T')[0]; // YYYY-MM-DD
+    // Use timezone utility for consistency
+    return getThaiDateKey(createThailandDate());
   };
 
   const CustomPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name, quantity, revenue }: any) => {
@@ -1105,8 +1056,8 @@ export default function HomePage() {
             boothDatesData.length === 1
               ? 'grid-cols-1'
               : boothDatesData.length === 2
-                ? 'grid-cols-1 lg:grid-cols-2'
-                : 'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'
+                ? 'grid-cols-1 lg:grid-cols-1'
+                : 'grid-cols-1 lg:grid-cols-1 xl:grid-cols-1'
           }`}>
             {boothDatesData.map((boothDate) => {
               const booth = boothSalesData.find(b => b._id === boothDate.boothId);
@@ -1266,23 +1217,6 @@ export default function HomePage() {
                         </div>
                       </div>
 
-                      {/* Ingredients Bar Chart Skeleton */}
-                      <div className="mt-6 pt-6 border-t border-gray-200">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
-                          <div className="text-right">
-                            <div className="h-3 w-16 bg-gray-200 rounded animate-pulse mb-1"></div>
-                            <div className="h-5 w-20 bg-gray-200 rounded animate-pulse"></div>
-                          </div>
-                        </div>
-                        <div className="h-80 border border-gray-200 flex items-center justify-center">
-                          <div className="flex items-end gap-2">
-                            {[1, 2, 3, 4, 5].map((i) => (
-                              <div key={i} className={`w-8 bg-gray-200 animate-pulse`} style={{height: `${20 + (i * 20)}px`}}></div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
                     </div>
                   ) : booth && booth.menuItems.length > 0 ? (
                     <div className="space-y-6">
@@ -1388,100 +1322,6 @@ export default function HomePage() {
                         })()}
                       </div>
 
-                      {/* Ingredients Usage Bar Chart */}
-                      {boothIngredients[boothDate.boothId] && boothIngredients[boothDate.boothId].length > 0 && (
-                        <div className="mt-6 pt-6 border-t border-gray-200">
-                          <div className="flex items-center justify-between mb-4">
-                            <h4 className="text-sm font-light text-black tracking-wider">การใช้วัตถุดิบ</h4>
-                            <div className="text-right">
-                              <div className="text-sm font-light text-gray-500">ต้นทุนรวม</div>
-                              <div className="text-lg font-medium text-black">
-                                ฿{boothIngredients[boothDate.boothId].reduce((sum, item) => sum + item.totalValue, 0).toLocaleString()}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="h-80 overflow-x-auto">
-                            <div style={{ width: isMobile ? `${Math.max(boothIngredients[boothDate.boothId]?.length * 80, 400)}px` : '100%', height: '100%' }}>
-                              <ResponsiveContainer width="100%" height="100%">
-                                <BarChart
-                                  data={boothIngredients[boothDate.boothId]}
-                                  margin={{ top: isMobile ? 20 : 50, right: isMobile ? 10 : 30, left: isMobile ? 5 : 20, bottom: isMobile ? 60 : 80 }}
-                                >
-                                <XAxis
-                                  dataKey="name"
-                                  angle={isMobile ? 0 : -45}
-                                  textAnchor={isMobile ? "middle" : "end"}
-                                  height={isMobile ? 60 : 80}
-                                  fontSize={isMobile ? 10 : 10}
-                                  tick={{ fill: '#666666' }}
-                                  axisLine={false}
-                                  tickLine={false}
-                                  interval={0}
-                                />
-                                <YAxis
-                                  fontSize={isMobile ? 8 : 10}
-                                  tick={{ fill: '#666666' }}
-                                  width={isMobile ? 30 : 40}
-                                  axisLine={false}
-                                  tickLine={false}
-                                />
-                                <Tooltip
-                                  content={({ active, payload, label }) => {
-                                    if (active && payload && payload.length) {
-                                      const data = payload[0].payload;
-                                      return (
-                                        <div className="bg-white p-3 border border-gray-300 shadow-lg rounded text-black">
-                                          <p className="font-medium">{label}</p>
-                                          <p className="text-sm">จำนวน: {data.totalUsed.toLocaleString()} {data.unit}</p>
-                                          <p className="text-sm">มูลค่า: ฿{data.totalValue.toLocaleString()}</p>
-                                        </div>
-                                      );
-                                    }
-                                    return null;
-                                  }}
-                                />
-                                <Bar
-                                  dataKey="totalUsed"
-                                  fill="#000000"
-                                  radius={[2, 2, 0, 0]}
-                                  onClick={(data) => handleBarClick(data, boothDate.boothId)}
-                                  style={{ cursor: 'pointer' }}
-                                />
-                              </BarChart>
-                              </ResponsiveContainer>
-                            </div>
-                          </div>
-
-                          {/* Selected Ingredient Info */}
-                          {selectedIngredient[boothDate.boothId] && (
-                            <div className="mt-4 p-4 border border-gray-300 bg-gray-50">
-                              <div className="flex items-center justify-between mb-2">
-                                <h5 className="font-medium text-black">{selectedIngredient[boothDate.boothId]?.name}</h5>
-                                <button
-                                  onClick={() => setSelectedIngredient(prev => ({ ...prev, [boothDate.boothId]: null }))}
-                                  className="text-gray-400 hover:text-gray-600"
-                                >
-                                  ✕
-                                </button>
-                              </div>
-                              <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div>
-                                  <span className="text-gray-600">จำนวนใช้:</span>
-                                  <div className="font-medium">
-                                    {selectedIngredient[boothDate.boothId]?.totalUsed.toLocaleString()} {selectedIngredient[boothDate.boothId]?.unit}
-                                  </div>
-                                </div>
-                                <div>
-                                  <span className="text-gray-600">มูลค่า:</span>
-                                  <div className="font-medium">
-                                    ฿{selectedIngredient[boothDate.boothId]?.totalValue.toLocaleString()}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
                   ) : (
                     <div className="text-center py-16">

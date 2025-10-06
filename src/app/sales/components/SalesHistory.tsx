@@ -4,6 +4,7 @@ import React from 'react';
 import { Calendar, ChevronLeft, ChevronRight, ListOrdered } from 'lucide-react';
 import { Input } from '@/components/ui';
 import { Sale } from '@/types';
+import { formatThaiDate } from '@/utils/timezone';
 
 interface SalesHistoryProps {
   salesHistory: Sale[];
@@ -29,10 +30,9 @@ export function SalesHistory({
   onNextPage
 }: SalesHistoryProps) {
   const formatTime = (date: string | Date) => {
-    return new Date(date).toLocaleTimeString('th-TH', {
+    return formatThaiDate(new Date(date), {
       hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'UTC'
+      minute: '2-digit'
     });
   };
 

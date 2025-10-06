@@ -35,24 +35,24 @@ export async function GET(request: NextRequest) {
     const allBooths = searchParams.get('allBooths'); // New parameter for operational data
 
     // Get booths based on request type - filter by brandId
-    let boothFilter: any = {
+    const boothFilter: any = {
       brandId: payload.user.brandId
     };
     let targetBooths;
 
     if (allBooths === 'true') {
       // For operational data - get ALL booths (active and inactive) for this brand
-      targetBooths = await BoothModel.find(boothFilter, { _id: 1 });
+      targetBooths = await BoothModel.find(boothFilter).select('_id').lean();
     } else {
       // For pie charts - get only active booths for this brand
       boothFilter.isActive = true;
       if (boothIdParam) {
         boothFilter._id = boothIdParam;
       }
-      targetBooths = await BoothModel.find(boothFilter, { _id: 1 });
+      targetBooths = await BoothModel.find(boothFilter).select('_id').lean();
     }
 
-    const boothIds = targetBooths.map(booth => (booth._id as any).toString());
+    const boothIds = targetBooths.map(booth => booth._id.toString());
 
     if (boothIds.length === 0) {
       return NextResponse.json([]);
