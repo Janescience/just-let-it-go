@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Save } from 'lucide-react';
 import { Modal, Input, ModalActionButton } from '@/components/ui';
 import { AccountingTransaction } from '@/types';
-import { formatDateISO, now } from '@/utils/timezone';
+import { formatDateISO, formatTimeInput, now } from '@/utils/timezone';
 
 interface TransactionModalProps {
   transaction: AccountingTransaction | null;
@@ -21,6 +21,7 @@ export function TransactionModal({
 }: TransactionModalProps) {
   const [formData, setFormData] = useState({
     date: '',
+    time: '',
     type: 'expense' as 'income' | 'expense',
     category: '',
     amount: '',
@@ -33,7 +34,8 @@ export function TransactionModal({
   useEffect(() => {
     if (transaction) {
       setFormData({
-        date: formatDateISO(transaction.date),
+        date: formatDateISO(transaction.createdAt),
+        time: formatTimeInput(transaction.createdAt),
         type: transaction.type,
         category: transaction.category,
         amount: transaction.amount.toString(),
@@ -43,8 +45,10 @@ export function TransactionModal({
           : transaction.boothId || ''
       });
     } else {
+      const currentTime = now();
       setFormData({
-        date: formatDateISO(now()),
+        date: formatDateISO(currentTime),
+        time: formatTimeInput(currentTime),
         type: 'expense',
         category: '',
         amount: '',
@@ -75,7 +79,7 @@ export function TransactionModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.type || !formData.category || !formData.amount || !formData.description) {
+    if (!formData.type || !formData.category || !formData.amount || !formData.description || !formData.date || !formData.time) {
       alert('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน');
       return;
     }
@@ -102,7 +106,7 @@ export function TransactionModal({
         },
         credentials: 'include',
         body: JSON.stringify({
-          date: formData.date,
+          datetime: `${formData.date}T${formData.time}:00`,
           type: formData.type,
           category: formData.category,
           amount: amount,
@@ -160,17 +164,30 @@ export function TransactionModal({
       <div className="p-6">
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Date */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              วันที่ *
-            </label>
-            <Input
-              type="date"
-              value={formData.date}
-              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              required
-            />
+          {/* Date and Time */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                วันที่ *
+              </label>
+              <Input
+                type="date"
+                value={formData.date}
+                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                เวลา *
+              </label>
+              <Input
+                type="time"
+                value={formData.time}
+                onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                required
+              />
+            </div>
           </div>
 
           {/* Type */}

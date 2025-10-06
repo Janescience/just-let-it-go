@@ -60,8 +60,8 @@ export async function GET(request: NextRequest) {
 
     // Create array of all dates between startDate and endDate
     const allBoothDates: string[] = [];
-    const startDate = new Date(boothInfo.startDate);
-    const endDate = new Date(boothInfo.endDate);
+    const startDate = new Date((boothInfo as any).startDate);
+    const endDate = new Date((boothInfo as any).endDate);
 
     const iterator = new Date(startDate);
     while (iterator <= endDate) {

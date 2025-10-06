@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       targetBooths = await BoothModel.find(boothFilter).select('_id').lean();
     }
 
-    const boothIds = targetBooths.map(booth => booth._id.toString());
+    const boothIds = targetBooths.map(booth => (booth as any)._id.toString());
 
     if (boothIds.length === 0) {
       return NextResponse.json([]);

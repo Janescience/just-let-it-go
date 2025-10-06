@@ -2,11 +2,6 @@ import mongoose from 'mongoose';
 import { now } from '@/utils/timezone';
 
 const AccountingTransactionSchema = new mongoose.Schema({
-  date: {
-    type: Date,
-    required: true,
-    default: Date.now
-  },
   type: {
     type: String,
     enum: ['income', 'expense'],
@@ -71,7 +66,7 @@ AccountingTransactionSchema.pre('save', function(next) {
 
 // Indexes for better query performance
 AccountingTransactionSchema.index({ brandId: 1 });
-AccountingTransactionSchema.index({ brandId: 1, date: -1 });
+AccountingTransactionSchema.index({ brandId: 1, createdAt: -1 });
 AccountingTransactionSchema.index({ brandId: 1, type: 1 });
 AccountingTransactionSchema.index({ brandId: 1, category: 1 });
 AccountingTransactionSchema.index({ boothId: 1 });

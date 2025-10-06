@@ -62,19 +62,25 @@ export async function PUT(
 
     await connectDB();
     const { id } = await params;
+    const updateData: any = {
+      type: data.type,
+      category: data.category,
+      amount: data.amount,
+      description: data.description,
+      boothId: data.boothId || null
+    };
+
+    // Update createdAt if datetime is provided
+    if (data.datetime) {
+      updateData.createdAt = new Date(data.datetime);
+    }
+
     const transaction = await AccountingTransaction.findOneAndUpdate(
       {
         _id: id,
         brandId: decoded.user.brandId
       },
-      {
-        date: data.date ? new Date(data.date) : undefined,
-        type: data.type,
-        category: data.category,
-        amount: data.amount,
-        description: data.description,
-        boothId: data.boothId || null
-      },
+      updateData,
       { new: true }
     ).populate('boothId', 'name');
 

@@ -165,7 +165,7 @@ export async function GET(
     .lean();
 
     // Simplified menu items - only calculate cost for display
-    const menuItemsWithCost = booth.menuItems.map((menuItem: any) => {
+    const menuItemsWithCost = (booth as any).menuItems?.map((menuItem: any) => {
       // Calculate cost from ingredients
       const totalCost = menuItem.ingredients?.reduce((cost: number, ing: any) => {
         const costPerUnit = ing.ingredientId?.costPerUnit || 0;
@@ -183,12 +183,12 @@ export async function GET(
         totalCost: Math.round(totalCost * 100) / 100, // Round to 2 decimal places
         profit: Math.round((menuItem.price - totalCost) * 100) / 100
       };
-    });
+    }) || [];
 
     return NextResponse.json({
       booth: {
-        _id: booth._id,
-        name: booth.name,
+        _id: (booth as any)._id,
+        name: (booth as any).name,
         menuItems: menuItemsWithCost
       },
       allMenuItems

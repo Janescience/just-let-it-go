@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     if (allBooths) {
       // Get all booths for this brand
       const booths = await BoothModel.find({ brandId: payload.user.brandId }).select('_id').lean();
-      boothIds = booths.map(booth => booth._id.toString());
+      boothIds = booths.map(booth => (booth as any)._id.toString());
     } else if (boothId) {
       // Verify booth belongs to user's brand
       selectedBooth = await BoothModel.findOne({
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
         brandId: payload.user.brandId
       })
         .select('name')
-        .lean();
+        .lean() as { name?: string } | null;
 
       if (!selectedBooth) {
         const response = NextResponse.json(

@@ -6,7 +6,7 @@ import {
   formatCurrency,
   exportToExcel
 } from '@/utils/excel-export';
-import { formatDate, formatTime } from '@/utils/timezone';
+import { displayDate, displayTime } from '@/utils/timezone';
 
 interface TransactionTableProps {
   transactions: AccountingTransaction[];
@@ -144,7 +144,7 @@ export function TransactionTable({
                       )}
                       <div>
                         <div className="text-sm font-medium text-gray-900">
-                          {formatDate(dailyTx.date)}
+                          {displayDate(dailyTx.date)}
                         </div>
                         <div className="text-xs text-gray-500">
                           {dailyTx.transactions.length} รายการ
@@ -197,7 +197,7 @@ export function TransactionTable({
                       <tr key={transaction._id} className="hover:bg-gray-25">
                         <td className="p-2 sm:p-3 pl-8 sm:pl-12">
                           <div className="text-xs text-gray-500 whitespace-nowrap">
-                            {formatTime(transaction.date).slice(0, 5)}
+                            {displayTime(transaction.createdAt).slice(0, 5)}
                           </div>
                         </td>
                         <td className="p-2 sm:p-3" colSpan={2}>

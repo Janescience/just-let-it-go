@@ -80,9 +80,9 @@ export function formatDateTimeShort(date: Date | string): string {
  */
 export function formatDateISO(date: Date | string): string {
   const d = new Date(date);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 
@@ -114,6 +114,32 @@ export function displayDate(date: Date | string): string {
   const month = String(d.getUTCMonth() + 1).padStart(2, '0');
   const year = d.getUTCFullYear();
   return `${day}/${month}/${year}`;
+}
+
+/**
+ * แสดงเวลาจาก DB โดยตรง (DB เก็บเวลาไทยแล้ว ไม่ต้องแปลง)
+ * ใช้สำหรับแสดง createdAt, updatedAt จาก DB
+ * @param date - Date object หรือ string
+ * @returns เวลาในรูปแบบ HH:mm:ss
+ */
+export function displayTime(date: Date | string): string {
+  const d = new Date(date);
+  const hours = String(d.getUTCHours()).padStart(2, '0');
+  const minutes = String(d.getUTCMinutes()).padStart(2, '0');
+  const seconds = String(d.getUTCSeconds()).padStart(2, '0');
+  return `${hours}:${minutes}:${seconds}`;
+}
+
+/**
+ * Format time เป็น HH:mm สำหรับ input field
+ * @param date - Date object หรือ string
+ * @returns เวลาในรูปแบบ HH:mm
+ */
+export function formatTimeInput(date: Date | string): string {
+  const d = new Date(date);
+  const hours = String(d.getUTCHours()).padStart(2, '0');
+  const minutes = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
 }
 
 /**

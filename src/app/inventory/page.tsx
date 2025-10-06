@@ -1055,8 +1055,8 @@ function StockMovementsView({ stockMovements, ingredients, typeFilter, onTypeFil
         groupKey = `sale_${movement.saleId}`;
       } else {
         // สำหรับ movement ที่ไม่มี saleId ให้ใช้ timestamp และ type
-        const date = formatDateISO(new Date(movement.createdAt));
-        const hour = new Date(movement.createdAt).getHours();
+        const date = formatDateISO(movement.createdAt);
+        const hour = new Date(movement.createdAt).getUTCHours();
         groupKey = `${movement.type}_${date}_${hour}_${movement.reason || 'no_reason'}`;
       }
 
@@ -1599,10 +1599,17 @@ function EditMovementModal({ movement, onClose, onSuccess }: EditMovementModalPr
   const [movementData, setMovementData] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(false);
   const [fetchingData, setFetchingData] = React.useState(true);
+  const formatTimeForInput = (date: Date | string): string => {
+    const d = new Date(date);
+    const hours = String(d.getUTCHours()).padStart(2, '0');
+    const minutes = String(d.getUTCMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
   const [formData, setFormData] = React.useState({
     quantity: Math.abs(movement.quantity).toString(),
     reason: movement.reason || '',
-    createdAt: new Date(movement.createdAt).toISOString().slice(0, 16) // Keep original format for datetime-local input
+    createdAt: `${formatDateISO(movement.createdAt)}T${formatTimeForInput(movement.createdAt)}`
   });
 
   React.useEffect(() => {

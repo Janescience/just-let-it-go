@@ -30,16 +30,16 @@ export async function GET(request: NextRequest) {
     const query: any = { brandId: decoded.user.brandId };
 
     if (startDate || endDate) {
-      query.date = {};
-      if (startDate) query.date.$gte = new Date(startDate);
-      if (endDate) query.date.$lte = new Date(endDate + 'T23:59:59.999Z');
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) query.createdAt.$lte = new Date(endDate + 'T23:59:59.999Z');
     }
 
     if (type) query.type = type;
     if (boothId) query.boothId = boothId;
 
     const transactions = await AccountingTransaction.find(query)
-      .sort({ date: -1 });
+      .sort({ createdAt: -1 });
 
     // Manually fetch booth names if needed
     const boothIds = [...new Set(transactions.filter(t => t.boothId).map(t => t.boothId.toString()))];
@@ -138,7 +138,6 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     const transaction = new AccountingTransaction({
-      date: data.date ? new Date(data.date) : new Date(),
       type: data.type,
       category: data.category,
       amount: data.amount,
@@ -148,6 +147,11 @@ export async function POST(request: NextRequest) {
       relatedType: data.relatedType || 'manual',
       brandId: decoded.user.brandId
     });
+
+    // Set custom createdAt if datetime is provided
+    if (data.datetime) {
+      transaction.createdAt = new Date(data.datetime);
+    }
 
     await transaction.save();
     await transaction.populate('boothId', 'name');
