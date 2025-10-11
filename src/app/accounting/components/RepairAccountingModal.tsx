@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, AlertTriangle, CheckCircle, RefreshCw, XCircle } from 'lucide-react';
-import { formatDateTimeShort, formatDate as formatDateUtils } from '@/utils/timezone';
+import { displayDateTime, formatDate as formatDateUtils } from '@/utils/timezone';
 
 interface SaleItem {
   menuItemId: string;
@@ -127,7 +127,7 @@ export function RepairAccountingModal({ isOpen, onClose }: RepairAccountingModal
   };
 
   const formatDate = (dateString: string) => {
-    return formatDateTimeShort(dateString);
+    return displayDateTime(dateString);
   };
 
   const formatCurrency = (amount: number) => {

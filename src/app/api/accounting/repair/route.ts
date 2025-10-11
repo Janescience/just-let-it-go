@@ -205,7 +205,6 @@ export async function POST(request: NextRequest) {
 
         // Create accounting transaction using the same logic as sales creation
         const accountingTransaction = new AccountingTransaction({
-          date: new Date(sale.createdAt), // Use original sale date - ensure it's a Date object
           type: 'income',
           category: 'sale_revenue',
           amount: sale.totalAmount,
@@ -216,6 +215,9 @@ export async function POST(request: NextRequest) {
           relatedType: 'sale',
           brandId: booth.brandId // Use brandId from booth (will be converted to ObjectId by mongoose)
         });
+
+        // Set createdAt to match original sale date
+        accountingTransaction.createdAt = sale.createdAt;
 
         await accountingTransaction.save();
         results.push({

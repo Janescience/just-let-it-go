@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { verifyToken } from '@/utils/auth';
+import { now } from '@/utils/timezone';
 import AccountingTransaction from '@/lib/models/AccountingTransaction';
 // Force import to register the model
 import '@/lib/models/Booth';
@@ -31,8 +32,14 @@ export async function GET(request: NextRequest) {
 
     if (startDate || endDate) {
       query.createdAt = {};
-      if (startDate) query.createdAt.$gte = new Date(startDate);
-      if (endDate) query.createdAt.$lte = new Date(endDate + 'T23:59:59.999Z');
+      if (startDate) {
+        const start = new Date(startDate + 'T00:00:00+07:00');
+        query.createdAt.$gte = start;
+      }
+      if (endDate) {
+        const end = new Date(endDate + 'T23:59:59+07:00');
+        query.createdAt.$lte = end;
+      }
     }
 
     if (type) query.type = type;
