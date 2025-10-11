@@ -192,7 +192,7 @@ export async function POST(request: NextRequest) {
             unit: ingredient?.unit,
             type: 'use',
             quantity: -totalUsed,
-            cost: ingredient?.costPerUnit, // เพิ่ม cost จาก costPerUnit
+            cost: (ingredient?.costPerUnit || 0) * totalUsed, // ต้นทุนรวม = costPerUnit × totalUsed
             reason: `ขาย ${menuItem.name} x ${item.quantity}`,
             boothId,
             saleId: sale._id,
@@ -561,7 +561,7 @@ async function processBackgroundTasks(
                   unit: ingredientUnit,
                   type: 'use',
                   quantity: -totalUsed,
-                  cost: ingredientCost,
+                  cost: ingredientCost * totalUsed, // ต้นทุนรวม = costPerUnit × totalUsed
                   reason: `ขาย ${menuItem.name} จำนวน ${saleItem.quantity}`,
                   boothId,
                   saleId: sale._id

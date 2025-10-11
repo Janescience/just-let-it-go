@@ -364,6 +364,7 @@ export default function SalesPageContent() {
               onDateChange={setSelectedDate}
               onPreviousPage={() => setCurrentPage(prev => Math.max(1, prev - 1))}
               onNextPage={() => setCurrentPage(prev => prev + 1)}
+              onSaleUpdated={fetchSalesData}
             />
           ) : (
             <SalesHistoryLoading />
@@ -396,10 +397,9 @@ export default function SalesPageContent() {
             setShowPaymentModal(false);
             setCart([]);
 
-            // Refresh sales data
-            if (activeTab === 'history' || activeTab === 'summary') {
-              fetchSalesData();
-            }
+            // Always refresh sales data to update summary stats
+            fetchSalesData();
+
             localStorage.setItem('booth-stats-update', Date.now().toString());
             window.dispatchEvent(new CustomEvent('booth-stats-update'));
           }}

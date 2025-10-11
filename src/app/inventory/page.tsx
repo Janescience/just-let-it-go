@@ -1166,9 +1166,8 @@ function StockMovementsView({ stockMovements, ingredients, typeFilter, onTypeFil
             const totalCost = movements.reduce((sum, m) => {
               if (m.quantity) {
                 if (m.cost) {
-                  // Has cost data, use it directly
-                  const calculatedCost = Math.abs(m.quantity) * m.cost;
-                  return sum + calculatedCost;
+                  // Has cost data, use it directly (cost is already total cost)
+                  return sum + m.cost;
                 } else {
                   // No cost data (like use/waste), calculate from ingredient costPerUnit
                   const ingredientId = typeof m.ingredientId === 'string' ? m.ingredientId : (m.ingredientId as any)?._id;

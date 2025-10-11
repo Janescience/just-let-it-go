@@ -97,7 +97,7 @@ export function SalesActivitySidebar({
       {/* Sidebar */}
       <div
         ref={sidebarRef}
-        className={`fixed right-0 top-0 h-full w-96 bg-white border-l border-gray-100 transform transition-transform duration-300 z-50 ${
+        className={`fixed right-0 top-0 h-full w-96 bg-white border-l border-gray-100 transform transition-transform duration-300 z-50 flex flex-col ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >

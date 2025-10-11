@@ -3,7 +3,7 @@ import { connectDB } from '@/lib/db';
 import { verifyToken } from '@/utils/auth';
 import Sale from '@/lib/models/Sale';
 import Booth from '@/lib/models/Booth';
-import MenuItem from '@/lib/models/MenuItem';
+import { now } from '@/utils/timezone';
 
 export async function GET(request: NextRequest) {
   try {
@@ -76,15 +76,14 @@ export async function GET(request: NextRequest) {
     // Build query for sales
     let salesQuery: any = { boothId };
 
-    // Filter by date if provided
+    // Filter by date if provided (using Thailand timezone)
     if (date) {
-      const startDate = new Date(date);
-      const endDate = new Date(date);
-      endDate.setDate(endDate.getDate() + 1);
+      const startDate = new Date(`${date}T00:00:00.000Z`);
+      const endDate = new Date(`${date}T23:59:59.999Z`);
 
       salesQuery.createdAt = {
         $gte: startDate,
-        $lt: endDate
+        $lte: endDate
       };
     }
 
@@ -95,14 +94,32 @@ export async function GET(request: NextRequest) {
       .skip(skip);
       // .limit(limit);
 
+    // Fix any unpopulated menu items by fetching them manually
+    const MenuItem = (await import('@/lib/models/MenuItem')).default;
+    for (const sale of salesHistory) {
+      for (const item of sale.items) {
+        if (item.menuItemId && typeof item.menuItemId === 'string') {
+          // If it's still a string (not populated), fetch the menu item manually
+          try {
+            const menuItem = await MenuItem.findById(item.menuItemId).select('name price');
+            if (menuItem) {
+              item.menuItemId = menuItem;
+            }
+          } catch (error) {
+            console.log('Could not fetch menu item:', item.menuItemId);
+          }
+        }
+      }
+    }
+
     // Get total count for pagination
     const totalSales = await Sale.countDocuments(salesQuery);
 
-    // Get today's sales summary
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Get today's sales summary (using Thailand time)
+    const today = now();
+    today.setUTCHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
 
     const todaySalesQuery = {
       boothId,
@@ -138,6 +155,7 @@ export async function GET(request: NextRequest) {
 
       // Calculate menu statistics
       sale.items.forEach((item: { menuItemId: any; quantity: number; price: number }) => {
+        if (!item.menuItemId) return; // Skip items with no menuItemId
         const menuId = item.menuItemId.toString();
         if (!summary.menuStats[menuId]) {
           summary.menuStats[menuId] = {

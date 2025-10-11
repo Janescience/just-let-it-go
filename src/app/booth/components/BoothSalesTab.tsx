@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, Calendar, Package, BarChart3, Edit, X, Check, Trash2, Loader2 } from 'lucide-react';
 import { Booth } from '@/types';
-import { formatDate, formatTime, formatDateISO } from '@/utils/timezone';
+import { displayDate, displayTime, formatDateISO } from '@/utils/timezone';
 
 interface BoothSalesTabProps {
   booth: Booth;
@@ -257,13 +257,34 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
         .reduce((sum: number, sale: any) => sum + sale.totalAmount, 0);
       const orderCount = daySales.length;
 
-      // Calculate cost and profit for this day
-      const dayCost = daySales.reduce((sum: number, sale: any) => sum + (sale.totalCost || 0), 0);
-      const dayProfit = daySales.reduce((sum: number, sale: any) => sum + (sale.profit || 0), 0);
+      // Calculate cost and profit for this day by iterating through items
+      let dayCost = 0;
+      let dayProfit = 0;
+
+      daySales.forEach((sale: any) => {
+        sale.items.forEach((item: any) => {
+          // Calculate cost from menu item ingredients
+          const menuItemData = item.menuItemId;
+          let itemCost = 0;
+          if (menuItemData && menuItemData.ingredients) {
+            menuItemData.ingredients.forEach((ingredient: any) => {
+              const costPerUnit = ingredient.ingredientId?.costPerUnit || 0;
+              const usedQuantity = ingredient.quantity * item.quantity;
+              itemCost += costPerUnit * usedQuantity;
+            });
+          }
+
+          const itemRevenue = item.price * item.quantity;
+          const itemProfit = itemRevenue - itemCost;
+
+          dayCost += itemCost;
+          dayProfit += itemProfit;
+        });
+      });
 
       dailyData.push({
         date: dateStr,
-        displayDate: formatDate(d),
+        displayDate: displayDate(d),
         total: dayTotal,
         cash: cashTotal,
         transfer: transferTotal,
@@ -754,7 +775,7 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
                                       {itemIndex === 0 && (
                                         <td rowSpan={sale.items.length} className="p-2 sm:p-3 font-light text-gray-600 border-r border-gray-100 w-16 min-w-[60px]">
                                           <div className="text-xs sm:text-sm">
-                                            {formatTime(sale.createdAt)}
+                                            {displayTime(sale.createdAt).slice(0, 5)}
                                           </div>
                                         </td>
                                       )}

@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
       })),
       ...sampleAccounting.map(acc => ({
         _id: acc._id.toString(),
-        createdAt: acc.date.toISOString(),
+        createdAt: acc.date?.toISOString() || new Date().toISOString(),
         type: 'accounting' as const,
         amount: acc.amount,
         description: acc.description

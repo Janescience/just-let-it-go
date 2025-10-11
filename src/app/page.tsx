@@ -1133,7 +1133,7 @@ export default function HomePage() {
                                     fill="#333"
                                     formatter={(value: any) => {
                                       const numValue = Number(value);
-                                      return numValue > 0 ? `฿${(numValue / 1000).toFixed(0)}k` : '';
+                                      return numValue > 0 ? `฿${(numValue / 1000).toFixed(1)}k` : '';
                                     }}
                                   />
                                 </Bar>
