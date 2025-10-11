@@ -1,6 +1,7 @@
 import React from 'react';
 import { Calendar, TrendingUp, AlertTriangle, Users, Flame, Eye, ShoppingCart } from 'lucide-react';
 import { Booth } from '@/types';
+import '@/utils/timezone';
 
 interface BoothStats {
   booth: Booth & {
@@ -43,10 +44,16 @@ interface BoothCardProps {
 
 export function BoothCard({ booth, stats, isLoadingStats = false, onClick, onSaleClick }: BoothCardProps) {
   const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('th-TH', {
-      day: 'numeric',
-      month: 'short'
-    });
+    const d = new Date(date);
+    const day = d.getUTCDate();
+    const month = d.getUTCMonth();
+
+    const thaiMonths = [
+      'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+      'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'
+    ];
+
+    return `${String(day).padStart(2, '0')} ${thaiMonths[month]}`;
   };
 
   const isExpired = new Date(booth.endDate) < new Date();

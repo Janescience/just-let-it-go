@@ -56,7 +56,7 @@ export function middleware(request: NextRequest) {
   // Role-based access control
   if (userRole === 'super_admin') {
     // Super admin can only access super admin routes
-    if (!superAdminOnlyRoutes.includes(pathname)) {
+    if (!superAdminOnlyRoutes.some(route => pathname.startsWith(route))) {
       return NextResponse.redirect(new URL('/super-admin', request.url));
     }
     return NextResponse.next();
@@ -64,7 +64,7 @@ export function middleware(request: NextRequest) {
 
   if (userRole === 'admin') {
     // Admin cannot access super admin routes
-    if (superAdminOnlyRoutes.includes(pathname)) {
+    if (superAdminOnlyRoutes.some(route => pathname.startsWith(route))) {
       return NextResponse.redirect(new URL('/', request.url));
     }
     // Admin can access all other routes except super admin
@@ -73,7 +73,7 @@ export function middleware(request: NextRequest) {
 
   if (userRole === 'staff') {
     // Staff cannot access super admin routes
-    if (superAdminOnlyRoutes.includes(pathname)) {
+    if (superAdminOnlyRoutes.some(route => pathname.startsWith(route))) {
       return NextResponse.redirect(new URL('/sales', request.url));
     }
     // Staff can only access sales page

@@ -351,6 +351,8 @@ export function Step3Summary({
                 const totalProfit = requiredRevenue - finalTotalCapital;
 
                 const dailyRevenue = Math.round(requiredRevenue / businessPlan.numberOfDays);
+                const unitsNeeded = Math.ceil(requiredRevenue / averagePrice);
+                const dailyUnitsNeeded = Math.ceil(unitsNeeded / businessPlan.numberOfDays);
 
                 return (
                   <tr key={profit} className="border-b border-gray-100 hover:bg-gray-50">
@@ -361,6 +363,8 @@ export function Step3Summary({
                     <td className="text-right py-2 font-light text-black">฿{Math.round(totalProfit).toLocaleString()}</td>
                     <td className="text-right py-2 font-light">฿{Math.round(requiredRevenue).toLocaleString()}</td>
                     <td className="text-right py-2 font-light">฿{dailyRevenue.toLocaleString()}</td>
+                    <td className="text-right py-2 font-light">{unitsNeeded.toLocaleString()} ชิ้น</td>
+                    <td className="text-right py-2 font-light">{dailyUnitsNeeded.toLocaleString()} ชิ้น</td>
                   </tr>
                 );
               })}

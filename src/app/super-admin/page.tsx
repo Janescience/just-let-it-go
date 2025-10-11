@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { Store, Users, Calendar, Building, ChevronRight, LogOut } from 'lucide-react';
+import { Store, Users, Calendar, Building, ChevronRight, LogOut, AlertTriangle, Copy, Clock } from 'lucide-react';
 import { Brand } from '@/types';
 
 interface BrandWithStats extends Brand {
@@ -231,6 +231,75 @@ export default function SuperAdminPage() {
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Super Admin Tools */}
+            <div className="mt-12 pt-8 border-t border-gray-200">
+              <h2 className="text-lg font-thin text-black tracking-wider mb-6">เครื่องมือระบบ</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div
+                  onClick={() => router.push('/super-admin/error-logs')}
+                  className="border border-gray-200 p-6 hover:border-black transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center">
+                      <AlertTriangle className="w-6 h-6 text-red-500" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-light text-black">Error Logs</h3>
+                      <p className="text-sm text-gray-500">จัดการและติดตามข้อผิดพลาดระบบ</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-black transition-colors ml-auto" />
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    • ดูรายการข้อผิดพลาดทั้งหมด<br/>
+                    • กรองตามประเภทและระดับความรุนแรง<br/>
+                    • จัดการสถานะการแก้ไข
+                  </div>
+                </div>
+
+                <div
+                  onClick={() => router.push('/super-admin/duplicate-sales')}
+                  className="border border-gray-200 p-6 hover:border-black transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-12 h-12 bg-yellow-50 rounded-full flex items-center justify-center">
+                      <Copy className="w-6 h-6 text-yellow-500" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-light text-black">Duplicate Sales</h3>
+                      <p className="text-sm text-gray-500">ตรวจสอบและจัดการการขายซ้ำ</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-black transition-colors ml-auto" />
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    • ค้นหารายการขายที่ซ้ำกัน<br/>
+                    • วิเคราะห์ตามช่วงเวลาและยอดเงิน<br/>
+                    • ลบรายการซ้ำที่ไม่ต้องการ
+                  </div>
+                </div>
+
+                <div
+                  onClick={() => router.push('/super-admin/timezone-migration')}
+                  className="border border-gray-200 p-6 hover:border-black transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
+                      <Clock className="w-6 h-6 text-blue-500" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-light text-black">Timezone Migration</h3>
+                      <p className="text-sm text-gray-500">แปลงข้อมูลเวลาไปยัง Thailand timezone</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-black transition-colors ml-auto" />
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    • ตรวจสอบข้อมูลเวลาปัจจุบัน<br/>
+                    • ดูตัวอย่างผลลัพธ์การแปลง<br/>
+                    • ดำเนินการ migration อย่างปลอดภัย
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}

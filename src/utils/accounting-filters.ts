@@ -1,4 +1,5 @@
 import { AccountingFilterCriteria } from '@/types/accounting';
+import { now } from '@/utils/timezone';
 
 export interface DateRange {
   startDate: Date;
@@ -6,8 +7,8 @@ export interface DateRange {
 }
 
 export function getDateRangeFromCriteria(criteria: AccountingFilterCriteria): DateRange | null {
-  const now = new Date();
-  const currentYear = now.getFullYear();
+  const currentDate = now();
+  const currentYear = currentDate.getFullYear();
 
   switch (criteria.type) {
     case 'by_booth':
@@ -16,8 +17,14 @@ export function getDateRangeFromCriteria(criteria: AccountingFilterCriteria): Da
 
     case 'by_month':
       if (criteria.month && criteria.year) {
-        const startDate = new Date(criteria.year, criteria.month - 1, 1);
-        const endDate = new Date(criteria.year, criteria.month, 0, 23, 59, 59, 999);
+        const startDate = new Date(now());
+        startDate.setFullYear(criteria.year, criteria.month - 1, 1);
+        startDate.setHours(0, 0, 0, 0);
+
+        const endDate = new Date(now());
+        endDate.setFullYear(criteria.year, criteria.month, 0);
+        endDate.setHours(23, 59, 59, 999);
+
         return { startDate, endDate };
       }
       return null;
@@ -25,8 +32,15 @@ export function getDateRangeFromCriteria(criteria: AccountingFilterCriteria): Da
     case 'by_quarter':
       if (criteria.quarter && criteria.quarterYear) {
         const quarterStartMonth = (criteria.quarter - 1) * 3;
-        const startDate = new Date(criteria.quarterYear, quarterStartMonth, 1);
-        const endDate = new Date(criteria.quarterYear, quarterStartMonth + 3, 0, 23, 59, 59, 999);
+
+        const startDate = new Date(now());
+        startDate.setFullYear(criteria.quarterYear, quarterStartMonth, 1);
+        startDate.setHours(0, 0, 0, 0);
+
+        const endDate = new Date(now());
+        endDate.setFullYear(criteria.quarterYear, quarterStartMonth + 3, 0);
+        endDate.setHours(23, 59, 59, 999);
+
         return { startDate, endDate };
       }
       return null;
@@ -35,13 +49,25 @@ export function getDateRangeFromCriteria(criteria: AccountingFilterCriteria): Da
       if (criteria.halfYear && criteria.halfYearYear) {
         if (criteria.halfYear === 'first') {
           // ม.ค. - มิ.ย.
-          const startDate = new Date(criteria.halfYearYear, 0, 1);
-          const endDate = new Date(criteria.halfYearYear, 6, 0, 23, 59, 59, 999);
+          const startDate = new Date(now());
+          startDate.setFullYear(criteria.halfYearYear, 0, 1);
+          startDate.setHours(0, 0, 0, 0);
+
+          const endDate = new Date(now());
+          endDate.setFullYear(criteria.halfYearYear, 6, 0);
+          endDate.setHours(23, 59, 59, 999);
+
           return { startDate, endDate };
         } else {
           // ก.ค. - ธ.ค.
-          const startDate = new Date(criteria.halfYearYear, 6, 1);
-          const endDate = new Date(criteria.halfYearYear, 12, 0, 23, 59, 59, 999);
+          const startDate = new Date(now());
+          startDate.setFullYear(criteria.halfYearYear, 6, 1);
+          startDate.setHours(0, 0, 0, 0);
+
+          const endDate = new Date(now());
+          endDate.setFullYear(criteria.halfYearYear, 12, 0);
+          endDate.setHours(23, 59, 59, 999);
+
           return { startDate, endDate };
         }
       }
@@ -49,8 +75,14 @@ export function getDateRangeFromCriteria(criteria: AccountingFilterCriteria): Da
 
     case 'by_year':
       if (criteria.selectedYear) {
-        const startDate = new Date(criteria.selectedYear, 0, 1);
-        const endDate = new Date(criteria.selectedYear, 12, 0, 23, 59, 59, 999);
+        const startDate = new Date(now());
+        startDate.setFullYear(criteria.selectedYear, 0, 1);
+        startDate.setHours(0, 0, 0, 0);
+
+        const endDate = new Date(now());
+        endDate.setFullYear(criteria.selectedYear, 12, 0);
+        endDate.setHours(23, 59, 59, 999);
+
         return { startDate, endDate };
       }
       return null;
@@ -65,7 +97,7 @@ export function getDateRangeFromCriteria(criteria: AccountingFilterCriteria): Da
 }
 
 export function getAvailableYears(): number[] {
-  const currentYear = new Date().getFullYear();
+  const currentYear = now().getFullYear();
   const startYear = 2020; // หรือปีที่เริ่มธุรกิจ
   const years = [];
 
@@ -77,19 +109,19 @@ export function getAvailableYears(): number[] {
 }
 
 export function getCurrentQuarter(): number {
-  const month = new Date().getMonth() + 1;
+  const month = now().getMonth() + 1;
   return Math.ceil(month / 3);
 }
 
 export function getCurrentHalfYear(): 'first' | 'second' {
-  const month = new Date().getMonth() + 1;
+  const month = now().getMonth() + 1;
   return month <= 6 ? 'first' : 'second';
 }
 
 export function getDefaultCriteriaForType(type: AccountingFilterCriteria['type']): AccountingFilterCriteria {
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
+  const currentDate = now();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth() + 1;
 
   const base: AccountingFilterCriteria = {
     type

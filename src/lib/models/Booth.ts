@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { Booth } from '@/types';
+import { now } from '@/utils/timezone';
 
 interface IBooth extends Omit<Booth, '_id'>, Document {}
 
@@ -153,17 +154,28 @@ const BoothSchema = new Schema<IBooth>({
       totalCapitalWithProfit: Number,
     },
   },
-}, {
-  timestamps: true,
+  createdAt: {
+    type: Date,
+  },
+  updatedAt: {
+    type: Date,
+  },
+});
+
+// Set timestamps with Thailand time
+BoothSchema.pre('save', function(next) {
+  const currentTime = now();
+
+  if (this.isNew) {
+    this.createdAt = currentTime;
+  }
+  this.updatedAt = currentTime;
+
+  next();
 });
 
 BoothSchema.index({ brandId: 1 });
 BoothSchema.index({ brandId: 1, isActive: 1 });
 BoothSchema.index({ startDate: 1, endDate: 1 });
 
-// Clear the model cache to ensure schema updates are applied
-if (mongoose.models.Booth) {
-  delete mongoose.models.Booth;
-}
-
-export default mongoose.model<IBooth>('Booth', BoothSchema);
+export default mongoose.models.Booth || mongoose.model<IBooth>('Booth', BoothSchema);

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Package, Edit, Trash2, Copy, AlertCircle, CheckCircle, Wrench, X } from 'lucide-react';
 import { Equipment } from '@/types';
+import { formatDate } from '@/utils/timezone';
 
 interface EquipmentListTabProps {
   equipment: Equipment[];
@@ -252,7 +253,7 @@ export function EquipmentListTab({
                 <div className="text-left md:text-right md:col-span-1">
                   <div className="text-xs font-light text-gray-400 mb-3 tracking-wide">วันที่ซื้อ</div>
                   <div className="text-sm font-light text-black">
-                    {new Date(item.purchaseDate).toLocaleDateString('th-TH')}
+                    {formatDate(item.purchaseDate)}
                   </div>
                   {item.notes && (
                     <div className="text-xs font-light text-gray-500 mt-2">

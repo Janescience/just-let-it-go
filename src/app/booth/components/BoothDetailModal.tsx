@@ -4,6 +4,8 @@ import { Modal } from '@/components/ui';
 import { Booth } from '@/types';
 import { BoothSalesTab } from './BoothSalesTab';
 import { BoothMenuTab } from './BoothMenuTab';
+import { BoothEditHistoryTab } from './BoothEditHistoryTab';
+import { formatDate as formatDateUtils } from '@/utils/timezone';
 
 interface BoothStats {
   booth: Booth & {
@@ -52,7 +54,7 @@ export function BoothDetailModal({
   onOpenMenuModal
 }: BoothDetailModalProps) {
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'detail' | 'sales' | 'menu'>('detail');
+  const [activeTab, setActiveTab] = useState<'detail' | 'sales' | 'menu' | 'editHistory'>('detail');
   const [preloadedData, setPreloadedData] = useState<any>(null);
   const [dataLoading, setDataLoading] = useState(true);
 
@@ -107,11 +109,7 @@ export function BoothDetailModal({
   };
 
   const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('th-TH', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    return formatDateUtils(date);
   };
 
   const isExpired = new Date(booth.endDate) < new Date();
@@ -178,6 +176,16 @@ export function BoothDetailModal({
             }`}
           >
             จัดการเมนู
+          </button>
+          <button
+            onClick={() => setActiveTab('editHistory')}
+            className={`px-6 py-4 text-sm font-light tracking-wide transition-all duration-200 ${
+              activeTab === 'editHistory'
+                ? 'text-black border-b-2 border-black'
+                : 'text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            ประวัติการแก้ไข
           </button>
         </div>
 
@@ -541,6 +549,11 @@ export function BoothDetailModal({
             onRefresh={onRefresh}
             onOpenMenuModal={onOpenMenuModal}
           />
+        )}
+
+        {/* Tab 4: Edit History */}
+        {activeTab === 'editHistory' && (
+          <BoothEditHistoryTab booth={booth} />
         )}
 
         </div>

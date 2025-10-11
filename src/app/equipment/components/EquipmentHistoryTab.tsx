@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { History, Calendar, TrendingDown, Package } from 'lucide-react';
 import { Equipment } from '@/types';
+import { formatDate } from '@/utils/timezone';
 
 interface EquipmentHistoryTabProps {
   equipment: Equipment[];
@@ -113,7 +114,7 @@ export function EquipmentHistoryTab({ equipment }: EquipmentHistoryTabProps) {
                   <div className="flex items-center gap-4 text-xs font-light text-gray-500">
                     <div className="flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
-                      {new Date(usage.startDate).toLocaleDateString('th-TH')} - {new Date(usage.endDate).toLocaleDateString('th-TH')}
+                      {formatDate(usage.startDate)} - {formatDate(usage.endDate)}
                     </div>
                     <div>{usage.daysUsed} วัน</div>
                   </div>

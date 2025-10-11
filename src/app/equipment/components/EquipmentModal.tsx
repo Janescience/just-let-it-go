@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Modal, Input, ModalActionButton } from '@/components/ui';
 import { Equipment, EquipmentItem } from '@/types';
+import { formatDateISO, now } from '@/utils/timezone';
 
 interface EquipmentModalProps {
   equipment?: Equipment | null;
@@ -20,7 +21,7 @@ export function EquipmentModal({
     name: '',
     description: '',
     estimatedLifespanDays: 730, // 2 ปี
-    purchaseDate: new Date().toISOString().split('T')[0],
+    purchaseDate: formatDateISO(now()),
     status: 'available' as 'available' | 'in_use' | 'maintenance' | 'broken',
     notes: '',
     items: [] as EquipmentItem[]
@@ -39,7 +40,7 @@ export function EquipmentModal({
         name: equipment.name,
         description: equipment.description || '',
         estimatedLifespanDays: equipment.estimatedLifespanDays,
-        purchaseDate: new Date(equipment.purchaseDate).toISOString().split('T')[0],
+        purchaseDate: formatDateISO(equipment.purchaseDate),
         status: equipment.status,
         notes: equipment.notes || '',
         items: [...equipment.items]
@@ -49,7 +50,7 @@ export function EquipmentModal({
         name: `${copyFrom.name} (สำเนา)`,
         description: copyFrom.description || '',
         estimatedLifespanDays: copyFrom.estimatedLifespanDays,
-        purchaseDate: new Date().toISOString().split('T')[0],
+        purchaseDate: formatDateISO(now()),
         status: 'available',
         notes: '',
         items: [...copyFrom.items]

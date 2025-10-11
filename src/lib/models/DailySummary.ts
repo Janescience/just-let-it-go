@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { DailySummary } from '@/types';
+import { now } from '@/utils/timezone';
 
 interface IDailySummary extends Omit<DailySummary, '_id'>, Document {}
 
@@ -45,8 +46,24 @@ const DailySummarySchema = new Schema<IDailySummary>({
       min: 0,
     },
   }],
-}, {
-  timestamps: true,
+  createdAt: {
+    type: Date,
+  },
+  updatedAt: {
+    type: Date,
+  },
+});
+
+// Set timestamps with Thailand time
+DailySummarySchema.pre('save', function(next) {
+  const currentTime = now();
+
+  if (this.isNew) {
+    this.createdAt = currentTime;
+  }
+  this.updatedAt = currentTime;
+
+  next();
 });
 
 DailySummarySchema.index({ boothId: 1, date: 1 }, { unique: true });

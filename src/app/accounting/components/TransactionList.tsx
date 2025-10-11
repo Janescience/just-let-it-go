@@ -2,6 +2,7 @@ import React from 'react';
 import { Edit, Trash2, TrendingUp, TrendingDown } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { AccountingTransaction } from '@/types';
+import { displayDate } from '@/utils/timezone';
 
 interface TransactionListProps {
   transactions: AccountingTransaction[];
@@ -28,11 +29,7 @@ export function TransactionList({
   };
 
   const formatDate = (date: string | Date) => {
-    return new Date(date).toLocaleDateString('th-TH', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
+    return displayDate(date);
   };
 
   const getCategoryName = (type: 'income' | 'expense', category: string) => {
@@ -102,7 +99,7 @@ export function TransactionList({
                     {getCategoryName(transaction.type, transaction.category)}
                   </span>
                   <span className="text-xs font-light text-gray-400">
-                    {formatDate(transaction.date)}
+                    {formatDate(transaction.createdAt)}
                   </span>
                 </div>
 

@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import { now } from '@/utils/timezone';
 import { MenuItem } from '@/types';
 
 interface IMenuItem extends Omit<MenuItem, '_id'>, Document {}
@@ -47,8 +48,24 @@ const MenuItemSchema = new Schema<IMenuItem>({
     type: Boolean,
     default: true,
   },
-}, {
-  timestamps: true,
+  createdAt: {
+    type: Date,
+  },
+  updatedAt: {
+    type: Date,
+  },
+});
+
+// Set timestamps with Thailand time
+MenuItemSchema.pre('save', function(next) {
+  const currentTime = now();
+
+  if (this.isNew) {
+    this.createdAt = currentTime;
+  }
+  this.updatedAt = currentTime;
+
+  next();
 });
 
 MenuItemSchema.index({ brandId: 1 });
