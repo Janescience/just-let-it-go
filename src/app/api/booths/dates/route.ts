@@ -93,6 +93,19 @@ export async function GET(request: NextRequest) {
       }
     ]);
 
+    // Add today's date to each booth's dates if it's not already included
+    const todayDate = new Date();
+    const thailandOffset = 7 * 60 * 60 * 1000;
+    const thailandToday = new Date(todayDate.getTime() + thailandOffset);
+    const todayDateStr = thailandToday.toISOString().split('T')[0]; // YYYY-MM-DD format
+
+    boothDates.forEach(booth => {
+      if (!booth.dates.includes(todayDateStr)) {
+        booth.dates.push(todayDateStr);
+        booth.dates.sort(); // Keep dates sorted
+      }
+    });
+
     const response = NextResponse.json(boothDates);
     return addSecurityHeaders(response);
   } catch (error) {

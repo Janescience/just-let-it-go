@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { verifyToken } from '@/utils/auth';
 import Sale from '@/lib/models/Sale';
+import SaleEditHistory from '@/lib/models/SaleEditHistory';
 import MenuItem from '@/lib/models/MenuItem';
 import Ingredient from '@/lib/models/Ingredient';
 import StockMovement from '@/lib/models/StockMovement';
 import AccountingTransaction from '@/lib/models/AccountingTransaction';
 import Booth from '@/lib/models/Booth';
+import { now } from '@/utils/timezone';
 
 export async function PUT(
   request: NextRequest,
@@ -30,7 +32,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { items } = body;
+    const { items, paymentMethod, reason } = body;
 
     if (!items || !Array.isArray(items)) {
       return NextResponse.json(
@@ -74,12 +76,16 @@ export async function PUT(
       }
     }
 
-    // Store original items for comparison
-    const originalItems = originalSale.items.map((item: any) => ({
-      menuItemId: item.menuItemId._id,
-      quantity: item.quantity,
-      price: item.price
-    }));
+    // Store original data for edit history
+    const originalData = {
+      items: originalSale.items.map((item: any) => ({
+        menuItemId: item.menuItemId && typeof item.menuItemId === 'object' ? item.menuItemId._id : item.menuItemId,
+        quantity: item.quantity,
+        price: item.price
+      })),
+      paymentMethod: originalSale.paymentMethod,
+      totalAmount: originalSale.totalAmount
+    };
 
     // Validate new items and calculate new total
     let newTotalAmount = 0;
@@ -101,13 +107,15 @@ export async function PUT(
         );
       }
 
-      const itemTotal = menuItem.price * item.quantity;
+      // Use price from client if provided, otherwise use menu item price
+      const itemPrice = item.price !== undefined ? item.price : menuItem.price;
+      const itemTotal = itemPrice * item.quantity;
       newTotalAmount += itemTotal;
 
       validatedNewItems.push({
         menuItemId: item.menuItemId,
         quantity: item.quantity,
-        price: menuItem.price
+        price: itemPrice
       });
     }
 
@@ -115,7 +123,7 @@ export async function PUT(
     const ingredientChanges = new Map();
 
     // First, reverse the original usage
-    for (const originalItem of originalItems) {
+    for (const originalItem of originalData.items) {
       const menuItem = await MenuItem.findById(originalItem.menuItemId)
         .populate('ingredients.ingredientId');
 
@@ -162,6 +170,11 @@ export async function PUT(
       }
     }
 
+    // Delete existing stock movements for this sale before creating new ones
+    await StockMovement.deleteMany({
+      saleId: originalSale._id
+    });
+
     // Apply ingredient stock changes
     for (const [ingredientId, changeData] of ingredientChanges) {
       if (changeData.change !== 0) {
@@ -173,16 +186,29 @@ export async function PUT(
             ingredient.stock = 0;
           }
           await ingredient.save();
+        }
+      }
+    }
 
-          // Create stock movement record
+    // Create new stock movements for all ingredients in the new sale
+    for (const newItem of validatedNewItems) {
+      const menuItem = await MenuItem.findById(newItem.menuItemId)
+        .populate('ingredients.ingredientId');
+
+      if (menuItem && menuItem.ingredients.length > 0) {
+        for (const menuIngredient of menuItem.ingredients) {
+          const ingredientId = menuIngredient.ingredientId._id;
+          const totalUsed = menuIngredient.quantity * newItem.quantity;
+
+          // Create stock movement record for the new sale structure
           const stockMovement = new StockMovement({
             ingredientId,
-            ingredientName: changeData.ingredient.name,
-            unit: changeData.ingredient.unit,
-            type: 'adjustment',
-            quantity: changeData.change,
-            cost: changeData.ingredient.costPerUnit, // เพิ่ม cost จาก costPerUnit
-            reason: `แก้ไขรายการขาย ${originalSale._id}`,
+            ingredientName: menuIngredient.ingredientId.name,
+            unit: menuIngredient.ingredientId.unit,
+            type: 'use',
+            quantity: totalUsed, // Positive quantity for the actual usage
+            cost: menuIngredient.ingredientId.costPerUnit * totalUsed, // ต้นทุนรวม = costPerUnit × totalUsed
+            reason: 'แก้ไขรายการขาย',
             boothId: originalSale.boothId,
             saleId: originalSale._id
           });
@@ -241,7 +267,7 @@ export async function PUT(
 
       originalAccounting.amount = newTotalAmount;
       originalAccounting.description = `การขายสินค้า (แก้ไข) - ${menuNames.join(', ')}`;
-      originalAccounting.paymentMethod = originalSale.paymentMethod;
+      originalAccounting.paymentMethod = paymentMethod || originalSale.paymentMethod;
       await originalAccounting.save();
     } else if (newTotalAmount > 0) {
       // Create description with menu names for new transaction by looking up each menuItemId
@@ -260,7 +286,7 @@ export async function PUT(
         category: 'sale_revenue',
         amount: newTotalAmount,
         description: `การขายสินค้า (แก้ไข) - ${menuNames.join(', ')}`,
-        paymentMethod: originalSale.paymentMethod,
+        paymentMethod: paymentMethod || originalSale.paymentMethod,
         boothId: originalSale.boothId,
         relatedId: originalSale._id,
         relatedType: 'sale',
@@ -270,14 +296,72 @@ export async function PUT(
       await accountingTransaction.save();
     }
 
+    // Prepare new data for comparison
+    const newData = {
+      items: validatedNewItems,
+      paymentMethod: paymentMethod || originalSale.paymentMethod,
+      totalAmount: newTotalAmount
+    };
+
+    // Check what changed and create edit history
+    const changes: any = { before: {}, after: {} };
+    let editType = 'complete_edit';
+    let hasChanges = false;
+
+    // Check payment method changes
+    if (newData.paymentMethod !== originalData.paymentMethod) {
+      changes.before.paymentMethod = originalData.paymentMethod;
+      changes.after.paymentMethod = newData.paymentMethod;
+      editType = 'payment_method';
+      hasChanges = true;
+    }
+
+    // Check items changes
+    const itemsChanged = JSON.stringify(originalData.items) !== JSON.stringify(newData.items);
+    if (itemsChanged) {
+      changes.before.items = originalData.items;
+      changes.after.items = newData.items;
+      editType = editType === 'payment_method' ? 'complete_edit' : 'items';
+      hasChanges = true;
+    }
+
+    // Check amount changes
+    if (newData.totalAmount !== originalData.totalAmount) {
+      changes.before.totalAmount = originalData.totalAmount;
+      changes.after.totalAmount = newData.totalAmount;
+      editType = editType === 'payment_method' || editType === 'items' ? 'complete_edit' : 'amount';
+      hasChanges = true;
+    }
+
     // Update the sale record
     originalSale.items = validatedNewItems;
     originalSale.totalAmount = newTotalAmount;
+    if (paymentMethod) {
+      originalSale.paymentMethod = paymentMethod;
+    }
+    originalSale.updatedAt = now();
     await originalSale.save();
+
+    // Create edit history record if there were changes
+    if (hasChanges) {
+      await SaleEditHistory.create({
+        saleId: originalSale._id,
+        boothId: originalSale.boothId,
+        editedBy: payload.user.name || payload.user.username || 'Unknown User',
+        editedByUserId: payload.user.id,
+        editType: editType,
+        changes: changes,
+        reason: reason || 'แก้ไขจากประวัติการขาย'
+      });
+    }
+
+    // Return updated sale with populated items
+    const updatedSale = await Sale.findById(originalSale._id)
+      .populate('items.menuItemId', 'name price');
 
     return NextResponse.json({
       message: 'แก้ไขรายการขายเรียบร้อยแล้ว',
-      sale: originalSale
+      sale: updatedSale
     });
 
   } catch (error) {
@@ -317,7 +401,7 @@ export async function DELETE(
 
     // Find the sale to delete
     const sale = await Sale.findById(id)
-      .populate('items.menuItemId', 'ingredients');
+      .populate('items.menuItemId', 'name price ingredients');
 
     if (!sale) {
       return NextResponse.json(
@@ -365,10 +449,10 @@ export async function DELETE(
               ingredientId,
               ingredientName: ingredient.name,
               unit: ingredient.unit,
-              type: 'adjustment',
+              type: 'use',
               quantity: totalUsed,
-              cost: ingredient.costPerUnit, // เพิ่ม cost จาก costPerUnit
-              reason: `ลบรายการขาย ${sale._id}`,
+              cost: ingredient.costPerUnit * totalUsed, // ต้นทุนรวม = costPerUnit × totalUsed
+              reason: 'ลบรายการขาย',
               boothId: sale.boothId,
               saleId: sale._id
             });
@@ -417,6 +501,47 @@ export async function DELETE(
       relatedId: sale._id,
       relatedType: 'sale'
     });
+
+    // Create edit history record for deletion
+    const editHistoryData = {
+      saleId: sale._id.toString(),
+      boothId: sale.boothId,
+      editedBy: payload.user.name || payload.user.username || 'Unknown User',
+      editedByUserId: payload.user.id,
+      editType: 'deletion',
+      changes: {
+        before: {
+          items: sale.items.map((item: any) => ({
+            menuItemId: (item.menuItemId?._id || item.menuItemId)?.toString(),
+            menuItemName: item.menuItemId?.name || 'Unknown Menu',
+            quantity: item.quantity,
+            price: item.price
+          })),
+          paymentMethod: sale.paymentMethod,
+          totalAmount: sale.totalAmount
+        },
+        after: {} // Use empty object instead of null
+      },
+      reason: 'ลบรายการขายทั้งรายการ'
+    };
+
+    console.log('=== DELETION DEBUG ===');
+    console.log('Sale to delete:', sale._id);
+    console.log('Sale items:', sale.items.map((item: any) => ({
+      menuItemId: item.menuItemId,
+      name: item.menuItemId?.name || 'NO NAME',
+      quantity: item.quantity,
+      price: item.price
+    })));
+    console.log('Edit history data:', JSON.stringify(editHistoryData, null, 2));
+
+    try {
+      const editHistory = await SaleEditHistory.create(editHistoryData);
+      console.log('✅ Edit history created successfully:', editHistory._id);
+    } catch (editError) {
+      console.error('❌ Failed to create edit history:', editError);
+      // Continue with deletion even if edit history fails
+    }
 
     // Delete stock movements related to this sale
     await StockMovement.deleteMany({

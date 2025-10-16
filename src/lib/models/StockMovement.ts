@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { StockMovement } from '@/types';
+import { now } from '@/utils/timezone';
 
 interface IStockMovement extends Omit<StockMovement, '_id'>, Document {}
 
@@ -52,10 +53,22 @@ const StockMovementSchema = new Schema<IStockMovement>({
   },
   createdAt: {
     type: Date,
-    default: Date.now,
   },
-}, {
-  timestamps: false,
+  updatedAt: {
+    type: Date,
+  },
+});
+
+// Set timestamps with Thailand time
+StockMovementSchema.pre('save', function(next) {
+  const currentTime = now();
+
+  if (this.isNew) {
+    this.createdAt = currentTime;
+  }
+  this.updatedAt = currentTime;
+
+  next();
 });
 
 StockMovementSchema.index({ ingredientId: 1, createdAt: -1 });

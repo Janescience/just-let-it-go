@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { verifyToken } from '@/utils/auth';
+import { now, displayDate } from '@/utils/timezone';
 import Sale from '@/lib/models/Sale';
 import Booth from '@/lib/models/Booth';
 import Ingredient from '@/lib/models/Ingredient';
@@ -150,16 +151,13 @@ export async function GET(
     const daysRunning = Math.max(1, Math.ceil((endDateForCalculation.getTime() - boothStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
     const dailyAverage = totalSales / daysRunning;
 
-    // Calculate today's sales
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
+    // Calculate today's sales using date string comparison (same as BoothSalesTab)
+    const todayDateStr = displayDate(now()).slice(0, 10); // DD/MM/YYYY format
 
     const todaySales = sales
       .filter(sale => {
-        const saleDate = new Date(sale.createdAt);
-        return saleDate >= todayStart && saleDate <= todayEnd;
+        const saleDateStr = displayDate(sale.createdAt).slice(0, 10);
+        return saleDateStr === todayDateStr;
       })
       .reduce((sum, sale) => sum + sale.totalAmount, 0);
 

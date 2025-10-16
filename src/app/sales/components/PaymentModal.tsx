@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRightLeft, HandCoins, Check } from 'lucide-react';
 import { Modal, ModalActionButton } from '@/components/ui';
 import { MenuItem, Brand } from '@/types';
@@ -33,11 +33,18 @@ export function PaymentModal({
   showToast
 }: PaymentModalProps) {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer'>('cash');
-  const [selectedQRMethod, setSelectedQRMethod] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [receivedAmount, setReceivedAmount] = useState<string>('');
   const [showCashInput, setShowCashInput] = useState(false);
+  const transactionIdRef = useRef<string>('');
+
+  const generateTransactionId = () => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+    return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  };
 
   const availablePaymentMethods = brand ? getAvailablePaymentMethods(brand) : [];
 
@@ -54,10 +61,13 @@ export function PaymentModal({
   useEffect(() => {
     if (isOpen) {
       setPaymentMethod('cash');
-      setSelectedQRMethod('');
       setQrCode(null);
       setReceivedAmount(totalAmount.toString());
       setShowCashInput(true);
+      setLoading(false);
+      transactionIdRef.current = generateTransactionId();
+    } else {
+      transactionIdRef.current = '';
       setLoading(false);
     }
   }, [isOpen, totalAmount]);
@@ -95,108 +105,66 @@ export function PaymentModal({
     return received >= totalAmount;
   };
 
+  const submitSale = async (method: 'cash' | 'transfer') => {
+    const clientTransactionId = transactionIdRef.current || generateTransactionId();
+    transactionIdRef.current = clientTransactionId;
+
+    const response = await fetch('/api/sales', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: cart.map(item => ({
+          menuItemId: item._id,
+          quantity: item.quantity,
+          price: item.price
+        })),
+        totalAmount,
+        paymentMethod: method,
+        ...(selectedBoothId && { boothId: selectedBoothId }),
+        clientTransactionId
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'เกิดข้อผิดพลาดในการบันทึกการขาย');
+    }
+
+    const result = await response.json();
+    localStorage.setItem('booth-stats-update', Date.now().toString());
+    window.dispatchEvent(new CustomEvent('booth-stats-update'));
+    transactionIdRef.current = generateTransactionId();
+    return result;
+  };
+
   const handlePayment = async () => {
-    // ตรวจสอบเงินสดก่อนดำเนินการ
+    if (loading) {
+      return;
+    }
+
     if (paymentMethod === 'cash' && !isValidCashPayment()) {
       alert('จำนวนเงินที่รับมาไม่เพียงพอ');
       return;
     }
 
-    // ตรวจสอบว่ามี payment info พร้อมใช้งานสำหรับ transfer
     if (paymentMethod === 'transfer' && !hasPaymentInfo) {
       alert('ไม่พบข้อมูลการชำระเงิน กรุณาติดต่อผู้ดูแลระบบ');
       return;
     }
 
-    // For transfer payments, QR code is already generated, proceed with confirmation
-    if (paymentMethod === 'transfer') {
-      // Process transfer payment immediately
-      showToast('success', 'ยืนยันการชำระสำเร็จ!', `ยอดชำระ ฿${totalAmount.toLocaleString()}`);
-      onSuccess();
-      processTransferPaymentAsync();
-      return;
-    }
+    setLoading(true);
 
-    // For cash payments: Show success immediately, then process API call
-    if (paymentMethod === 'cash') {
-      // 1. Show success toast immediately
-      showToast('success', 'ชำระเงินสำเร็จ!', `ยอดชำระ ฿${totalAmount.toLocaleString()}`);
-
-      // 2. Show success UI immediately
-      onSuccess();
-
-      // 3. Process API call in background (don't await)
-      processPaymentAsync();
-    }
-  };
-
-  const processPaymentAsync = async () => {
     try {
-      const currentPaymentMethod = paymentMethod;
-      const currentBoothId = selectedBoothId;
-      const currentCart = [...cart];
-      const currentTotalAmount = totalAmount;
-
-      const response = await fetch('/api/sales', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: currentCart.map(item => ({
-            menuItemId: item._id,
-            quantity: item.quantity,
-            price: item.price
-          })),
-          totalAmount: currentTotalAmount,
-          paymentMethod: currentPaymentMethod,
-          ...(selectedBoothId && { boothId: selectedBoothId })
-        })
-      });
-
-
-      if (response.ok) {
-        const result = await response.json();
-        localStorage.setItem('booth-stats-update', Date.now().toString());
-        window.dispatchEvent(new CustomEvent('booth-stats-update'));
-      } else {
-        const error = await response.json();
-        console.error('❌ Background payment processing failed:', error);
-      }
+      await submitSale(paymentMethod);
+      const successTitle = paymentMethod === 'cash' ? 'ชำระเงินสำเร็จ!' : 'ยืนยันการชำระสำเร็จ!';
+      showToast('success', successTitle, `ยอดชำระ ฿${totalAmount.toLocaleString()}`);
+      onSuccess();
     } catch (error) {
-      console.error('❌ Error in background payment processing:', error);
-    }
-  };
-
-  const processTransferPaymentAsync = async () => {
-    try {
-      const currentBoothId = selectedBoothId;
-      const currentCart = [...cart];
-      const currentTotalAmount = totalAmount;
-
-      const response = await fetch('/api/sales', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: currentCart.map(item => ({
-            menuItemId: item._id,
-            quantity: item.quantity,
-            price: item.price
-          })),
-          totalAmount: currentTotalAmount,
-          paymentMethod: 'transfer',
-          ...(selectedBoothId && { boothId: selectedBoothId })
-        })
-      });
-
-      if (response.ok) {
-
-        localStorage.setItem('booth-stats-update', Date.now().toString());
-        window.dispatchEvent(new CustomEvent('booth-stats-update'));
-      } else {
-        const error = await response.json();
-        console.error('❌ Background transfer payment processing failed:', error);
-      }
-    } catch (error) {
-      console.error('❌ Error in background transfer payment processing:', error);
+      console.error('❌ Error submitting sale:', error);
+      const message = error instanceof Error ? error.message : 'ไม่สามารถบันทึกการขายได้';
+      showToast('error', 'เกิดข้อผิดพลาด', message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -216,20 +184,10 @@ export function PaymentModal({
       if (!receivedAmount || receivedAmount === '') {
         setReceivedAmount(totalAmount.toString());
       }
-      setSelectedQRMethod('');
     } else {
       setShowCashInput(false);
       setReceivedAmount('');
-      if (hasPaymentInfo) {
-        setSelectedQRMethod('transfer');
-      }
     }
-  };
-
-  const handleTransferPaymentComplete = () => {
-    showToast('success', 'ยืนยันการชำระสำเร็จ!', `ยอดชำระ ฿${totalAmount.toLocaleString()}`);
-    onSuccess();
-    processTransferPaymentAsync();
   };
 
   if (!isOpen) return null;

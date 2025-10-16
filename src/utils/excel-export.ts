@@ -11,7 +11,7 @@ export interface DailyTransaction {
 
 export function groupTransactionsByDate(transactions: AccountingTransaction[]): DailyTransaction[] {
   const grouped = transactions.reduce((acc, transaction) => {
-    const date = new Date(transaction.date).toISOString().split('T')[0];
+    const date = new Date(transaction.createdAt).toISOString().split('T')[0];
 
     if (!acc[date]) {
       acc[date] = {
@@ -131,7 +131,7 @@ function groupByMonths(transactions: AccountingTransaction[]): Array<{ name: str
   const monthGroups: Record<string, AccountingTransaction[]> = {};
 
   transactions.forEach(tx => {
-    const date = new Date(tx.date);
+    const date = new Date(tx.createdAt);
     const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
     const monthName = `${getThaiMonthName(date.getMonth())} ${date.getFullYear() + 543}`;
 
@@ -153,7 +153,7 @@ function groupByYears(transactions: AccountingTransaction[]): Array<{ name: stri
   const yearGroups: Record<string, AccountingTransaction[]> = {};
 
   transactions.forEach(tx => {
-    const year = new Date(tx.date).getFullYear();
+    const year = new Date(tx.createdAt).getFullYear();
     const yearName = `ปี ${year + 543}`;
 
     if (!yearGroups[yearName]) {

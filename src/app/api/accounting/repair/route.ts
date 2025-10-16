@@ -5,6 +5,7 @@ import Sale from '@/lib/models/Sale';
 import MenuItem from '@/lib/models/MenuItem';
 import AccountingTransaction from '@/lib/models/AccountingTransaction';
 import Booth from '@/lib/models/Booth';
+import { formatDateISO } from '@/utils/timezone';
 
 export async function GET(request: NextRequest) {
   try {
@@ -98,7 +99,8 @@ export async function GET(request: NextRequest) {
     let totalAmount = 0;
 
     salesWithoutAccounting.forEach(sale => {
-      const dateKey = new Date(sale.createdAt).toISOString().split('T')[0]; // YYYY-MM-DD format
+      // Use timezone utility for consistent date grouping
+      const dateKey = formatDateISO(new Date(sale.createdAt));
 
       if (!dailySums[dateKey]) {
         dailySums[dateKey] = {
@@ -203,7 +205,6 @@ export async function POST(request: NextRequest) {
 
         // Create accounting transaction using the same logic as sales creation
         const accountingTransaction = new AccountingTransaction({
-          date: sale.createdAt, // Use original sale date
           type: 'income',
           category: 'sale_revenue',
           amount: sale.totalAmount,
@@ -214,6 +215,9 @@ export async function POST(request: NextRequest) {
           relatedType: 'sale',
           brandId: booth.brandId // Use brandId from booth (will be converted to ObjectId by mongoose)
         });
+
+        // Set createdAt to match original sale date
+        accountingTransaction.createdAt = sale.createdAt;
 
         await accountingTransaction.save();
         results.push({

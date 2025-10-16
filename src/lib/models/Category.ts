@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import { now } from '@/utils/timezone';
 
 export interface ICategory extends Document {
   name: string;
@@ -28,8 +29,24 @@ const CategorySchema = new Schema<ICategory>({
     type: Boolean,
     default: true,
   },
-}, {
-  timestamps: true,
+  createdAt: {
+    type: Date,
+  },
+  updatedAt: {
+    type: Date,
+  },
+});
+
+// Set timestamps with Thailand time
+CategorySchema.pre('save', function(next) {
+  const currentTime = now();
+
+  if (this.isNew) {
+    this.createdAt = currentTime;
+  }
+  this.updatedAt = currentTime;
+
+  next();
 });
 
 // Index สำหรับ performance

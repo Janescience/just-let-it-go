@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { now } from '@/utils/timezone';
 
 const EquipmentItemSchema = new mongoose.Schema({
   name: {
@@ -43,9 +44,13 @@ const EquipmentUsageHistorySchema = new mongoose.Schema({
     type: Number,
     required: true,
     min: 0
+  },
+  createdAt: {
+    type: Date,
+  },
+  updatedAt: {
+    type: Date,
   }
-}, {
-  timestamps: true
 });
 
 const EquipmentSchema = new mongoose.Schema({
@@ -119,9 +124,37 @@ const EquipmentSchema = new mongoose.Schema({
   notes: {
     type: String,
     default: ''
+  },
+  createdAt: {
+    type: Date,
+  },
+  updatedAt: {
+    type: Date,
   }
-}, {
-  timestamps: true
+});
+
+// Set timestamps with Thailand time
+EquipmentSchema.pre('save', function(next) {
+  const currentTime = now();
+
+  if (this.isNew) {
+    this.createdAt = currentTime;
+  }
+  this.updatedAt = currentTime;
+
+  next();
+});
+
+// Set timestamps for EquipmentUsageHistory nested documents
+EquipmentUsageHistorySchema.pre('save', function(next) {
+  const currentTime = now();
+
+  if (this.isNew) {
+    this.createdAt = currentTime;
+  }
+  this.updatedAt = currentTime;
+
+  next();
 });
 
 // Calculate depreciation percentage

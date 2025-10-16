@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Package, BarChart3, Edit, History, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/Input';
 import { Modal, ModalActionButton } from '@/components/ui';
 import { TablePageLoading } from '@/components/ui';
 import { Ingredient, StockMovement } from '@/types';
+import { formatDateISO, displayDateTime } from '@/utils/timezone';
 
 export default function InventoryPage() {
   const { user } = useAuth();
@@ -26,21 +27,25 @@ export default function InventoryPage() {
   const [showEditMovementModal, setShowEditMovementModal] = useState(false);
   const [selectedMovement, setSelectedMovement] = useState<StockMovement | null>(null);
 
-  useEffect(() => {
-    if (user && ingredients.length === 0 && !loading.ingredients) {
-      // Load ingredients first
-      fetchIngredients();
-    }
-  }, [user, ingredients.length, loading.ingredients]);
+  // Use refs to track if data has been fetched to prevent infinite loops
+  const ingredientsFetched = useRef(false);
+  const stockMovementsFetched = useRef(false);
 
   useEffect(() => {
-    if (user && ingredients.length > 0 && stockMovements.length === 0 && !loading.stockMovements) {
-      // Load stock movements after ingredients are loaded
+    if (user && !ingredientsFetched.current && !loading.ingredients) {
+      ingredientsFetched.current = true;
+      fetchIngredients();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (ingredients.length > 0 && !stockMovementsFetched.current && !loading.stockMovements) {
+      stockMovementsFetched.current = true;
       setTimeout(() => {
         fetchStockMovements();
       }, 100);
     }
-  }, [user, ingredients.length, stockMovements.length, loading.stockMovements]);
+  }, [ingredients.length]);
 
   const fetchIngredients = async () => {
     setLoading(prev => ({ ...prev, ingredients: true }));
@@ -70,6 +75,24 @@ export default function InventoryPage() {
     } finally {
       setLoading(prev => ({ ...prev, stockMovements: false }));
     }
+  };
+
+  // Functions for manual refetch (reset refs to allow refetch)
+  const refetchIngredients = () => {
+    ingredientsFetched.current = false;
+    fetchIngredients();
+  };
+
+  const refetchStockMovements = () => {
+    stockMovementsFetched.current = false;
+    fetchStockMovements();
+  };
+
+  const refetchBoth = () => {
+    ingredientsFetched.current = false;
+    stockMovementsFetched.current = false;
+    fetchIngredients();
+    // StockMovements will be fetched automatically after ingredients load
   };
 
   const filteredIngredients = ingredients
@@ -537,7 +560,7 @@ export default function InventoryPage() {
         <AddIngredientModal
           onClose={() => setShowAddModal(false)}
           onSuccess={() => {
-            fetchIngredients();
+            refetchIngredients();
             setShowAddModal(false);
           }}
         />
@@ -552,7 +575,7 @@ export default function InventoryPage() {
             setSelectedIngredient(null);
           }}
           onSuccess={() => {
-            fetchIngredients();
+            refetchIngredients();
             setShowEditModal(false);
             setSelectedIngredient(null);
           }}
@@ -568,8 +591,7 @@ export default function InventoryPage() {
             setSelectedIngredient(null);
           }}
           onSuccess={() => {
-            fetchIngredients();
-            fetchStockMovements();
+            refetchBoth();
             setShowStockModal(false);
             setSelectedIngredient(null);
           }}
@@ -1033,8 +1055,8 @@ function StockMovementsView({ stockMovements, ingredients, typeFilter, onTypeFil
         groupKey = `sale_${movement.saleId}`;
       } else {
         // สำหรับ movement ที่ไม่มี saleId ให้ใช้ timestamp และ type
-        const date = new Date(movement.createdAt).toISOString().split('T')[0];
-        const hour = new Date(movement.createdAt).getHours();
+        const date = formatDateISO(movement.createdAt);
+        const hour = new Date(movement.createdAt).getUTCHours();
         groupKey = `${movement.type}_${date}_${hour}_${movement.reason || 'no_reason'}`;
       }
 
@@ -1144,9 +1166,8 @@ function StockMovementsView({ stockMovements, ingredients, typeFilter, onTypeFil
             const totalCost = movements.reduce((sum, m) => {
               if (m.quantity) {
                 if (m.cost) {
-                  // Has cost data, use it directly
-                  const calculatedCost = Math.abs(m.quantity) * m.cost;
-                  return sum + calculatedCost;
+                  // Has cost data, use it directly (cost is already total cost)
+                  return sum + m.cost;
                 } else {
                   // No cost data (like use/waste), calculate from ingredient costPerUnit
                   const ingredientId = typeof m.ingredientId === 'string' ? m.ingredientId : (m.ingredientId as any)?._id;
@@ -1164,12 +1185,7 @@ function StockMovementsView({ stockMovements, ingredients, typeFilter, onTypeFil
               <tr key={key} className="border-b border-gray-50 hover:bg-gray-25 transition-colors">
                 <td className="py-4 w-32 min-w-[120px]">
                   <div className="text-sm font-light text-gray-600">
-                    {new Date(firstMovement.createdAt).toLocaleDateString('th-TH', {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
+                    {displayDateTime(firstMovement.createdAt)}
                   </div>
                 </td>
                 <td className="py-4 w-40 min-w-[150px]">
@@ -1582,10 +1598,17 @@ function EditMovementModal({ movement, onClose, onSuccess }: EditMovementModalPr
   const [movementData, setMovementData] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(false);
   const [fetchingData, setFetchingData] = React.useState(true);
+  const formatTimeForInput = (date: Date | string): string => {
+    const d = new Date(date);
+    const hours = String(d.getUTCHours()).padStart(2, '0');
+    const minutes = String(d.getUTCMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
   const [formData, setFormData] = React.useState({
     quantity: Math.abs(movement.quantity).toString(),
     reason: movement.reason || '',
-    createdAt: new Date(movement.createdAt).toISOString().slice(0, 16)
+    createdAt: `${formatDateISO(movement.createdAt)}T${formatTimeForInput(movement.createdAt)}`
   });
 
   React.useEffect(() => {

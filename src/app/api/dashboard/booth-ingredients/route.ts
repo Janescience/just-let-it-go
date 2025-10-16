@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb';
+import { connectDB } from '@/lib/db';
 import SaleModel from '@/lib/models/Sale';
 import BoothModel from '@/lib/models/Booth';
 import MenuItemModel from '@/lib/models/MenuItem';
@@ -9,7 +9,7 @@ import { addSecurityHeaders } from '@/utils/security';
 
 export async function GET(request: NextRequest) {
   try {
-    await dbConnect();
+    await connectDB();
 
     // Check authentication
     const token = request.cookies.get('auth-token')?.value;
@@ -47,7 +47,9 @@ export async function GET(request: NextRequest) {
     const booth = await BoothModel.findOne({
       _id: boothId,
       brandId: payload.user.brandId
-    });
+    })
+      .select('_id')
+      .lean();
 
     if (!booth) {
       const response = NextResponse.json(
@@ -101,9 +103,9 @@ export async function GET(request: NextRequest) {
       {
         $lookup: {
           from: 'menuitems',
-          let: { menuItemId: { $toObjectId: '$items.menuItemId' } },
+          let: { menuItemId: '$items.menuItemId' },
           pipeline: [
-            { $match: { $expr: { $eq: ['$_id', '$$menuItemId'] } } },
+            { $match: { $expr: { $eq: [{ $toString: '$_id' }, '$$menuItemId'] } } },
             { $project: { ingredients: 1 } }
           ],
           as: 'menuItem'
@@ -131,9 +133,9 @@ export async function GET(request: NextRequest) {
       {
         $lookup: {
           from: 'ingredients',
-          let: { ingredientId: { $toObjectId: '$_id' } },
+          let: { ingredientId: '$_id' },
           pipeline: [
-            { $match: { $expr: { $eq: ['$_id', '$$ingredientId'] } } },
+            { $match: { $expr: { $eq: [{ $toString: '$_id' }, '$$ingredientId'] } } },
             { $project: { name: 1, unit: 1, costPerUnit: 1 } }
           ],
           as: 'ingredient'
@@ -148,14 +150,21 @@ export async function GET(request: NextRequest) {
           unit: '$ingredient.unit',
           costPerUnit: '$ingredient.costPerUnit',
           totalUsed: 1,
-          totalValue: { $multiply: ['$totalUsed', '$ingredient.costPerUnit'] }
+          totalValue: { $multiply: ['$totalUsed', '$ingredient.costPerUnit'] },
+          nameWithQuantity: {
+            $concat: [
+              '$ingredient.name',
+              ' (',
+              { $toString: '$totalUsed' },
+              ' ',
+              '$ingredient.unit',
+              ')'
+            ]
+          }
         }
       },
       {
         $sort: { totalValue: -1 }
-      },
-      {
-        $limit: 20
       }
     ]);
 

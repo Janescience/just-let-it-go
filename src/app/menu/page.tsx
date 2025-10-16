@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, Edit, Trash2, ChefHat, X, Image as ImageIcon, Copy, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { MenuItem, Ingredient, Category } from '@/types';
@@ -48,13 +48,7 @@ export default function MenuPage() {
     }
   }, [user]);
 
-  useEffect(() => {
-    if (activeMainTab === 'menu') {
-      fetchMenuItems();
-    }
-  }, [activeMainTab, activeCategory]);
-
-  const fetchMenuItems = async () => {
+  const fetchMenuItems = useCallback(async () => {
     setDataLoading(prev => ({ ...prev, menuItems: true }));
     try {
       const params = new URLSearchParams();
@@ -71,7 +65,13 @@ export default function MenuPage() {
     } finally {
       setDataLoading(prev => ({ ...prev, menuItems: false }));
     }
-  };
+  }, [activeCategory]);
+
+  useEffect(() => {
+    if (activeMainTab === 'menu') {
+      fetchMenuItems();
+    }
+  }, [activeMainTab, fetchMenuItems]);
 
   const fetchIngredients = async () => {
     setDataLoading(prev => ({ ...prev, ingredients: true }));

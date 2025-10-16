@@ -1,6 +1,5 @@
 export interface AccountingTransaction {
   _id?: string;
-  date: Date;
   type: 'income' | 'expense';
   category: string;
   amount: number;
@@ -10,8 +9,8 @@ export interface AccountingTransaction {
   relatedId?: string; // ID ของ sale, purchase, booth ที่เกี่ยวข้อง
   relatedType?: 'sale' | 'booth_setup' | 'stock_purchase' | 'manual';
   brandId: string;
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface AccountingSummary {

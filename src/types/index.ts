@@ -198,6 +198,7 @@ export interface Sale {
   totalAmount: number;
   paymentMethod: 'cash' | 'transfer';
   paymentStatus: 'pending' | 'completed';
+  clientTransactionId?: string;
   qrCodeId?: string;
   employeeId?: string;
   createdAt: Date;
@@ -258,6 +259,7 @@ export interface StockMovement {
   saleQuantity?: number; // Number of dishes sold
   saleAmount?: number; // Total revenue from sale
   createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface AuthSession {

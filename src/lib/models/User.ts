@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { User } from '@/types';
+import { now } from '@/utils/timezone';
 
 interface IUser extends Omit<User, '_id'>, Document {
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -51,8 +52,24 @@ const UserSchema = new Schema<IUser>({
     type: Boolean,
     default: true,
   },
-}, {
-  timestamps: true,
+  createdAt: {
+    type: Date,
+  },
+  updatedAt: {
+    type: Date,
+  },
+});
+
+// Set timestamps with Thailand time
+UserSchema.pre('save', function(next) {
+  const currentTime = now();
+
+  if (this.isNew) {
+    this.createdAt = currentTime;
+  }
+  this.updatedAt = currentTime;
+
+  next();
 });
 
 // Hash password before saving

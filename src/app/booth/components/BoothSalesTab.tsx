@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, Calendar, Package, BarChart3, Edit, X, Check, Trash2, Loader2 } from 'lucide-react';
 import { Booth } from '@/types';
+import { displayDate, displayTime, formatDateISO } from '@/utils/timezone';
 
 interface BoothSalesTabProps {
   booth: Booth;
@@ -32,8 +33,8 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
     const effectiveEndDate = currentDate < endDate ? currentDate : endDate;
 
     return {
-      min: startDate.toISOString().split('T')[0],
-      max: effectiveEndDate.toISOString().split('T')[0]
+      min: formatDateISO(startDate),
+      max: formatDateISO(effectiveEndDate)
     };
   };
 
@@ -72,15 +73,33 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
         const menuName = item.menuItemId.name || 'Unknown Menu';
         const key = menuItemId;
 
+        // Calculate cost from menu item ingredients
+        const menuItemData = item.menuItemId;
+        let itemCost = 0;
+        if (menuItemData && menuItemData.ingredients) {
+          menuItemData.ingredients.forEach((ingredient: any) => {
+            const costPerUnit = ingredient.ingredientId?.costPerUnit || 0;
+            const usedQuantity = ingredient.quantity * item.quantity;
+            itemCost += costPerUnit * usedQuantity;
+          });
+        }
+
+        const itemRevenue = item.price * item.quantity;
+        const itemProfit = itemRevenue - itemCost;
+
         if (menuMap.has(key)) {
           const existing = menuMap.get(key);
           existing.quantity += item.quantity;
-          existing.revenue += item.price * item.quantity;
+          existing.revenue += itemRevenue;
+          existing.cost += itemCost;
+          existing.profit += itemProfit;
         } else {
           menuMap.set(key, {
             name: menuName,
             quantity: item.quantity,
-            revenue: item.price * item.quantity
+            revenue: itemRevenue,
+            cost: itemCost,
+            profit: itemProfit
           });
         }
       });
@@ -205,7 +224,7 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
     const salesByDate: { [key: string]: any[] } = {};
     boothSales.forEach((sale: any) => {
       const saleDate = new Date(sale.createdAt);
-      const dateStr = saleDate.toISOString().split('T')[0];
+      const dateStr = formatDateISO(saleDate);
 
       if (!salesByDate[dateStr]) {
         salesByDate[dateStr] = [];
@@ -222,7 +241,11 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
     const dailyData = [];
 
     for (let d = new Date(startDate); d <= effectiveEndDate; d.setDate(d.getDate() + 1)) {
-      const dateStr = d.toISOString().split('T')[0];
+      // Use YYYY-MM-DD format consistently with timezone handling
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
       const daySales = salesByDate[dateStr] || [];
 
       const dayTotal = daySales.reduce((sum: number, sale: any) => sum + sale.totalAmount, 0);
@@ -234,17 +257,34 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
         .reduce((sum: number, sale: any) => sum + sale.totalAmount, 0);
       const orderCount = daySales.length;
 
-      // Calculate cost and profit for this day
-      const dayCost = daySales.reduce((sum: number, sale: any) => sum + (sale.totalCost || 0), 0);
-      const dayProfit = daySales.reduce((sum: number, sale: any) => sum + (sale.profit || 0), 0);
+      // Calculate cost and profit for this day by iterating through items
+      let dayCost = 0;
+      let dayProfit = 0;
+
+      daySales.forEach((sale: any) => {
+        sale.items.forEach((item: any) => {
+          // Calculate cost from menu item ingredients
+          const menuItemData = item.menuItemId;
+          let itemCost = 0;
+          if (menuItemData && menuItemData.ingredients) {
+            menuItemData.ingredients.forEach((ingredient: any) => {
+              const costPerUnit = ingredient.ingredientId?.costPerUnit || 0;
+              const usedQuantity = ingredient.quantity * item.quantity;
+              itemCost += costPerUnit * usedQuantity;
+            });
+          }
+
+          const itemRevenue = item.price * item.quantity;
+          const itemProfit = itemRevenue - itemCost;
+
+          dayCost += itemCost;
+          dayProfit += itemProfit;
+        });
+      });
 
       dailyData.push({
         date: dateStr,
-        displayDate: d.toLocaleDateString('th-TH', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric'
-        }),
+        displayDate: displayDate(d),
         total: dayTotal,
         cash: cashTotal,
         transfer: transferTotal,
@@ -283,7 +323,7 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
 
         // Filter sales for this specific date (booth is already filtered by API)
         const dateSales = allSales.filter((sale: any) => {
-          const saleDate = new Date(sale.createdAt).toISOString().split('T')[0];
+          const saleDate = formatDateISO(new Date(sale.createdAt));
           return saleDate === date;
         });
 
@@ -463,15 +503,15 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
   return (
     <div className="space-y-6">
       {/* Sales Progress Summary */}
-      <div className="border border-gray-100 p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <TrendingUp className="w-4 h-4 text-gray-600" />
-          <label className="text-lg font-light text-black tracking-wide">สรุปยอดขาย</label>
+      <div className="border border-gray-100 p-8">
+        <div className="flex items-center gap-3 mb-6">
+          <TrendingUp className="w-5 h-5 text-gray-600" />
+          <label className="text-xl font-medium text-black tracking-wide">สรุปยอดขาย</label>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
           <div>
             <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">ดำเนินการมา</div>
-            <div className="font-light text-black">
+            <div className="text-lg font-medium text-black">
                 {(() => {
                   const startDate = new Date(booth.startDate);
                   const endDate = new Date(booth.endDate);
@@ -493,7 +533,7 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
 
           <div>
             <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">จำนวนที่ขายได้</div>
-            <div className="font-light text-black">
+            <div className="text-lg font-medium text-black">
               {(() => {
                 // Calculate total quantity from all daily sales data
                 const totalQuantity = dailySalesData.reduce((grandTotal: number, dayData: any) => {
@@ -515,7 +555,7 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
 
           <div>
             <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">ยอดขายรวม</div>
-            <div className="font-light text-black">
+            <div className="text-xl font-medium text-black">
               ฿{(() => {
                 // Calculate total sales from all daily sales data
                 const totalSales = dailySalesData.reduce((grandTotal: number, dayData: any) => {
@@ -529,42 +569,28 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
 
           <div>
             <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">ต้นทุนรวม</div>
-            <div className="font-light text-black">
+            <div className="text-lg font-medium text-black">
               ฿{(() => {
-                if (!booth.businessPlan?.fixedCosts?.total || !booth.businessPlan?.ingredients) {
-                  return '0';
-                }
+                // Calculate total cost from all daily sales data
+                const totalCost = dailySalesData.reduce((grandTotal: number, dayData: any) => {
+                  return grandTotal + (dayData.cost || 0);
+                }, 0);
 
-                const fixedCosts = booth.businessPlan.fixedCosts.total;
-                const ingredientCost = booth.businessPlan.ingredients.reduce((sum, ing) => sum + ing.cost, 0);
-                const baseCapital = fixedCosts + ingredientCost;
-                const reserveFund = baseCapital * 0.1;
-                const totalCost = baseCapital + reserveFund;
-
-                return totalCost.toLocaleString();
+                return Math.round(totalCost).toLocaleString();
               })()}
             </div>
           </div>
 
           <div>
-            <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">กำไร</div>
-            <div className="font-light text-black">
+            <div className="text-xs font-light text-gray-400 mb-1 tracking-wider uppercase">กำไรรวม</div>
+            <div className="text-lg font-medium text-black">
               ฿{(() => {
-                // Calculate correct profit using same logic as BoothCard
-                if (!booth.businessPlan?.fixedCosts?.total || !booth.businessPlan?.ingredients) {
-                  return '0';
-                }
+                // Calculate total profit from all daily sales data
+                const totalProfit = dailySalesData.reduce((grandTotal: number, dayData: any) => {
+                  return grandTotal + (dayData.profit || 0);
+                }, 0);
 
-                const fixedCosts = booth.businessPlan.fixedCosts.total;
-                const ingredientCost = booth.businessPlan.ingredients.reduce((sum, ing) => sum + ing.cost, 0);
-                const baseCapital = fixedCosts + ingredientCost;
-                const reserveFund = baseCapital * 0.1;
-                const correctBreakEvenRevenue = baseCapital + reserveFund;
-
-                const totalSales = statsData?.totalSales || 0;
-                const profit = Math.max(0, totalSales - correctBreakEvenRevenue);
-
-                return profit.toLocaleString();
+                return Math.round(totalProfit).toLocaleString();
               })()}
             </div>
           </div>
@@ -653,14 +679,14 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
                       ฿{dailySalesData.reduce((sum, day) => sum + day.total, 0).toLocaleString()}
                     </td>
                     <td className="p-3 font-medium  text-right">
-                      ฿{dailySalesData.reduce((sum, day) => sum + (day.cost || 0), 0).toLocaleString()}
+                      ฿{Math.round(dailySalesData.reduce((sum, day) => sum + (day.cost || 0), 0)).toLocaleString()}
                     </td>
                     <td className="p-3 font-medium text-right">
                       {(() => {
                         const totalProfit = dailySalesData.reduce((sum, day) => sum + (day.profit || 0), 0);
                         return (
                           <span>
-                            ฿{totalProfit.toLocaleString()}
+                            ฿{Math.round(totalProfit).toLocaleString()}
                           </span>
                         );
                       })()}
@@ -677,35 +703,38 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
               {dailySalesData.map((day) =>
                 showSalesDetail === day.date ? (
                   <div key={`modal-${day.date}`} className="mt-4 border border-gray-100 p-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <label className="text-lg font-light text-black tracking-wide">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
+                      <label className="text-base sm:text-lg font-light text-black tracking-wide">
                         รายละเอียดการขายวันที่ {day.displayDate} ({editingSales.length} รายการ)
                       </label>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         {editingDate === day.date && (
                           <>
                             <button
                               onClick={saveSalesChanges}
-                              className="px-4 py-2 border border-gray-200 text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide inline-flex items-center gap-2"
+                              className="px-3 sm:px-4 py-2 border border-gray-200 text-xs sm:text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide inline-flex items-center gap-2"
                             >
-                              <Check className="w-4 h-4" />
-                              บันทึก
+                              <Check className="w-3 h-3 sm:w-4 sm:h-4" />
+                              <span className="hidden sm:inline">บันทึก</span>
+                              <span className="sm:hidden">บันทึก</span>
                             </button>
                             <button
                               onClick={cancelEdit}
-                              className="px-4 py-2 border border-gray-200 text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide inline-flex items-center gap-2"
+                              className="px-3 sm:px-4 py-2 border border-gray-200 text-xs sm:text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide inline-flex items-center gap-2"
                             >
-                              <X className="w-4 h-4" />
-                              ยกเลิก
+                              <X className="w-3 h-3 sm:w-4 sm:h-4" />
+                              <span className="hidden sm:inline">ยกเลิก</span>
+                              <span className="sm:hidden">ยกเลิก</span>
                             </button>
                           </>
                         )}
                         <button
                           onClick={() => setShowSalesDetail(null)}
-                          className="px-4 py-2 border border-gray-200 text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide inline-flex items-center gap-2"
+                          className="px-3 sm:px-4 py-2 border border-gray-200 text-xs sm:text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 tracking-wide inline-flex items-center gap-2"
                         >
-                          <X className="w-4 h-4" />
-                          ปิด
+                          <X className="w-3 h-3 sm:w-4 sm:h-4" />
+                          <span className="hidden sm:inline">ปิด</span>
+                          <span className="sm:hidden">ปิด</span>
                         </button>
                       </div>
                     </div>
@@ -719,17 +748,18 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
 
                       return (
                         <>
-                          <div className="overflow-x-auto">
-                            <table className="w-full border-collapse">
+                          <div className="overflow-x-auto -mx-4 sm:-mx-6">
+                            <div className="min-w-max px-4 sm:px-6">
+                            <table className="w-full min-w-[700px] border-collapse">
                               <thead>
                                 <tr className="border-b border-gray-200">
-                                  <th className="text-left text-xs font-light text-gray-400 tracking-wider uppercase p-3">ออเดอร์</th>
-                                  <th className="text-left text-xs font-light text-gray-400 tracking-wider uppercase p-3">เวลา</th>
-                                  <th className="text-left text-xs font-light text-gray-400 tracking-wider uppercase p-3">เมนู</th>
-                                  <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-3">จำนวน</th>
-                                  <th className="text-right text-xs font-light text-gray-400 tracking-wider uppercase p-3">ราคา</th>
-                                  <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-3">การชำระ</th>
-                                  <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-3">จัดการ</th>
+                                  <th className="text-left text-xs font-light text-gray-400 tracking-wider uppercase p-2 sm:p-3 w-20 min-w-[80px]">ออเดอร์</th>
+                                  <th className="text-left text-xs font-light text-gray-400 tracking-wider uppercase p-2 sm:p-3 w-16 min-w-[60px]">เวลา</th>
+                                  <th className="text-left text-xs font-light text-gray-400 tracking-wider uppercase p-2 sm:p-3 min-w-[120px]">เมนู</th>
+                                  <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-2 sm:p-3 w-16 min-w-[60px]">จำนวน</th>
+                                  <th className="text-right text-xs font-light text-gray-400 tracking-wider uppercase p-2 sm:p-3 w-20 min-w-[80px]">ราคา</th>
+                                  <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-2 sm:p-3 w-20 min-w-[80px]">การชำระ</th>
+                                  <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-2 sm:p-3 w-16 min-w-[60px]">จัดการ</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -738,19 +768,21 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
                                   return sale.items.map((item: any, itemIndex: number) => (
                                     <tr key={`${sale._id}-${itemIndex}`} className="border-b border-gray-100 hover:bg-gray-50">
                                       {itemIndex === 0 && (
-                                        <td rowSpan={sale.items.length} className="p-3 font-light text-gray-600 border-r border-gray-100">
-                                          #{sale._id.slice(-6)}
+                                        <td rowSpan={sale.items.length} className="p-2 sm:p-3 font-light text-gray-600 border-r border-gray-100 w-20 min-w-[80px]">
+                                          <div className="text-xs sm:text-sm truncate">#{sale._id.slice(-6)}</div>
                                         </td>
                                       )}
                                       {itemIndex === 0 && (
-                                        <td rowSpan={sale.items.length} className="p-3 font-light text-gray-600 border-r border-gray-100">
-                                          {new Date(sale.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })}
+                                        <td rowSpan={sale.items.length} className="p-2 sm:p-3 font-light text-gray-600 border-r border-gray-100 w-16 min-w-[60px]">
+                                          <div className="text-xs sm:text-sm">
+                                            {displayTime(sale.createdAt).slice(0, 5)}
+                                          </div>
                                         </td>
                                       )}
-                                      <td className="p-3 font-light text-black">
-                                        {item.menuItemId.name || 'Unknown Menu'}
+                                      <td className="p-2 sm:p-3 font-light text-black min-w-[120px]">
+                                        <div className="text-xs sm:text-sm break-words">{item.menuItemId.name || 'Unknown Menu'}</div>
                                       </td>
-                                      <td className="p-3 text-center">
+                                      <td className="p-2 sm:p-3 text-center w-16 min-w-[60px]">
                                         {editingDate === day.date ? (
                                           <input
                                             type="number"
@@ -763,28 +795,28 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
                                                 e.preventDefault();
                                               }
                                             }}
-                                            className="w-16 px-2 py-1 border border-gray-200 rounded text-sm font-light focus:border-black focus:outline-none text-center"
+                                            className="w-12 sm:w-16 px-1 sm:px-2 py-1 border border-gray-200 rounded text-xs sm:text-sm font-light focus:border-black focus:outline-none text-center"
                                           />
                                         ) : (
-                                          <span className="font-light text-black">{item.quantity}</span>
+                                          <span className="font-light text-black text-xs sm:text-sm">{item.quantity}</span>
                                         )}
                                       </td>
-                                      <td className="p-3 font-light text-black text-right">
-                                        ฿{(item.price * item.quantity).toLocaleString()}
+                                      <td className="p-2 sm:p-3 font-light text-black text-right w-20 min-w-[80px]">
+                                        <div className="text-xs sm:text-sm whitespace-nowrap">฿{(item.price * item.quantity).toLocaleString()}</div>
                                       </td>
                                       {itemIndex === 0 && (
-                                        <td rowSpan={sale.items.length} className="p-3 text-center font-light text-gray-600 border-l border-gray-100">
-                                          {sale.paymentMethod === 'cash' ? 'เงินสด' : 'เงินโอน'}
+                                        <td rowSpan={sale.items.length} className="p-2 sm:p-3 text-center font-light text-gray-600 border-l border-gray-100 w-20 min-w-[80px]">
+                                          <div className="text-xs sm:text-sm">{sale.paymentMethod === 'cash' ? 'เงินสด' : 'เงินโอน'}</div>
                                         </td>
                                       )}
                                       {itemIndex === 0 && (
-                                        <td rowSpan={sale.items.length} className="p-3 text-center border-l border-gray-100">
+                                        <td rowSpan={sale.items.length} className="p-2 sm:p-3 text-center border-l border-gray-100 w-16 min-w-[60px]">
                                           <button
                                             onClick={() => deleteSale(sale._id)}
-                                            className="p-2 text-gray-300 hover:text-red-600 transition-colors duration-200"
+                                            className="p-1 sm:p-2 text-gray-300 hover:text-red-600 transition-colors duration-200"
                                             title="ลบออเดอร์"
                                           >
-                                            <Trash2 className="w-4 h-4" />
+                                            <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                                           </button>
                                         </td>
                                       )}
@@ -793,29 +825,30 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
                                 })}
                               </tbody>
                             </table>
+                            </div>
                           </div>
 
                           {/* Pagination */}
                           {totalPages > 1 && (
-                            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
-                              <div className="text-sm font-light text-gray-600">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-4 pt-4 border-t border-gray-200 gap-4">
+                              <div className="text-xs sm:text-sm font-light text-gray-600 text-center sm:text-left">
                                 แสดง {startIndex + 1}-{Math.min(endIndex, editingSales.length)} จากทั้งหมด {editingSales.length} รายการ
                               </div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center justify-center gap-2">
                                 <button
                                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                                   disabled={currentPage === 1}
-                                  className="px-3 py-1 border border-gray-200 text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  className="px-2 sm:px-3 py-1 border border-gray-200 text-xs sm:text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   ก่อนหน้า
                                 </button>
-                                <span className="px-3 py-1 text-sm font-light text-gray-600">
+                                <span className="px-2 sm:px-3 py-1 text-xs sm:text-sm font-light text-gray-600">
                                   {currentPage} / {totalPages}
                                 </span>
                                 <button
                                   onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                                   disabled={currentPage === totalPages}
-                                  className="px-3 py-1 border border-gray-200 text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  className="px-2 sm:px-3 py-1 border border-gray-200 text-xs sm:text-sm font-light text-black hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   ถัดไป
                                 </button>
@@ -906,15 +939,33 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
                       const menuName = item.menuItemId.name || 'Unknown Menu';
                       const key = menuItemId;
 
+                      // Calculate cost from menu item ingredients
+                      const menuItemData = item.menuItemId;
+                      let itemCost = 0;
+                      if (menuItemData && menuItemData.ingredients) {
+                        menuItemData.ingredients.forEach((ingredient: any) => {
+                          const costPerUnit = ingredient.ingredientId?.costPerUnit || 0;
+                          const usedQuantity = ingredient.quantity * item.quantity;
+                          itemCost += costPerUnit * usedQuantity;
+                        });
+                      }
+
+                      const itemRevenue = item.price * item.quantity;
+                      const itemProfit = itemRevenue - itemCost;
+
                       if (totalMenuMap.has(key)) {
                         const existing = totalMenuMap.get(key);
                         existing.quantity += item.quantity;
-                        existing.revenue += item.price * item.quantity;
+                        existing.revenue += itemRevenue;
+                        existing.cost += itemCost;
+                        existing.profit += itemProfit;
                       } else {
                         totalMenuMap.set(key, {
                           name: menuName,
                           quantity: item.quantity,
-                          revenue: item.price * item.quantity
+                          revenue: itemRevenue,
+                          cost: itemCost,
+                          profit: itemProfit
                         });
                       }
                     });
@@ -925,45 +976,67 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
               const totalMenuStats = Array.from(totalMenuMap.values());
               return totalMenuStats && totalMenuStats.length > 0 ? (
               <>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
+                <div className="overflow-x-auto -mx-4 sm:-mx-6">
+                  <div className="min-w-max px-4 sm:px-6">
+                  <table className="w-full min-w-[600px] border-collapse">
                     <thead>
                       <tr className="border-b border-gray-200">
-                        <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-3 w-16">ลำดับ</th>
-                        <th className="text-left text-xs font-light text-gray-400 tracking-wider uppercase p-3">เมนู</th>
-                        <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-3 w-32">จำนวนที่ขาย</th>
-                        <th className="text-right text-xs font-light text-gray-400 tracking-wider uppercase p-3 w-32">ยอดขาย</th>
+                        <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-2 sm:p-3 w-12 min-w-[48px]">ลำดับ</th>
+                        <th className="text-left text-xs font-light text-gray-400 tracking-wider uppercase p-2 sm:p-3 min-w-[120px]">เมนู</th>
+                        <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-2 sm:p-3 w-20 min-w-[80px]">จำนวนที่ขาย</th>
+                        <th className="text-right text-xs font-light text-gray-400 tracking-wider uppercase p-2 sm:p-3 w-24 min-w-[96px]">ยอดขาย</th>
+                        <th className="text-right text-xs font-light text-gray-400 tracking-wider uppercase p-2 sm:p-3 w-24 min-w-[96px]">ต้นทุน</th>
+                        <th className="text-right text-xs font-light text-gray-400 tracking-wider uppercase p-2 sm:p-3 w-24 min-w-[96px]">กำไร</th>
                       </tr>
                     </thead>
                     <tbody>
                       {totalMenuStats
-                        .sort((a: any, b: any) => b.quantity - a.quantity)
+                        .sort((a: any, b: any) => b.profit - a.profit)
                         .map((menuItem: any, index: number) => (
                           <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                            <td className="p-3 font-light text-gray-500 text-center w-16">#{index + 1}</td>
-                            <td className="p-3 font-light text-black">{menuItem.name}</td>
-                            <td className="p-3 font-light text-gray-700 text-center w-32">
-                              {menuItem.quantity.toLocaleString()} จาน
+                            <td className="p-2 sm:p-3 font-light text-gray-500 text-center w-12 min-w-[48px]">
+                              <div className="text-xs sm:text-sm">#{index + 1}</div>
                             </td>
-                            <td className="p-3 font-light text-black text-right w-32">
-                              ฿{menuItem.revenue.toLocaleString()}
+                            <td className="p-2 sm:p-3 font-light text-black min-w-[120px]">
+                              <div className="text-xs sm:text-sm break-words">{menuItem.name}</div>
+                            </td>
+                            <td className="p-2 sm:p-3 font-light text-gray-700 text-center w-20 min-w-[80px]">
+                              <div className="text-xs sm:text-sm whitespace-nowrap">{menuItem.quantity.toLocaleString()} จาน</div>
+                            </td>
+                            <td className="p-2 sm:p-3 font-light text-black text-right w-24 min-w-[96px]">
+                              <div className="text-xs sm:text-sm whitespace-nowrap">฿{Math.round(menuItem.revenue).toLocaleString()}</div>
+                            </td>
+                            <td className="p-2 sm:p-3 font-light text-red-600 text-right w-24 min-w-[96px]">
+                              <div className="text-xs sm:text-sm whitespace-nowrap">฿{Math.round(menuItem.cost).toLocaleString()}</div>
+                            </td>
+                            <td className="p-2 sm:p-3 font-light text-green-600 text-right w-24 min-w-[96px]">
+                              <div className="text-xs sm:text-sm whitespace-nowrap">฿{Math.round(menuItem.profit).toLocaleString()}</div>
                             </td>
                           </tr>
                         ))}
                     </tbody>
                     <tfoot>
                       <tr className="border-t border-gray-200 bg-gray-50">
-                        <td className="p-3 w-16"></td>
-                        <td className="p-3 font-medium text-black">รวมทั้งหมด:</td>
-                        <td className="p-3 font-medium text-black text-center w-32">
-                          {totalMenuStats.reduce((sum: number, item: any) => sum + item.quantity, 0).toLocaleString()} จาน
+                        <td className="p-2 sm:p-3 w-12 min-w-[48px]"></td>
+                        <td className="p-2 sm:p-3 font-medium text-black min-w-[120px]">
+                          <div className="text-xs sm:text-sm">รวมทั้งหมด:</div>
                         </td>
-                        <td className="p-3 font-medium text-black text-right w-32">
-                          ฿{totalMenuStats.reduce((sum: number, item: any) => sum + item.revenue, 0).toLocaleString()}
+                        <td className="p-2 sm:p-3 font-medium text-black text-center w-20 min-w-[80px]">
+                          <div className="text-xs sm:text-sm whitespace-nowrap">{totalMenuStats.reduce((sum: number, item: any) => sum + item.quantity, 0).toLocaleString()} จาน</div>
+                        </td>
+                        <td className="p-2 sm:p-3 font-medium text-black text-right w-24 min-w-[96px]">
+                          <div className="text-xs sm:text-sm whitespace-nowrap">฿{Math.round(totalMenuStats.reduce((sum: number, item: any) => sum + item.revenue, 0)).toLocaleString()}</div>
+                        </td>
+                        <td className="p-2 sm:p-3 font-medium text-red-600 text-right w-24 min-w-[96px]">
+                          <div className="text-xs sm:text-sm whitespace-nowrap">฿{Math.round(totalMenuStats.reduce((sum: number, item: any) => sum + item.cost, 0)).toLocaleString()}</div>
+                        </td>
+                        <td className="p-2 sm:p-3 font-medium text-green-600 text-right w-24 min-w-[96px]">
+                          <div className="text-xs sm:text-sm whitespace-nowrap">฿{Math.round(totalMenuStats.reduce((sum: number, item: any) => sum + item.profit, 0)).toLocaleString()}</div>
                         </td>
                       </tr>
                     </tfoot>
                   </table>
+                  </div>
                 </div>
               </>
               ) : (
@@ -976,28 +1049,37 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
             // Daily View
             dailyMenuStats && dailyMenuStats.length > 0 ? (
               <>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
+                <div className="overflow-x-auto -mx-4 sm:-mx-6">
+                  <div className="min-w-max px-4 sm:px-6">
+                  <table className="w-full min-w-[600px] border-collapse">
                     <thead>
                       <tr className="border-b border-gray-200">
                         <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-3 w-16">ลำดับ</th>
                         <th className="text-left text-xs font-light text-gray-400 tracking-wider uppercase p-3">เมนู</th>
-                        <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-3 w-32">จำนวนที่ขาย</th>
-                        <th className="text-right text-xs font-light text-gray-400 tracking-wider uppercase p-3 w-32">ยอดขาย</th>
+                        <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-3 w-24">จำนวนที่ขาย</th>
+                        <th className="text-right text-xs font-light text-gray-400 tracking-wider uppercase p-3 w-28">ยอดขาย</th>
+                        <th className="text-right text-xs font-light text-gray-400 tracking-wider uppercase p-3 w-28">ต้นทุน</th>
+                        <th className="text-right text-xs font-light text-gray-400 tracking-wider uppercase p-3 w-28">กำไร</th>
                       </tr>
                     </thead>
                     <tbody>
                       {dailyMenuStats
-                        .sort((a: any, b: any) => b.quantity - a.quantity)
+                        .sort((a: any, b: any) => (b.profit || 0) - (a.profit || 0))
                         .map((menuItem: any, index: number) => (
                           <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
                             <td className="p-3 font-light text-gray-500 text-center w-16">#{index + 1}</td>
                             <td className="p-3 font-light text-black">{menuItem.name}</td>
-                            <td className="p-3 font-light text-gray-700 text-center w-32">
+                            <td className="p-3 font-light text-gray-700 text-center w-24">
                               {menuItem.quantity.toLocaleString()} จาน
                             </td>
-                            <td className="p-3 font-light text-black text-right w-32">
-                              ฿{menuItem.revenue.toLocaleString()}
+                            <td className="p-3 font-light text-black text-right w-28">
+                              ฿{Math.round(menuItem.revenue || 0).toLocaleString()}
+                            </td>
+                            <td className="p-3 font-light text-red-600 text-right w-28">
+                              ฿{Math.round(menuItem.cost || 0).toLocaleString()}
+                            </td>
+                            <td className="p-3 font-light text-green-600 text-right w-28">
+                              ฿{Math.round(menuItem.profit || 0).toLocaleString()}
                             </td>
                           </tr>
                         ))}
@@ -1006,15 +1088,22 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
                       <tr className="border-t border-gray-200 bg-gray-50">
                         <td className="p-3 w-16"></td>
                         <td className="p-3 font-medium text-black">รวมในวันนี้:</td>
-                        <td className="p-3 font-medium text-black text-center w-32">
+                        <td className="p-3 font-medium text-black text-center w-24">
                           {dailyMenuStats.reduce((sum: number, item: any) => sum + item.quantity, 0).toLocaleString()} จาน
                         </td>
-                        <td className="p-3 font-medium text-black text-right w-32">
-                          ฿{dailyMenuStats.reduce((sum: number, item: any) => sum + item.revenue, 0).toLocaleString()}
+                        <td className="p-3 font-medium text-black text-right w-28">
+                          ฿{Math.round(dailyMenuStats.reduce((sum: number, item: any) => sum + (item.revenue || 0), 0)).toLocaleString()}
+                        </td>
+                        <td className="p-3 font-medium text-red-600 text-right w-28">
+                          ฿{Math.round(dailyMenuStats.reduce((sum: number, item: any) => sum + (item.cost || 0), 0)).toLocaleString()}
+                        </td>
+                        <td className="p-3 font-medium text-green-600 text-right w-28">
+                          ฿{Math.round(dailyMenuStats.reduce((sum: number, item: any) => sum + (item.profit || 0), 0)).toLocaleString()}
                         </td>
                       </tr>
                     </tfoot>
                   </table>
+                  </div>
                 </div>
               </>
             ) : (
@@ -1083,14 +1172,15 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
 
             return currentIngredientsData.length > 0 ? (
               <>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
+                <div className="overflow-x-auto -mx-4 sm:-mx-6">
+                  <div className="min-w-max px-4 sm:px-6">
+                  <table className="w-full min-w-[500px] border-collapse">
                     <thead>
                       <tr className="border-b border-gray-200">
-                        <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-3 w-16">ลำดับ</th>
-                        <th className="text-left text-xs font-light text-gray-400 tracking-wider uppercase p-3">วัตถุดิบ</th>
-                        <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-3 w-32">ใช้ไปแล้ว</th>
-                        <th className="text-right text-xs font-light text-gray-400 tracking-wider uppercase p-3 w-32">มูลค่าที่ใช้</th>
+                        <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-2 sm:p-3 w-12 min-w-[48px]">ลำดับ</th>
+                        <th className="text-left text-xs font-light text-gray-400 tracking-wider uppercase p-2 sm:p-3 min-w-[120px]">วัตถุดิบ</th>
+                        <th className="text-center text-xs font-light text-gray-400 tracking-wider uppercase p-2 sm:p-3 w-28 min-w-[112px]">ใช้ไปแล้ว</th>
+                        <th className="text-right text-xs font-light text-gray-400 tracking-wider uppercase p-2 sm:p-3 w-28 min-w-[112px]">มูลค่าที่ใช้</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1098,18 +1188,23 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
                         .sort((a: any, b: any) => b.totalValue - a.totalValue)
                         .map((ingredient: any, index: number) => (
                           <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                            <td className="p-3 font-light text-gray-500 text-center w-16">#{index + 1}</td>
-                            <td className="p-3 font-light text-black">{ingredient.name}</td>
-                            <td className="p-3 font-light text-gray-700 text-center w-32">
-                              {ingredient.totalUsed.toLocaleString()} {ingredient.unit}
+                            <td className="p-2 sm:p-3 font-light text-gray-500 text-center w-12 min-w-[48px]">
+                              <div className="text-xs sm:text-sm">#{index + 1}</div>
                             </td>
-                            <td className="p-3 font-light text-black text-right w-32">
-                              ฿{ingredient.totalValue.toLocaleString()}
+                            <td className="p-2 sm:p-3 font-light text-black min-w-[120px]">
+                              <div className="text-xs sm:text-sm break-words">{ingredient.name}</div>
+                            </td>
+                            <td className="p-2 sm:p-3 font-light text-gray-700 text-center w-28 min-w-[112px]">
+                              <div className="text-xs sm:text-sm whitespace-nowrap">{ingredient.totalUsed.toLocaleString()} {ingredient.unit}</div>
+                            </td>
+                            <td className="p-2 sm:p-3 font-light text-black text-right w-28 min-w-[112px]">
+                              <div className="text-xs sm:text-sm whitespace-nowrap">฿{Math.round(ingredient.totalValue).toLocaleString()}</div>
                             </td>
                           </tr>
                         ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               </>
             ) : (
@@ -1139,7 +1234,7 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
                     <tr className="border-t border-gray-200 bg-gray-50">
                       <td className="p-3 w-16"></td>
                       <td className="p-3 font-medium text-black">
-                        รวมมูลค่าวัตถุดิบที่ใช้{ingredientViewMode === 'daily' ? ' (วันนี้)' : ' (รวมทั้งหมด)'}:
+                        รวมทั้งหมด:
                       </td>
                       <td className="p-3 w-32"></td>
                       <td className="p-3 font-medium text-black text-right w-32">
@@ -1147,7 +1242,7 @@ export function BoothSalesTab({ booth, preloadedStats, preloadedSales }: BoothSa
                           const totalValue = currentIngredientsData.reduce((sum: number, ingredient: any) => {
                             return sum + ingredient.totalValue;
                           }, 0);
-                          return totalValue.toLocaleString();
+                          return Math.round(totalValue).toLocaleString();
                         })()}
                       </td>
                     </tr>

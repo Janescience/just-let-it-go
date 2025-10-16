@@ -27,45 +27,72 @@ export async function GET(request: NextRequest) {
       return addSecurityHeaders(response);
     }
 
-    // Get ingredients with low stock for this brand only
-    const lowStockIngredients = await IngredientModel.find({
-      brandId: payload.user.brandId,
-      $expr: { $lte: ['$stock', '$minimumStock'] }
-    }).select('name unit stock minimumStock costPerUnit');
-
-    // Calculate alerts with different severity levels
-    const alerts = lowStockIngredients.map(ingredient => {
-      const stockRatio = ingredient.stock / ingredient.minimumStock;
-      let severity: 'critical' | 'warning' | 'low' = 'low';
-
-      if (ingredient.stock === 0) {
-        severity = 'critical';
-      } else if (stockRatio <= 0.5) {
-        severity = 'critical';
-      } else if (stockRatio <= 1) {
-        severity = 'warning';
+    const sortedAlerts = await IngredientModel.aggregate([
+      {
+        $match: {
+          brandId: payload.user.brandId,
+          $expr: { $lte: ['$stock', '$minimumStock'] }
+        }
+      },
+      {
+        $project: {
+          name: 1,
+          unit: 1,
+          stock: 1,
+          minimumStock: 1,
+          costPerUnit: 1,
+          stockRatio: {
+            $cond: [
+              { $gt: ['$minimumStock', 0] },
+              { $divide: ['$stock', '$minimumStock'] },
+              0
+            ]
+          }
+        }
+      },
+      {
+        $addFields: {
+          severity: {
+            $switch: {
+              branches: [
+                { case: { $eq: ['$stock', 0] }, then: 'critical' },
+                { case: { $lte: ['$stockRatio', 0.5] }, then: 'critical' },
+                { case: { $lte: ['$stockRatio', 1] }, then: 'warning' }
+              ],
+              default: 'low'
+            }
+          }
+        }
+      },
+      {
+        $addFields: {
+          severityOrder: {
+            $switch: {
+              branches: [
+                { case: { $eq: ['$severity', 'critical'] }, then: 0 },
+                { case: { $eq: ['$severity', 'warning'] }, then: 1 }
+              ],
+              default: 2
+            }
+          }
+        }
+      },
+      {
+        $sort: { severityOrder: 1, stockRatio: 1 }
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          unit: 1,
+          currentStock: '$stock',
+          minimumStock: 1,
+          costPerUnit: 1,
+          severity: 1,
+          stockRatio: 1
+        }
       }
-
-      return {
-        _id: ingredient._id.toString(),
-        name: ingredient.name,
-        unit: ingredient.unit,
-        currentStock: ingredient.stock,
-        minimumStock: ingredient.minimumStock,
-        costPerUnit: ingredient.costPerUnit,
-        severity,
-        stockRatio
-      };
-    });
-
-    // Sort by severity (critical first, then warning, then low)
-    const sortedAlerts = alerts.sort((a, b) => {
-      const severityOrder = { critical: 0, warning: 1, low: 2 };
-      if (severityOrder[a.severity] !== severityOrder[b.severity]) {
-        return severityOrder[a.severity] - severityOrder[b.severity];
-      }
-      return a.stockRatio - b.stockRatio; // Within same severity, sort by stock ratio
-    });
+    ]);
 
     const response = NextResponse.json(sortedAlerts);
     return addSecurityHeaders(response);
