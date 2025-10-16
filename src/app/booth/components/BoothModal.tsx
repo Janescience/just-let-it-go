@@ -595,7 +595,13 @@ export function BoothModal({ booth, booths, onClose, onSuccess }: BoothModalProp
         businessPlan: {
           ...businessPlan,
           equipmentId: businessPlan.equipmentId,
-          additionalExpenses: businessPlan.additionalExpenses
+          additionalExpenses: businessPlan.additionalExpenses,
+          selectedMenuItems: businessPlan.selectedMenuItems.map(item => ({
+            _id: item._id,
+            name: item.name,
+            price: item.price,
+            ingredients: item.ingredients
+          }))
         },
         isActive: true
       };
