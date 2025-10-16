@@ -3,6 +3,7 @@ import { connectDB } from '@/lib/db';
 import { verifyToken } from '@/utils/auth';
 import Sale from '@/lib/models/Sale';
 import Booth from '@/lib/models/Booth';
+import MenuItem from '@/lib/models/MenuItem';
 import { now } from '@/utils/timezone';
 
 export async function GET(request: NextRequest) {
@@ -95,7 +96,6 @@ export async function GET(request: NextRequest) {
       // .limit(limit);
 
     // Fix any unpopulated menu items by fetching them manually
-    const MenuItem = (await import('@/lib/models/MenuItem')).default;
     for (const sale of salesHistory) {
       for (const item of sale.items) {
         if (item.menuItemId && typeof item.menuItemId === 'string') {
